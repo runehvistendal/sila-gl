@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { Search } from "lucide-react"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
@@ -9,6 +10,7 @@ import type { GreenlandLocation } from "@/lib/greenlandLocations"
 const majorHubs = GREENLAND_LOCATIONS.filter((l) => l.is_major_hub)
 
 export default function HeroContent() {
+  const router = useRouter()
   const [query, setQuery] = useState("")
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -34,6 +36,10 @@ export default function HeroContent() {
   function pick(loc: GreenlandLocation) {
     setQuery(loc.name_dk)
     setOpen(false)
+  }
+
+  function goToLocation(loc: GreenlandLocation) {
+    router.push(`/hytter?location=${loc.name_dk.toLowerCase()}`)
   }
 
   return (
@@ -74,15 +80,14 @@ export default function HeroContent() {
       {/* Søgefelt + separat Søg-knap */}
       <motion.div
         ref={containerRef}
-        className="relative"
-        style={{ maxWidth: "480px" }}
+        className="relative w-full md:max-w-[480px]"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.35 }}
       >
         <div className="flex items-center gap-2">
           {/* Input-boks */}
-          <div className="flex items-center gap-2.5 flex-1 px-4 py-3.5 bg-white rounded-2xl shadow-2xl">
+          <div className="flex items-center gap-2.5 flex-1 px-4 py-4 md:py-3.5 bg-white rounded-2xl shadow-2xl">
             <Search size={17} className="text-gray-400 shrink-0" />
             <input
               type="text"
@@ -101,8 +106,7 @@ export default function HeroContent() {
 
           {/* Separat Søg-knap */}
           <button
-            className="px-5 py-3.5 rounded-2xl text-sm font-semibold text-white shrink-0 hover:opacity-90 transition-opacity shadow-2xl whitespace-nowrap"
-            style={{ backgroundColor: "#124788" }}
+            className="px-5 py-4 md:py-3.5 rounded-2xl text-sm font-semibold text-primary-foreground bg-primary shrink-0 hover:bg-primary/90 transition-colors shadow-2xl whitespace-nowrap"
           >
             Søg
           </button>
@@ -128,7 +132,7 @@ export default function HeroContent() {
 
       {/* By-chips */}
       <motion.div
-        className="flex flex-wrap gap-2 mt-4"
+        className="flex flex-wrap gap-2 mt-6 w-full md:max-w-[480px]"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.5 }}
@@ -136,8 +140,8 @@ export default function HeroContent() {
         {majorHubs.map((loc) => (
           <button
             key={loc.postal_code}
-            onMouseDown={() => setQuery(loc.name_dk)}
-            className="text-xs px-3 py-1.5 rounded-full transition-all hover:bg-white/20"
+            onClick={() => goToLocation(loc)}
+            className="text-xs px-3 py-2 rounded-full transition-all hover:bg-white/20 active:scale-95"
             style={{ backgroundColor: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.85)" }}
           >
             {loc.name_dk}

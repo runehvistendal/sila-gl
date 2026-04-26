@@ -1,47 +1,38 @@
 # Sila.gl — Hukommelse til Claude
 
-## Status
-- Landingpage fungerer på localhost:3000 — nordlys hero, transparent navbar, badge, headline, søgefelt, mangler by-chips
-- Reference: arctic-soul-stay.base44.app — match 1:1
-- Projekt: C:\Users\rune\sila-gl | github.com/runehvistendal/sila-gl
-- Reference kode: github.com/runehvistendal/sila-2
+## Status (26.4.2026)
+- Landingpage, auth, datamodel (10 tabeller, RLS, triggers) — komplet
+- Designsystem: Plus Jakarta Sans, CSS-variabler fra Base44, globals.css, layout.tsx
+- /opret — kombineret side med ?type=cabin og ?type=transport
+- /mine-hytter — liste med tomt state, edit/delete
+- git push gennemført
 
-## Fundament (komplet)
-- Next.js 14 + Tailwind + shadcn/ui (Radix + Nova)
-- Supabase oprettet (West EU Ireland) + nøgler i .env.local
-- src/lib/supabase.ts + src/lib/supabase-server.ts
-- src/lib/greenlandLocations.ts
-- CLAUDE.md i repo
+## Base44-reference
+- GitHub: github.com/runehvistendal/sila-2
+- Lokalt: C:\Users\rune\sila-2-ref\src\
+- REGEL: Læs altid tilsvarende fil i sila-2-ref INDEN en ny side bygges
 
-## Næste trin
-1. By-chips — vis alle 6 major hubs (Nuuk, Ilulissat, Sisimiut, Qaqortoq, Aasiaat, Tasiilaq)
-2. Auth — Supabase Google + email, httpOnly cookies, ALDRIG localStorage
-3. Datamodel — SQL-tabeller i Supabase
-4. CreateListing — hytte-formular
-5. Hyttesøgning — server-side Supabase queries
+## Byggeplan (i rækkefølge)
+1. /hytter — søgeside → ref: Cabins.jsx + CabinCard + CabinFilters
+2. /hytter/[id] — detaljeside → ref: CabinDetail.jsx + CabinTransportSection + CabinReviews
+3. /dashboard — alle tabs → ref: Dashboard.jsx
+4. /samsejlads — søgeside → ref: Transport.jsx + TransportCard
+5. /samsejlads/[id] — detaljeside → ref: TransportDetail.jsx
+6. /profil → ref: Profile.jsx (rolle server-side, IKKE localStorage)
+7. /booking/success + /cancelled → ref: BookingSuccess.jsx
+8. /favoritter → ref: Favourites.jsx
+9. Cloudinary billedupload på /opret
+10. Stripe Connect + webhooks
+11. /admin/* → ref: AdminUsers.jsx, AdminContent.jsx
 
-## Cursor-prompt til næste session
-Læs CLAUDE.md. Fix:
-1. Tilføj 6 klikbare by-chips under søgefeltet (Nuuk, Ilulissat, Sisimiut, Qaqortoq, Aasiaat, Tasiilaq) fra greenlandLocations.ts (is_major_hub: true)
-2. Mobile first: hamburger menu under 768px, søgefelt fuld bredde
-
-## Workflow
-- Claude.ai: arkitektur + Cursor-prompts
-- Cursor Agent (Sonnet 4.6): kode — start altid med "Læs CLAUDE.md"
-- Afslut session: git add . && git commit -m "..." && git push
-
-## Sikkerhedsregler
-- Roller server-side — ALDRIG localStorage
+## Sikkerhedsfejl der rettes løbende
+- Rolle ALDRIG i localStorage → server-side RLS
 - Stripe-pris ALTID server-side
-- JWT httpOnly cookies
-- Reviews kræver afsluttet booking (RLS)
-- Admin-ruter: Next.js middleware
+- Filtrering ALTID i Supabase query, aldrig client-side
+- Reviews kræver completed booking (RLS)
+- Favourites filtreret på auth.uid(), ikke user_email
+- Admin-ruter: middleware.ts + RLS
+- JWT: httpOnly cookies via @supabase/ssr
 
 ## Stack
-Next.js 14 + Supabase + Stripe Connect + Tailwind + shadcn/ui + Cloudinary + Mapbox + next-intl + Vercel
-
-## Design
-Mobile first (80% mobil)
-
-## Terminologi
-sejler, gæst, hytte, samsejlads, udbyder
+Next.js 14 + Supabase (pngpelcaodbwwggaeyue) + Stripe Connect + Tailwind + shadcn/ui + Cloudinary + Mapbox + Vercel
