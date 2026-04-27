@@ -159,19 +159,18 @@ export async function createCabinBooking(
     return { error: "Transportpris er ikke angivet for denne hytte" }
   }
 
-  const { data: owner, error: ownerErr } = await supabase
-    .from("profiles")
-    .select("stripe_account_id, stripe_onboarding_complete")
-    .eq("id", c.owner_id)
-    .maybeSingle()
+  const { data: ownerRows, error: ownerErr } = await supabase.rpc(
+    "get_owner_stripe_info",
+    { p_cabin_id: c.id },
+  )
 
-  if (ownerErr || !owner) {
+  if (ownerErr || !ownerRows || (ownerRows as unknown[]).length === 0) {
     return { error: "Kunne ikke hente vært" }
   }
-  const o = owner as {
+  const o = (ownerRows as Array<{
     stripe_account_id: string | null
     stripe_onboarding_complete: boolean
-  }
+  }>)[0]
   if (!o.stripe_onboarding_complete || !o.stripe_account_id) {
     return { error: "Værten modtager endnu ikke betalinger (Stripe) — prøv igen senere" }
   }

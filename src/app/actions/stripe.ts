@@ -26,11 +26,15 @@ export async function connect(): Promise<ConnectResult> {
   }
   const user = session.user
 
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("id, role_type, stripe_account_id")
-    .eq("id", user.id)
-    .maybeSingle()
+  const [{ data: profile, error: profileError }, { data: sensitiveRaw }] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, role_type")
+        .eq("id", user.id)
+        .maybeSingle(),
+      supabase.rpc("get_my_sensitive_profile"),
+    ])
 
   if (profileError || !profile) {
     return { error: "Kunne ikke hente profil" }
@@ -41,8 +45,8 @@ export async function connect(): Promise<ConnectResult> {
     return { error: "Kun udbydere kan forbinde Stripe" }
   }
 
-  let accountId = (profile as { stripe_account_id?: string | null })
-    .stripe_account_id
+  const sensitive = sensitiveRaw as { stripe_account_id?: string | null } | null
+  let accountId = sensitive?.stripe_account_id ?? null
 
   if (!accountId) {
     const account = await stripe.accounts.create({
@@ -98,18 +102,12 @@ export async function checkOnboardingStatus(): Promise<OnboardingStatusResult> {
   }
   const user = session.user
 
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("stripe_account_id")
-    .eq("id", user.id)
-    .maybeSingle()
-
-  if (profileError || !profile) {
+  const { data: sensitiveRaw, error: profErr } = await supabase.rpc("get_my_sensitive_profile")
+  if (profErr) {
     return { error: "Kunne ikke hente profil" }
   }
-
-  const accountId = (profile as { stripe_account_id?: string | null })
-    .stripe_account_id
+  const sensitive = sensitiveRaw as { stripe_account_id?: string | null } | null
+  const accountId = sensitive?.stripe_account_id ?? null
 
   if (!accountId) {
     return { complete: false }

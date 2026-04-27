@@ -21,9 +21,6 @@ export const dynamic = "force-dynamic"
 export const revalidate = 0
 
 export default async function DashboardPage() {
-  // eslint-disable-next-line no-console
-  console.log('[env check]', process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 10))
-
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()

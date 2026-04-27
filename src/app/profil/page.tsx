@@ -21,13 +21,21 @@ export default async function ProfilPage() {
     redirect("/login?next=%2Fprofil")
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select(
-      "full_name, role_type, location_id, language, location, avatar_url, bio, phone, stripe_account_id, stripe_onboarding_complete",
-    )
-    .eq("id", user.id)
-    .maybeSingle()
+  const [{ data: profile, error: profileError }, { data: sensitiveRaw }] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select("full_name, role_type, location_id, language, location, avatar_url, bio")
+        .eq("id", user.id)
+        .maybeSingle(),
+      supabase.rpc("get_my_sensitive_profile"),
+    ])
+
+  const sensitive = sensitiveRaw as {
+    phone?: string | null
+    stripe_account_id?: string | null
+    stripe_onboarding_complete?: boolean | null
+  } | null
 
   if (profileError) {
     console.error("[profil]", profileError)
@@ -104,22 +112,18 @@ export default async function ProfilPage() {
     role_type: roleType,
     avatar_url: (profile as { avatar_url?: string | null }).avatar_url ?? null,
     bio: (profile as { bio?: string | null }).bio?.trim() ?? "",
-    phone: (profile as { phone?: string | null }).phone?.trim() ?? "",
+    phone: sensitive?.phone?.trim() ?? "",
   }
 
   const navUser = await getNavUserForPage(supabase, user)
 
-  const pStripe = profile as {
-    stripe_account_id?: string | null
-    stripe_onboarding_complete?: boolean | null
-  }
   const showStripeConnect =
     roleType === "provider" || roleType === "both"
   const stripeConnect = showStripeConnect
     ? {
-        stripeAccountId: pStripe.stripe_account_id ?? null,
+        stripeAccountId: sensitive?.stripe_account_id ?? null,
         stripeOnboardingComplete: Boolean(
-          pStripe.stripe_onboarding_complete,
+          sensitive?.stripe_onboarding_complete,
         ),
       }
     : null
