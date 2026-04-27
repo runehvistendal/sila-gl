@@ -140,6 +140,15 @@
   opacity: 0.5;
 }
 
+/* ── DayPicker: optagede datoer (Airbnb-stil — grå + strikethrough) ── */
+.rdp-day_booked {
+  color: hsl(215 15% 68%) !important;
+  text-decoration: line-through;
+  text-decoration-color: hsl(215 15% 68%);
+  cursor: not-allowed !important;
+  pointer-events: none;
+}
+
 /* Profil: react-phone-number-input (matcher øvrige felter) */
 .PhoneInput {
   display: flex;

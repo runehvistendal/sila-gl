@@ -154,6 +154,12 @@ export default function CabinBookingWidget({
     return disabledSet.has(y)
   }
 
+  const bookedMatcher = (date: Date) => {
+    if (isBefore(startOfDay(date), today)) return false
+    const y = formatDate(date, "yyyy-MM-dd")
+    return disabledSet.has(y)
+  }
+
   function persistDraft() {
     if (typeof window === "undefined") return
     const draft: Draft = {
@@ -247,6 +253,10 @@ export default function CabinBookingWidget({
                 selected={range}
                 onSelect={setRange}
                 disabled={disabledMatch}
+                modifiers={{ booked: bookedMatcher }}
+                modifiersClassNames={{
+                  booked: "rdp-day_booked",
+                }}
                 fromDate={today}
                 className="m-0"
               />

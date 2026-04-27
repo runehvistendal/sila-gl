@@ -299,7 +299,7 @@ export async function createCabinBooking(
           },
         },
         success_url: `${base}/booking/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${base}/booking/cancelled`,
+        cancel_url: `${base}/booking/cancelled?booking_id=${bookingId}&cabin_id=${c.id}&check_in=${encodeURIComponent(cIn.d)}&check_out=${encodeURIComponent(cOut.d)}`,
         metadata: {
           booking_id: bookingId,
           cabin_id: c.id,
@@ -336,5 +336,67 @@ export async function createCabinBooking(
           ? e.message
           : "Betalingen kunne ikke startes. Prøv igen.",
     }
+  }
+}
+
+export type CancelPendingBookingResult =
+  | { cabin_id: string; check_in: string; check_out: string }
+  | { error: string }
+
+export async function cancelPendingBooking(
+  bookingId: string,
+): Promise<CancelPendingBookingResult> {
+  if (!bookingId) return { error: "Manglende booking-id" }
+
+  const { supabase, user } = await requireSession()
+
+  const { data: row, error: fetchErr } = await supabase
+    .from("cabin_bookings")
+    .select("id, status, guest_id, cabin_id, check_in, check_out, stripe_session_id")
+    .eq("id", bookingId)
+    .maybeSingle()
+
+  if (fetchErr || !row) return { error: "Booking ikke fundet" }
+
+  const b = row as {
+    id: string
+    status: string
+    guest_id: string
+    cabin_id: string
+    check_in: string
+    check_out: string
+    stripe_session_id: string | null
+  }
+
+  if (b.guest_id !== user.id) return { error: "Ikke autoriseret" }
+  if (b.status !== "pending") return { error: "Kun ventende bookinger kan annulleres" }
+
+  if (b.stripe_session_id) {
+    try {
+      await stripe.checkout.sessions.expire(b.stripe_session_id)
+    } catch {
+      /* Sessionen kan allerede være udløbet — fortsæt */
+    }
+  }
+
+  const service = createServiceClient()
+  const { error: upErr } = await service
+    .from("cabin_bookings")
+    .update({
+      status: "cancelled",
+      cancelled_at: new Date().toISOString(),
+      cancellation_reason: "guest_cancelled",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", bookingId)
+    .eq("guest_id", user.id)
+    .eq("status", "pending")
+
+  if (upErr) return { error: "Kunne ikke annullere booking" }
+
+  return {
+    cabin_id: b.cabin_id,
+    check_in: b.check_in,
+    check_out: b.check_out,
   }
 }
