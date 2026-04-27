@@ -5,6 +5,7 @@ export type NavUser = {
   id: string
   fullName: string | null
   avatarUrl: string | null
+  language: "da" | "en" | "kl"
 }
 
 function metadataFullName(user: User): string | null {
@@ -34,14 +35,17 @@ export async function getNavUserForPage(
 ): Promise<NavUser> {
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("full_name, role_type, avatar_url")
+    .select("full_name, role_type, avatar_url, language")
     .eq("id", user.id)
     .maybeSingle()
 
   const fullName = resolveDisplayName(profile, user)
-  const p = profile as { avatar_url?: string | null } | null | undefined
+  const p = profile as { avatar_url?: string | null; language?: string | null } | null | undefined
   const a = p?.avatar_url
   const avatarUrl = a && String(a).trim() ? String(a).trim() : null
+  const rawLang = p?.language
+  const language: "da" | "en" | "kl" =
+    rawLang === "en" || rawLang === "kl" ? rawLang : "da"
 
   if (process.env.NODE_ENV === "development") {
     // eslint-disable-next-line no-console
@@ -49,6 +53,7 @@ export async function getNavUserForPage(
       userId: user.id,
       fullName: fullName ?? null,
       avatarUrl: avatarUrl ?? null,
+      language,
       profileError: error?.message ?? null,
       hadProfileRow: profile != null,
     })
@@ -58,5 +63,6 @@ export async function getNavUserForPage(
     id: user.id,
     fullName,
     avatarUrl,
+    language,
   }
 }

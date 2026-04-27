@@ -79,6 +79,7 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
     return { error: error.message || "Kunne ikke gemme profil" }
   }
 
+  revalidatePath("/")
   revalidatePath("/profil")
   revalidatePath("/dashboard")
   return { success: true }

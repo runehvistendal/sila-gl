@@ -20,6 +20,12 @@ import type { NavUser } from "@/lib/getNavUser"
 
 export type { NavUser } from "@/lib/getNavUser"
 
+const LANG_LABEL: Record<"da" | "en" | "kl", string> = {
+  da: "Dansk",
+  en: "English",
+  kl: "Kalaallisut",
+}
+
 function NavAvatarCircle({
   user,
   solid,
@@ -201,8 +207,12 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
             <button className="flex items-center gap-1 transition-colors hover:text-foreground">
               DKK (kr) <ChevronDown size={13} />
             </button>
-            <button className="flex items-center gap-1.5 transition-colors hover:text-foreground">
-              <Globe size={14} /> Dansk
+            <button
+              type="button"
+              className="flex items-center gap-1.5 transition-colors hover:text-foreground"
+            >
+              <Globe size={14} />
+              {LANG_LABEL[user?.language ?? "da"]}
             </button>
 
             {user ? (
@@ -350,8 +360,12 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
             <button className="flex items-center gap-1 hover:text-white/80 transition-colors">
               DKK (kr) <ChevronDown size={12} />
             </button>
-            <button className="flex items-center gap-1.5 hover:text-white/80 transition-colors">
-              <Globe size={13} /> Dansk
+            <button
+              type="button"
+              className="flex items-center gap-1.5 hover:text-white/80 transition-colors"
+            >
+              <Globe size={13} />
+              {LANG_LABEL[user?.language ?? "da"]}
             </button>
           </div>
         </div>

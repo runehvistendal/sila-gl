@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase-server"
 import { createServiceClient } from "@/lib/supabase-service"
-import { resolveDisplayName } from "@/lib/getNavUser"
+import { resolveDisplayName, type NavUser } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
 import DashboardClient from "./DashboardClient"
 import type { CabinBookingData } from "./components/BookingRow"
@@ -32,7 +32,7 @@ export default async function DashboardPage() {
   /* ── Profile + my cabins + my boats (først — reconcile før resten) ── */
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("full_name, role_type, location, avatar_url")
+    .select("full_name, role_type, location, avatar_url, language")
     .eq("id", user.id)
     .maybeSingle()
 
@@ -105,7 +105,7 @@ export default async function DashboardPage() {
     if (!roleUpErr) {
       const { data: profileAfter, error: afterErr } = await supabase
         .from("profiles")
-        .select("full_name, role_type, location, avatar_url")
+        .select("full_name, role_type, location, avatar_url, language")
         .eq("id", user.id)
         .maybeSingle()
       if (process.env.NODE_ENV === "development") {
@@ -139,7 +139,7 @@ export default async function DashboardPage() {
   if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
     const { data: svcProfile, error: svcErr } = await createServiceClient()
       .from("profiles")
-      .select("full_name, role_type, location, avatar_url")
+      .select("full_name, role_type, location, avatar_url, language")
       .eq("id", user.id)
       .maybeSingle()
     if (process.env.NODE_ENV === "development") {
@@ -160,11 +160,18 @@ export default async function DashboardPage() {
   }
 
   const displayNameResolved = resolveDisplayName(profileRow, user)
-  const av = (profileRow as { avatar_url?: string | null } | null)?.avatar_url
-  const navUser = {
+  const pr = profileRow as {
+    avatar_url?: string | null
+    language?: string | null
+  } | null
+  const av = pr?.avatar_url
+  const rawNavLang = pr?.language
+  const navUser: NavUser = {
     id: user.id,
     fullName: displayNameResolved,
     avatarUrl: av && String(av).trim() ? String(av).trim() : null,
+    language:
+      rawNavLang === "en" || rawNavLang === "kl" ? rawNavLang : "da",
   }
 
   const isProvider = roleType === "provider" || roleType === "both"
