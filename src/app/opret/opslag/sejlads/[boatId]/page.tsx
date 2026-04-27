@@ -30,7 +30,7 @@ export default async function SejladsOpslagPage({
 
   if (!boat) redirect("/dashboard?tab=mine-opslag")
 
-  const navUser = await getNavUserForPage(supabase, user.id)
+  const navUser = await getNavUserForPage(supabase, user)
 
   return (
     <main className="min-h-screen bg-background">

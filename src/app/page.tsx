@@ -40,7 +40,7 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const navUser = user ? await getNavUserForPage(supabase, user.id) : null
+  const navUser = user ? await getNavUserForPage(supabase, user) : null
 
   return (
     <main>

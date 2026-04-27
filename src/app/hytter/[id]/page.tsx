@@ -47,7 +47,7 @@ export default async function CabinDetailPage({
 
   /* ── Auth ── */
   const { data: { user } } = await supabase.auth.getUser()
-  const navUser = user ? await getNavUserForPage(supabase, user.id) : null
+  const navUser = user ? await getNavUserForPage(supabase, user) : null
 
   /* ── Cabin ── */
   const { data: cabinRaw, error: cabinError } = await supabase

@@ -19,7 +19,7 @@ export default async function OpretPage() {
 
   if (!user) redirect("/")
 
-  const navUser = await getNavUserForPage(supabase, user.id)
+  const navUser = await getNavUserForPage(supabase, user)
 
   const [{ data: cabinsRaw }, { data: boatsRaw }] = await Promise.all([
     supabase

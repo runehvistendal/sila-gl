@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase-server"
+import { resolveDisplayName } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
 import DashboardClient from "./DashboardClient"
 import type { CabinBookingData } from "./components/BookingRow"
@@ -20,16 +21,25 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/")
 
-  /* ── Profile ── */
-  const { data: profile } = await supabase
+  /* ── Profile (server) — én række: nav + tabs + by ── */
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("full_name, role_type, location")
     .eq("id", user.id)
-    .single()
+    .maybeSingle()
 
+  if (process.env.NODE_ENV === "development") {
+    // eslint-disable-next-line no-console
+    console.log("[dashboard/profile]", {
+      role_type: profile?.role_type ?? null,
+      profileError: profileError?.message ?? null,
+    })
+  }
+
+  const displayNameResolved = resolveDisplayName(profile, user)
   const navUser = {
     id: user.id,
-    fullName: profile?.full_name ?? null,
+    fullName: displayNameResolved,
   }
 
   /* ── Parallel data fetching ── */
@@ -134,6 +144,29 @@ export default async function DashboardPage() {
       .is("read_at", null),
   ])
 
+  /* ── Rulle: ejet hytte/båd men role_type endnu traveler (fx før migration / missed update) ── */
+  let roleType =
+    (profile?.role_type as "traveler" | "provider" | "both" | undefined) ?? "traveler"
+  const hasAssets =
+    (myCabinsRaw?.length ?? 0) > 0 || (myBoatsRaw?.length ?? 0) > 0
+  if (hasAssets && roleType === "traveler") {
+    const { error: roleUpErr } = await supabase
+      .from("profiles")
+      .update({ role_type: "both" })
+      .eq("id", user.id)
+    if (process.env.NODE_ENV === "development") {
+      // eslint-disable-next-line no-console
+      console.log("[dashboard/reconcile role]", {
+        before: "traveler",
+        hasAssets,
+        updateError: roleUpErr?.message ?? null,
+      })
+    }
+    if (!roleUpErr) {
+      roleType = "both"
+    }
+  }
+
   /* ── Shape data ── */
   const myBookings: CabinBookingData[] = (myBookingsRaw ?? []).map((b: Record<string, unknown>) => ({
     id:              b.id as string,
@@ -172,18 +205,16 @@ export default async function DashboardPage() {
     profiles:        r.profiles as { full_name: string | null } | null,
   }))
 
-  /* ── Role — DB default is 'traveler'; null behandles som traveler ── */
-  const roleType   = profile?.role_type ?? "traveler"
   const isProvider = roleType === "provider" || roleType === "both"
   const isTraveler = roleType === "traveler" || roleType === "both"
-  const displayName = profile?.full_name ?? null
-  const homeCity    = (profile as Record<string, unknown> | null)?.location as string | null ?? null
+  const homeCity =
+    (profile?.location as string | null | undefined) ?? null
 
   return (
     <main>
       <Navbar user={navUser} />
       <DashboardClient
-        displayName={displayName}
+        displayName={displayNameResolved}
         roleType={roleType}
         isProvider={isProvider}
         isTraveler={isTraveler}

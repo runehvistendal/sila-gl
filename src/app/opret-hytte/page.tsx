@@ -18,7 +18,7 @@ export default async function OpretHyttePage() {
     redirect("/")
   }
 
-  const navUser = await getNavUserForPage(supabase, user.id)
+  const navUser = await getNavUserForPage(supabase, user)
 
   return (
     <main className="min-h-screen bg-background">

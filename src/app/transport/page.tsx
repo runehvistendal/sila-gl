@@ -13,7 +13,7 @@ export default async function TransportPage() {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
-  const navUser = user ? await getNavUserForPage(supabase, user.id) : null
+  const navUser = user ? await getNavUserForPage(supabase, user) : null
 
   const { data, error } = await supabase
     .from("ride_shares")

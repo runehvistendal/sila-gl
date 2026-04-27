@@ -102,6 +102,7 @@ export default function DashboardClient({
   const pathname = usePathname()
   const rawTab = searchParams.get("tab") ?? "bookings"
   const urlTab = (() => {
+    if (rawTab === "mine-opslag") return "listings"
     if (!isTraveler && rawTab === "requests") return "bookings"
     if (!isProvider && (rawTab === "listings" || rawTab === "open-requests")) return "bookings"
     return rawTab
@@ -259,6 +260,20 @@ export default function DashboardClient({
               </TabsTrigger>
             </TabsList>
           </div>
+
+          {roleType === "traveler" && (
+            <div
+              className="mb-6 rounded-xl border border-border bg-muted/50 px-4 py-4 sm:px-5 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 -mt-2"
+              aria-label="Bliv udbyder"
+            >
+              <p className="text-sm text-foreground font-medium pr-0 sm:pr-4">
+                Har du en hytte eller båd du vil udleje?
+              </p>
+              <Button variant="default" asChild className="rounded-xl w-full sm:w-auto shrink-0 gap-0">
+                <Link href="/opret">Opret nyt opslag →</Link>
+              </Button>
+            </div>
+          )}
 
           {/* ── TAB 1: BOOKINGER ── */}
           <TabsContent value="bookings">

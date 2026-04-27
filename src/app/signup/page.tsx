@@ -9,7 +9,7 @@ export default async function SignupPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const navUser = user ? await getNavUserForPage(supabase, user.id) : null
+  const navUser = user ? await getNavUserForPage(supabase, user) : null
 
   return (
     <main className="min-h-screen flex flex-col" style={{ backgroundColor: "#09192A" }}>

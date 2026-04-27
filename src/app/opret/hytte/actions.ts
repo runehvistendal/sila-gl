@@ -121,14 +121,29 @@ export async function createHytte(
     return { errors: { _form: ["Der opstod en fejl. Prøv igen."] } }
   }
 
-  const { data: prof } = await supabase
+  const { data: prof, error: profErr } = await supabase
     .from("profiles")
     .select("role_type")
     .eq("id", user.id)
-    .single()
+    .maybeSingle()
+
+  if (process.env.NODE_ENV === "development") {
+    // eslint-disable-next-line no-console
+    console.log("[createHytte/role] before", prof?.role_type, profErr?.message)
+  }
 
   if (prof?.role_type === "traveler") {
-    await supabase.from("profiles").update({ role_type: "both" }).eq("id", user.id)
+    const { data: after, error: upErr } = await supabase
+      .from("profiles")
+      .update({ role_type: "both" })
+      .eq("id", user.id)
+      .select("role_type")
+      .single()
+
+    if (process.env.NODE_ENV === "development") {
+      // eslint-disable-next-line no-console
+      console.log("[createHytte/role] after", after?.role_type, upErr?.message)
+    }
   }
 
   redirect("/dashboard?tab=mine-opslag&toast=hytte-saved")

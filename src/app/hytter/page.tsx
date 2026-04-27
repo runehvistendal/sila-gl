@@ -34,7 +34,7 @@ export default async function HytterPage({
     data: { user },
   } = await supabase.auth.getUser()
 
-  const navUser = user ? await getNavUserForPage(supabase, user.id) : null
+  const navUser = user ? await getNavUserForPage(supabase, user) : null
 
   const params = await searchParams
   const { hub, guests, transport, minPrice, maxPrice, sort, search } = params

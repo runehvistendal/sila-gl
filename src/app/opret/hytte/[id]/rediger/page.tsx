@@ -45,7 +45,7 @@ export default async function RedigerHyttePage({
     transport_price_roundtrip_ore: cabin.transport_price_roundtrip_ore,
   }
 
-  const navUser = await getNavUserForPage(supabase, user.id)
+  const navUser = await getNavUserForPage(supabase, user)
 
   return (
     <main className="min-h-screen bg-background">
