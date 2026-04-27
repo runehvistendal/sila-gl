@@ -1,38 +1,25 @@
-# Sila.gl — Hukommelse til Claude
+# Sila.gl — Hukommelse til Cursor
 
-## Status (26.4.2026)
-- Landingpage, auth, datamodel (10 tabeller, RLS, triggers) — komplet
-- Designsystem: Plus Jakarta Sans, CSS-variabler fra Base44, globals.css, layout.tsx
-- /opret — kombineret side med ?type=cabin og ?type=transport
-- /mine-hytter — liste med tomt state, edit/delete
-- git push gennemført
+## Status (27.4.2026)
+Komplet: landingpage, auth, datamodel, /opret, /mine-hytter, /hytter, /hytter/[id], navbar, /dashboard (5 tabs), /transport, /transport/[id], Footer
 
-## Base44-reference
-- GitHub: github.com/runehvistendal/sila-2
-- Lokalt: C:\Users\rune\sila-2-ref\src\
-- REGEL: Læs altid tilsvarende fil i sila-2-ref INDEN en ny side bygges
+## Næste i rækkefølge
+1. /profil
+2. Cloudinary billedupload på /opret
+3. Stripe Connect + webhooks
+4. /booking/success + /cancelled
+5. /admin/*
 
-## Byggeplan (i rækkefølge)
-1. /hytter — søgeside → ref: Cabins.jsx + CabinCard + CabinFilters
-2. /hytter/[id] — detaljeside → ref: CabinDetail.jsx + CabinTransportSection + CabinReviews
-3. /dashboard — alle tabs → ref: Dashboard.jsx
-4. /samsejlads — søgeside → ref: Transport.jsx + TransportCard
-5. /samsejlads/[id] — detaljeside → ref: TransportDetail.jsx
-6. /profil → ref: Profile.jsx (rolle server-side, IKKE localStorage)
-7. /booking/success + /cancelled → ref: BookingSuccess.jsx
-8. /favoritter → ref: Favourites.jsx
-9. Cloudinary billedupload på /opret
-10. Stripe Connect + webhooks
-11. /admin/* → ref: AdminUsers.jsx, AdminContent.jsx
+## ride_shares — korrekte kolonnenavne
+- departure_at (timestamptz) — IKKE departure_date
+- status (enum: 'active'|...) — IKKE active boolean
+- boat_description — IKKE boat_type
+- description — IKKE notes
+- from_latitude, from_longitude, to_latitude, to_longitude (NOT NULL)
+- Ingen images-kolonne
 
-## Sikkerhedsfejl der rettes løbende
-- Rolle ALDRIG i localStorage → server-side RLS
-- Stripe-pris ALTID server-side
-- Filtrering ALTID i Supabase query, aldrig client-side
-- Reviews kræver completed booking (RLS)
-- Favourites filtreret på auth.uid(), ikke user_email
-- Admin-ruter: middleware.ts + RLS
-- JWT: httpOnly cookies via @supabase/ssr
-
-## Stack
-Next.js 14 + Supabase (pngpelcaodbwwggaeyue) + Stripe Connect + Tailwind + shadcn/ui + Cloudinary + Mapbox + Vercel
+## Cursor-workflow (VIGTIGT)
+- Cursor-prompts kopieres ind i Cursor-chatfeltet — de erstatter ALDRIG CLAUDE.md
+- CLAUDE.md er et permanent dokument — Cursor opdaterer det selv når prompten beder om det
+- Start hver session med: "Læs CLAUDE.md"
+- Afslut session: git add . && git commit -m "..." && git push

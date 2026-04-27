@@ -15,23 +15,35 @@ Next.js 14 (App Router) + TypeScript + Tailwind + shadcn/ui + Supabase + Vercel
 ## Bygget og komplet (27.4.2026)
 - Landingpage (/)
 - Auth (email + Google, httpOnly cookies via @supabase/ssr)
-- Datamodel (10 tabeller, RLS, triggers)
-- /opret (type=cabin + type=transport)
-- /mine-hytter
+- Datamodel (11 tabeller inkl. boats, RLS, triggers)
+- /opret (valgside: hytte/båd/opslag)
+- /opret/hytte (registrér hytte-aktiv, chip-UI faciliteter, transport-switch)
+- /opret/baad (registrér båd-aktiv, sikkerhedsbekræftelse, chips)
+- /opret/opslag/hytte/[cabinId] (publicér udlejningsopslag fra hytte)
+- /opret/opslag/sejlads/[boatId] (post samsejladstur fra båd)
+- /mine-hytter → redirect /dashboard?tab=mine-opslag
 - /hytter (søgeside, server-side filtrering)
 - /hytter/[id] (galleri, CabinTransportSection, reviews, bookingkort)
 - /dashboard (5 tabs: bookinger, anmodninger, åbne ønsker, mine opslag, indbakke)
+  - "Mine opslag": viser cabins + boats med [Udlej nu]/[Post tur]/[Dupliker]
 - /transport (søgeside, TransportCard, TransportFilters)
-- /transport/[id] (info-kort, bookingkort, returtur, anmodningsformular, reviews)
-- Navbar (transparent/scroll, plus-dropdown rolle-baseret)
+- /transport/[id] (info-kort, bookingkort, t/r-toggle, anmodningsformular, reviews)
+- Navbar (transparent/scroll, plus-dropdown → /opret)
+- src/lib/cabinFacilities.ts (CABIN_FACILITIES konstant)
+- src/components/shared/AddOnServicesEditor.tsx (DEL G)
 
 ## Næste i rækkefølge
 1. /profil
-2. Cloudinary billedupload på /opret
+2. Cloudinary billedupload på /opret/hytte og /opret/baad
 3. Stripe Connect + webhooks
 4. /booking/success + /cancelled
 5. Footer
 6. /admin/*
+
+## Aktiv arkitektur: aktiver + opslag
+- Aktiver: cabins (hytte) + boats (båd) — gemmes med published=false
+- Opslag: opret/opslag/hytte/[id] publicerer hytte, opret/opslag/sejlads/[id] poster tur
+- skipper_id alias: brug `sejler_id:skipper_id` i SQL-select — sejler_id i TypeScript
 
 ## Designregel
 Kopiér design 1:1 fra sila-2-ref inden en ny side bygges.

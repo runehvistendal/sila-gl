@@ -2,8 +2,18 @@
 
 import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Globe, ChevronDown, Menu, X, Anchor, LogIn } from "lucide-react"
+import { useRouter, usePathname } from "next/navigation"
+import {
+  Globe, ChevronDown, Menu, X, Anchor, LogIn,
+  Plus, Home, Waves, Inbox,
+} from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { createClient } from "@/lib/supabase"
 import LoginModal from "@/components/auth/LoginModal"
 
@@ -14,9 +24,47 @@ export type NavUser = {
 }
 
 export default function Navbar({ user }: { user?: NavUser | null }) {
-  const router = useRouter()
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const [loginOpen, setLoginOpen] = useState(false)
+  const router   = useRouter()
+  const pathname = usePathname()
+  const isHome   = pathname === "/"
+
+  /* ── Scroll state ── */
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    // Non-home pages are always "scrolled" (solid bg)
+    if (!isHome) { setScrolled(true); return }
+
+    function onScroll() { setScrolled(window.scrollY > 40) }
+    onScroll()
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [isHome])
+
+  const solid = scrolled || !isHome
+
+  /* ── Role type (fetch once on mount when logged in) ── */
+  const [roleType, setRoleType] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!user) return
+    const supabase = createClient()
+    supabase
+      .from("profiles")
+      .select("role_type")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.role_type) setRoleType(data.role_type as string)
+      })
+  }, [user])
+
+  const isProvider = roleType === "provider" || roleType === "both" || roleType === null
+  const isTraveler = roleType === "traveler" || roleType === "both" || roleType === null
+
+  /* ── UI state ── */
+  const [mobileOpen,  setMobileOpen]  = useState(false)
+  const [loginOpen,   setLoginOpen]   = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
 
@@ -41,54 +89,110 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
   const displayName = user?.name ?? user?.email ?? null
   const initial = displayName ? displayName[0].toUpperCase() : "?"
 
+  /* Dynamic classes that depend on solid/transparent */
+  const navBg    = solid ? "bg-white/95 backdrop-blur-md border-b border-border shadow-sm" : "bg-transparent"
+  const textMain = solid ? "text-foreground"     : "text-white"
+  const textMuted= solid ? "text-foreground/60"  : "text-white/80"
+  const textNav  = solid ? "text-foreground/80 hover:text-foreground" : "text-white/90 hover:text-white"
+
   return (
     <>
-      <nav className="fixed top-0 w-full z-50">
+      <nav className={`fixed top-0 w-full z-50 transition-all duration-200 ${navBg}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
 
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 text-white">
+          {/* ── Logo ── */}
+          <Link href="/" className={`flex items-center gap-2 ${textMain}`}>
             <Anchor size={20} className="text-primary" />
             <span className="text-xl font-semibold">Sila</span>
           </Link>
 
-          {/* Nav links — desktop */}
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-white/90">
-            <Link href="/hytter"     className="hover:text-white transition-colors">Hytter</Link>
-            <Link href="/samsejlads" className="hover:text-white transition-colors">Samsejlads</Link>
-            <Link href="/transport"  className="hover:text-white transition-colors">Transport</Link>
+          {/* ── Nav links — desktop ── */}
+          <div className={`hidden md:flex items-center gap-8 text-sm font-medium ${textNav}`}>
+            <Link href="/hytter"    className="transition-colors">Hytter</Link>
+            <Link href="/transport" className="transition-colors">Transport</Link>
+
+            {/* ── Plus button (logged in only) ── */}
             {user && (
-              <Link href="/opret" className="hover:text-white transition-colors">Opret opslag</Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 transition-colors shadow-sm"
+                    aria-label="Opret eller anmod"
+                  >
+                    <Plus size={18} />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center" className="w-56 rounded-2xl p-1.5">
+                  {isProvider && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/opret" className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer">
+                        <Plus size={15} className="text-primary" />
+                        <span>Opret opslag</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  {isProvider && isTraveler && <DropdownMenuSeparator />}
+                  {isTraveler && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link href="/anmod?type=cabin" className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer">
+                          <Home size={15} className="text-muted-foreground" />
+                          <span>Anmod om hytte</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/anmod?type=transport" className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer">
+                          <Waves size={15} className="text-muted-foreground" />
+                          <span>Anmod om transport</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {isProvider && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link href="/dashboard?tab=open-requests" className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer">
+                          <Inbox size={15} className="text-muted-foreground" />
+                          <span>Åbne ønsker</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
 
-          {/* Højre side — desktop */}
-          <div className="hidden md:flex items-center gap-4 text-sm text-white/80">
-            <button className="flex items-center gap-1 hover:text-white transition-colors">
+          {/* ── Right side — desktop ── */}
+          <div className={`hidden md:flex items-center gap-4 text-sm ${textMuted}`}>
+            <button className="flex items-center gap-1 transition-colors hover:text-foreground">
               DKK (kr) <ChevronDown size={13} />
             </button>
-            <button className="flex items-center gap-1.5 hover:text-white transition-colors">
+            <button className="flex items-center gap-1.5 transition-colors hover:text-foreground">
               <Globe size={14} /> Dansk
             </button>
 
             {user ? (
-              /* Bruger-dropdown */
+              /* ── User dropdown ── */
               <div className="relative" ref={userMenuRef}>
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-2 hover:text-white transition-colors"
+                  className={`flex items-center gap-2 transition-colors ${solid ? "hover:text-foreground" : "hover:text-white"}`}
                 >
                   <div
                     className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
                     style={{
-                      backgroundColor: "rgba(74,156,199,0.2)",
+                      backgroundColor: solid
+                        ? "rgba(74,156,199,0.15)"
+                        : "rgba(74,156,199,0.25)",
                       border: "1px solid rgba(74,156,199,0.4)",
                       color: "#4A9CC7",
                     }}
                   >
                     {initial}
                   </div>
-                  <span className="max-w-[120px] truncate text-white/90 text-sm">
+                  <span className={`max-w-[120px] truncate text-sm ${solid ? "text-foreground" : "text-white/90"}`}>
                     {displayName}
                   </span>
                   <ChevronDown size={13} />
@@ -118,8 +222,7 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                     </Link>
                     <button
                       onClick={handleSignOut}
-                      className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition-colors border-t border-gray-100"
-                      style={{ color: "#BF3B2B" }}
+                      className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition-colors border-t border-gray-100 text-destructive"
                     >
                       Log ud
                     </button>
@@ -127,10 +230,14 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                 )}
               </div>
             ) : (
-              /* Log ind-knap */
+              /* ── Log ind-knap ── */
               <button
                 onClick={() => setLoginOpen(true)}
-                className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold border border-white/25 hover:bg-white/10 transition-colors text-white"
+                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
+                  solid
+                    ? "border border-border text-foreground hover:bg-muted"
+                    : "border border-white/25 text-white hover:bg-white/10"
+                }`}
               >
                 <LogIn size={14} />
                 Log ind
@@ -138,9 +245,9 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
             )}
           </div>
 
-          {/* Hamburger — mobile */}
+          {/* ── Hamburger — mobile ── */}
           <button
-            className="md:hidden text-white p-1"
+            className={`md:hidden p-1 ${textMain}`}
             onClick={() => setMobileOpen(true)}
             aria-label="Åbn menu"
           >
@@ -149,7 +256,7 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
         </div>
       </nav>
 
-      {/* Fullscreen mobile overlay */}
+      {/* ── Fullscreen mobile overlay ── */}
       {mobileOpen && (
         <div
           className="fixed inset-0 z-50 flex flex-col md:hidden"
@@ -177,60 +284,28 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
             </button>
           </div>
 
-          {/* Nav links — centrerede med touch-venlige targets */}
+          {/* Nav links */}
           <div className="flex-1 flex flex-col items-center justify-center">
-            <Link
-              href="/hytter"
-              onClick={() => setMobileOpen(false)}
-              className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-[#4A9CC7] transition-colors"
-            >
-              Hytter
-            </Link>
-            <Link
-              href="/samsejlads"
-              onClick={() => setMobileOpen(false)}
-              className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-[#4A9CC7] transition-colors"
-            >
-              Samsejlads
-            </Link>
-            <Link
-              href="/transport"
-              onClick={() => setMobileOpen(false)}
-              className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-[#4A9CC7] transition-colors"
-            >
-              Transport
-            </Link>
+            <Link href="/hytter"    onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">Hytter</Link>
+            <Link href="/transport" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">Transport</Link>
 
             {user ? (
               <>
-                <Link
-                  href="/mine-hytter"
-                  onClick={() => setMobileOpen(false)}
-                  className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-[#4A9CC7] transition-colors"
-                >
-                  Mine hytter
-                </Link>
-                <Link
-                  href="/opret"
-                  onClick={() => setMobileOpen(false)}
-                  className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-[#4A9CC7] transition-colors"
-                >
-                  Opret opslag
-                </Link>
-                <button
-                  onClick={handleSignOut}
-                  className="mt-6 px-8 py-3 rounded-full text-sm font-medium border border-white/20 text-white/60 hover:text-white hover:border-white/40 transition-colors"
-                >
+                <Link href="/mine-hytter" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">Mine hytter</Link>
+                {isProvider && (
+                  <Link href="/opret" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">Opret opslag</Link>
+                )}
+                {isTraveler && (
+                  <Link href="/anmod?type=cabin" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">Anmod om hytte</Link>
+                )}
+                <button onClick={handleSignOut} className="mt-6 px-8 py-3 rounded-full text-sm font-medium border border-white/20 text-white/60 hover:text-white hover:border-white/40 transition-colors">
                   Log ud
                 </button>
               </>
             ) : (
               <button
-                onClick={() => {
-                  setMobileOpen(false)
-                  setLoginOpen(true)
-                }}
-                className="mt-6 px-8 py-3 rounded-full text-sm font-semibold text-[#09192A] bg-[#4A9CC7] hover:opacity-90 transition-opacity"
+                onClick={() => { setMobileOpen(false); setLoginOpen(true) }}
+                className="mt-6 px-8 py-3 rounded-full text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
               >
                 Log ind
               </button>
