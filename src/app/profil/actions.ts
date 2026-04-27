@@ -1,6 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { isValidPhoneNumber } from "libphonenumber-js/min"
 import { createClient } from "@/lib/supabase-server"
 import { isCloudinaryImageUrl } from "@/lib/cloudinaryUrl"
 import { findLocationById } from "@/lib/greenlandLocations"
@@ -27,9 +28,13 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
   const language = String(formData.get("language") ?? "da").trim()
   const roleTypeRaw = String(formData.get("role_type") ?? "").trim()
   const bio = String(formData.get("bio") ?? "").trim().slice(0, 500)
-  const phone = String(formData.get("phone") ?? "").trim().slice(0, 30)
+  const phone = String(formData.get("phone") ?? "").trim()
 
-  if (!phone || phone.length < 6) {
+  if (!locationIdRaw) {
+    return { error: "Vælg by eller sted" }
+  }
+
+  if (!phone || !isValidPhoneNumber(phone)) {
     return { error: "Angiv et gyldigt telefonnummer" }
   }
 

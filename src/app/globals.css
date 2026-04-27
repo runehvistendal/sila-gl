@@ -139,3 +139,43 @@
   animation: aurora-drift-1 18s ease-in-out infinite reverse;
   opacity: 0.5;
 }
+
+/* Profil: react-phone-number-input (matcher øvrige felter) */
+.PhoneInput {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 2.5rem;
+}
+
+.PhoneInputInput {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  outline: none;
+  height: 2.5rem;
+  color: #111827;
+  background: #fff;
+}
+
+.PhoneInputInput:focus {
+  outline: 2px solid #4a9cc7;
+  outline-offset: 2px;
+}
+
+.PhoneInputInput::placeholder {
+  color: #9ca3af;
+}
+
+.PhoneInputCountrySelect {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 6px;
+  font-size: 14px;
+  background: #fff;
+  height: 2.5rem;
+}

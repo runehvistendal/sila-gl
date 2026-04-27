@@ -1,6 +1,10 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { useEffect, useMemo, useState, useTransition } from "react"
+import { isValidPhoneNumber } from "libphonenumber-js/min"
+import PhoneInput from "react-phone-number-input"
+import "react-phone-number-input/style.css"
 import { toast } from "sonner"
 import { MapPin, User, Home, Users, Star, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -51,6 +55,14 @@ const LANG_OPTIONS: { value: ProfileInitial["language"]; label: string }[] = [
 
 const inputClass =
   "bg-white border border-gray-200 text-gray-900 placeholder:text-gray-400 rounded-lg focus-visible:ring-[#4A9CC7]"
+
+function RequiredLabel({ children }: { children: ReactNode }) {
+  return (
+    <span className="text-sm font-medium text-gray-700">
+      {children} <span className="text-red-500">*</span>
+    </span>
+  )
+}
 
 const MAJOR_HUBS: GreenlandLocation[] = [...GREENLAND_LOCATIONS]
   .filter((l) => l.is_major_hub)
@@ -135,9 +147,17 @@ export default function ProfileForm({
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (locationId === "__none__") {
+      toast.error("Vælg by eller sted")
+      return
+    }
+    if (!phone || !isValidPhoneNumber(phone)) {
+      toast.error("Angiv et gyldigt telefonnummer")
+      return
+    }
     const fd = new FormData()
     fd.set("full_name", fullName.trim())
-    fd.set("location_id", locationId === "__none__" ? "" : locationId)
+    fd.set("location_id", locationId)
     fd.set("language", language)
     fd.set("role_type", roleType)
     fd.set("bio", bio)
@@ -159,9 +179,7 @@ export default function ProfileForm({
         toast.error(r.error)
         return
       }
-      toast.success(
-        "Bekræftelsesmail sendt til begge adresser. Tjek din indbakke.",
-      )
+      toast.success("Bekræftelsesmail sendt. Tjek din indbakke.")
     })
   }
 
@@ -240,11 +258,8 @@ export default function ProfileForm({
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2 space-y-1.5">
-              <label
-                htmlFor="full_name"
-                className="text-sm font-medium text-gray-800"
-              >
-                Fulde navn
+              <label htmlFor="full_name" className="block">
+                <RequiredLabel>Fulde navn</RequiredLabel>
               </label>
               <Input
                 id="full_name"
@@ -259,8 +274,10 @@ export default function ProfileForm({
             </div>
 
             <div className="space-y-1.5">
-              <span className="text-sm font-medium text-gray-800">By / sted</span>
-              <Select value={locationId} onValueChange={setLocationId}>
+              <div>
+                <RequiredLabel>By / sted</RequiredLabel>
+              </div>
+              <Select value={locationId} onValueChange={setLocationId} required>
                 <SelectTrigger
                   className={`w-full h-11 ${inputClass} data-[placeholder]:text-gray-400`}
                 >
@@ -285,28 +302,29 @@ export default function ProfileForm({
               </Select>
             </div>
 
-            <div className="space-y-1.5">
-              <label htmlFor="phone" className="text-sm font-medium text-gray-800">
-                Telefon
+            <div className="space-y-1.5 min-w-0">
+              <label htmlFor="phone" className="block">
+                <RequiredLabel>Telefon</RequiredLabel>
               </label>
-              <Input
-                id="phone"
-                name="phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                required
-                minLength={6}
-                maxLength={30}
-                autoComplete="tel"
-                placeholder="+299 …"
-                className={inputClass}
+              <PhoneInput
+                defaultCountry="GL"
+                value={phone || undefined}
+                onChange={(val) => setPhone(val ?? "")}
+                international
+                countryCallingCodeEditable={false}
+                className="w-full"
+                numberInputProps={{
+                  id: "phone",
+                  name: "phone",
+                  autoComplete: "tel",
+                  "aria-required": true,
+                }}
               />
             </div>
 
             <div className="sm:col-span-2 space-y-1.5">
-              <label htmlFor="profile_email" className="text-sm font-medium text-gray-800">
-                E-mail
+              <label htmlFor="profile_email" className="block">
+                <RequiredLabel>E-mail</RequiredLabel>
               </label>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:gap-2">
                 <Input
@@ -315,6 +333,7 @@ export default function ProfileForm({
                   value={emailEdit}
                   onChange={(e) => setEmailEdit(e.target.value)}
                   autoComplete="email"
+                  required
                   className={cn(inputClass, "min-w-0 flex-1 h-10")}
                 />
                 <Button
@@ -336,9 +355,8 @@ export default function ProfileForm({
                 </Button>
               </div>
               <p className="text-xs text-gray-500">
-                Hvis du ændrer din e-mail, sendes en bekræftelse til både den
-                gamle og nye adresse. Ændringen træder først i kraft når begge
-                bekræfter.
+                Hvis du ændrer din e-mail, sendes en bekræftelsesmail til den
+                nye adresse. Ændringen træder først i kraft når du bekræfter.
               </p>
             </div>
 
