@@ -165,7 +165,7 @@ export default function TransportDetailClient({ rideShare, returnTrips, reviews,
               </div>
               {rideShare.profiles && (
                 <p className="text-sm text-muted-foreground break-words">
-                  Sejler: {rideShare.profiles.full_name || "Sila-sejler"}
+                  Sejler: {rideShare.profiles.full_name ?? "Sila-sejler"}
                 </p>
               )}
             </div>
@@ -318,9 +318,9 @@ export default function TransportDetailClient({ rideShare, returnTrips, reviews,
                                   <p className="text-xs text-muted-foreground">
                                     {format(new Date(rt.departure_at), "d. MMM yyyy")} · {rt.seats_available} pladser
                                   </p>
-                                  {rt.profiles?.full_name && (
+                                  {rt.profiles && (
                                     <p className="text-xs text-primary font-medium mt-0.5">
-                                      Sejler: {rt.profiles.full_name}
+                                      Sejler: {rt.profiles.full_name ?? "Sila-sejler"}
                                     </p>
                                   )}
                                 </div>
@@ -614,7 +614,7 @@ export default function TransportDetailClient({ rideShare, returnTrips, reviews,
               </div>
               <div className="min-w-0 overflow-hidden">
                 <p className="font-semibold text-foreground break-words">
-                  {rideShare.profiles.full_name || "Sila-sejler"}
+                  {rideShare.profiles.full_name ?? "Sila-sejler"}
                 </p>
                 <p className="text-sm text-primary">Se profil →</p>
               </div>
