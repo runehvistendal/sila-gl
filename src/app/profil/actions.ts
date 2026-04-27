@@ -29,6 +29,10 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
   const bio = String(formData.get("bio") ?? "").trim().slice(0, 500)
   const phone = String(formData.get("phone") ?? "").trim().slice(0, 30)
 
+  if (!phone || phone.length < 6) {
+    return { error: "Angiv et gyldigt telefonnummer" }
+  }
+
   if (!fullName || fullName.length > 120) {
     return { error: "Angiv et navn (maks. 120 tegn)" }
   }
@@ -61,7 +65,7 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
       location: locationLabel,
       role_type: roleTypeRaw,
       bio: bio || null,
-      phone: phone || null,
+      phone,
       updated_at: new Date().toISOString(),
     })
     .eq("id", user.id)
@@ -72,6 +76,31 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
 
   revalidatePath("/profil")
   revalidatePath("/dashboard")
+  return { success: true }
+}
+
+export async function changeEmail(newEmail: string): Promise<UpdateProfileResult> {
+  const next = newEmail.trim()
+  if (!next) {
+    return { error: "Angiv en e-mailadresse" }
+  }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: "Du skal være logget ind" }
+  }
+
+  const { error } = await supabase.auth.updateUser({ email: next })
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  revalidatePath("/profil")
   return { success: true }
 }
 

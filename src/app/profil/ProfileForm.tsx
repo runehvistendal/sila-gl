@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useTransition } from "react"
+import { useEffect, useMemo, useState, useTransition } from "react"
 import { toast } from "sonner"
 import { MapPin, User, Home, Users, Star, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -22,7 +22,7 @@ import {
   locationToId,
   type GreenlandLocation,
 } from "@/lib/greenlandLocations"
-import { updateProfile } from "./actions"
+import { changeEmail, updateProfile } from "./actions"
 import AvatarUpload from "@/components/profile/AvatarUpload"
 
 export type ProfileInitial = {
@@ -96,7 +96,7 @@ type Props = {
   initial: ProfileInitial
   reviews: ProfileReview[]
   avgRating: number | null
-  /** Kun til eget overblik — styres af Supabase Auth, gemmes ikke via updateProfile */
+  /** Nuværende auth-e-mail — redigering sker via changeEmail, ikke updateProfile */
   email: string
 }
 
@@ -107,6 +107,7 @@ export default function ProfileForm({
   email,
 }: Props) {
   const [isPending, startTransition] = useTransition()
+  const [isEmailPending, startEmailTransition] = useTransition()
   const [locationId, setLocationId] = useState(
     initial.location_id ?? "__none__",
   )
@@ -119,6 +120,11 @@ export default function ProfileForm({
   const [roleType, setRoleType] = useState<ProfileInitial["role_type"]>(
     initial.role_type,
   )
+  const [emailEdit, setEmailEdit] = useState(email)
+
+  useEffect(() => {
+    setEmailEdit(email)
+  }, [email])
 
   const locationLine = useMemo(() => {
     if (locationId === "__none__") return null
@@ -143,6 +149,19 @@ export default function ProfileForm({
         return
       }
       toast.success("Profil gemt")
+    })
+  }
+
+  function handleChangeEmail() {
+    startEmailTransition(async () => {
+      const r = await changeEmail(emailEdit)
+      if ("error" in r) {
+        toast.error(r.error)
+        return
+      }
+      toast.success(
+        "Bekræftelsesmail sendt til begge adresser. Tjek din indbakke.",
+      )
     })
   }
 
@@ -268,7 +287,7 @@ export default function ProfileForm({
 
             <div className="space-y-1.5">
               <label htmlFor="phone" className="text-sm font-medium text-gray-800">
-                Telefon <span className="text-gray-400 font-normal">(valgfri)</span>
+                Telefon
               </label>
               <Input
                 id="phone"
@@ -276,6 +295,8 @@ export default function ProfileForm({
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
+                required
+                minLength={6}
                 maxLength={30}
                 autoComplete="tel"
                 placeholder="+299 …"
@@ -287,21 +308,37 @@ export default function ProfileForm({
               <label htmlFor="profile_email" className="text-sm font-medium text-gray-800">
                 E-mail
               </label>
-              <Input
-                id="profile_email"
-                name="email_display"
-                type="email"
-                value={email}
-                disabled
-                readOnly
-                autoComplete="email"
-                tabIndex={-1}
-                className="bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200 rounded-lg h-10 px-3 opacity-100 disabled:opacity-100 focus-visible:ring-0"
-                aria-readonly
-              />
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:gap-2">
+                <Input
+                  id="profile_email"
+                  type="email"
+                  value={emailEdit}
+                  onChange={(e) => setEmailEdit(e.target.value)}
+                  autoComplete="email"
+                  className={cn(inputClass, "min-w-0 flex-1 h-10")}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 h-10 sm:px-3 w-full sm:w-auto"
+                  disabled={isEmailPending}
+                  onClick={handleChangeEmail}
+                >
+                  {isEmailPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-1.5" aria-hidden />
+                      Sender…
+                    </>
+                  ) : (
+                    "Skift e-mail"
+                  )}
+                </Button>
+              </div>
               <p className="text-xs text-gray-500">
-                Din e-mail bruges kun til kontakt ved problemer og vises ikke
-                offentligt.
+                Hvis du ændrer din e-mail, sendes en bekræftelse til både den
+                gamle og nye adresse. Ændringen træder først i kraft når begge
+                bekræfter.
               </p>
             </div>
 
