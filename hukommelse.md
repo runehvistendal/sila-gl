@@ -1,5 +1,7 @@
 # Sila.gl — Hukommelse
 
+> **På tværs af chat-sessioner:** denne fil plus **[CLAUDE.md](./CLAUDE.md)** er den vedvarende agent-/projekthukommelse i repoet — start her og i CLAUDE.md.
+
 Kort **agent-hukommelse**. Fuld **Claude Code / udviklerkontekst** ligger i **[CLAUDE.md](./CLAUDE.md)**.
 
 ## Husk ved sessionstart
