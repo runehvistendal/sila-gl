@@ -268,7 +268,7 @@ export default function DashboardClient({
                   Har du en hytte eller båd?
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Udlej din hytte eller tilbyd transport.
+                  Udlej din hytte eller tilbyd transport på vandet
                 </p>
               </div>
               <Button variant="default" asChild className="rounded-xl w-full sm:w-auto shrink-0 gap-0">
