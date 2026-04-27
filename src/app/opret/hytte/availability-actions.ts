@@ -1,7 +1,8 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { createClient } from "@/lib/supabase-server"
+import { requireCabinOwner } from "@/lib/requireCabinOwner"
+import { requireSession } from "@/lib/requireSession"
 
 function parseYmd(s: string): { ok: true; d: string } | { ok: false } {
   const t = s.trim()
@@ -21,7 +22,7 @@ function parseYmd(s: string): { ok: true; d: string } | { ok: false } {
 export type ToggleCabinAvailabilityResult = { success: true } | { error: string }
 
 /**
- * RLS: kun ejer skriver — verificeret via cabin.owner_id
+ * RLS + eksplicit owner_id (requireCabinOwner)
  */
 export async function toggleCabinAvailability(
   cabinId: string,
@@ -33,27 +34,8 @@ export async function toggleCabinAvailability(
     return { error: "Ugyldig dato" }
   }
 
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) {
-    return { error: "Du skal være logget ind" }
-  }
-
-  const { data: cabin, error: cabErr } = await supabase
-    .from("cabins")
-    .select("id, owner_id")
-    .eq("id", cabinId)
-    .is("deleted_at", null)
-    .maybeSingle()
-
-  if (cabErr || !cabin) {
-    return { error: "Hytte findes ikke" }
-  }
-  if ((cabin as { owner_id: string }).owner_id !== user.id) {
-    return { error: "Ingen adgang" }
-  }
+  const { supabase, user } = await requireSession()
+  await requireCabinOwner(supabase, cabinId, user.id)
 
   if (blocked) {
     const { error: upErr } = await supabase.from("cabin_availability").upsert(

@@ -19,12 +19,12 @@ export async function connect(): Promise<ConnectResult> {
 
   const supabase = await createClient()
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.user) {
     return { error: "Du skal være logget ind" }
   }
+  const user = session.user
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
@@ -91,12 +91,12 @@ export async function checkOnboardingStatus(): Promise<OnboardingStatusResult> {
 
   const supabase = await createClient()
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.user) {
     return { error: "Du skal være logget ind" }
   }
+  const user = session.user
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")

@@ -34,12 +34,12 @@ export async function createSamsejlads(
 ): Promise<CreateSamsejladsState> {
   const supabase = await createClient()
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.user) {
     return { error: "Du skal være logget ind for at oprette samsejlads" }
   }
+  const user = session.user
 
   const raw = {
     from_location: formData.get("from_location"),

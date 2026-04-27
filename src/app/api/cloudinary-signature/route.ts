@@ -13,12 +13,13 @@ type Body = {
 export async function POST(request: Request) {
   const supabase = await createClient()
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    data: { session },
+  } = await supabase.auth.getSession()
 
-  if (!user) {
+  if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
+  const user = session.user
 
   const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
   const apiKey = process.env.CLOUDINARY_API_KEY
@@ -67,7 +68,13 @@ export async function POST(request: Request) {
     transformation = CABIN_EAGER
   }
 
+  // Signatur genereres KUN her (api_secret aldrig til klient).
+  // Cloudinary: strengen der signeres skal matche upload-body (undtagen file, api_key);
+  // resource_type er fastlagt af URL-stien (/image/upload), ikke et ekstra sign-felt.
   const timestamp = Math.floor(Date.now() / 1000)
+  const maxAgeSeconds = 60
+  const validUntil = timestamp + maxAgeSeconds
+
   const paramsToSign: Record<string, string | number> = {
     eager: transformation,
     folder,
@@ -82,6 +89,8 @@ export async function POST(request: Request) {
   return NextResponse.json({
     signature,
     timestamp,
+    validUntil,
+    maxAgeSeconds,
     cloudName,
     apiKey,
     folder,

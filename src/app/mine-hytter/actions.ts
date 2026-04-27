@@ -2,23 +2,30 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase-server"
+import { requireCabinOwner } from "@/lib/requireCabinOwner"
 
 export async function deleteHytte(formData: FormData): Promise<{ error?: string } | void> {
   const supabase = await createClient()
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.user) {
     return { error: "Ikke autoriseret" }
   }
+  const user = session.user
 
   const id = formData.get("id")
   if (!id || typeof id !== "string") {
     return { error: "Ugyldigt ID" }
   }
 
-  // Soft delete — sæt deleted_at. owner_id-tjek er sikkerhedsgaranti.
+  try {
+    await requireCabinOwner(supabase, id, user.id)
+  } catch {
+    return { error: "Ikke autoriseret" }
+  }
+
+  // Soft delete — sæt deleted_at. RLS + eksplicit owner_id.
   const { error } = await supabase
     .from("cabins")
     .update({ deleted_at: new Date().toISOString() })

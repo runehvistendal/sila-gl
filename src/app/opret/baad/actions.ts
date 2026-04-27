@@ -34,12 +34,12 @@ export async function createBaad(
 ): Promise<BaadFormState> {
   const supabase = await createClient()
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.user) {
     return { errors: { _form: ["Du skal være logget ind"] } }
   }
+  const user = session.user
 
   const raw = {
     name: formData.get("name"),
@@ -124,12 +124,12 @@ export async function updateBaad(
 ): Promise<BaadFormState> {
   const supabase = await createClient()
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.user) {
     return { errors: { _form: ["Du skal være logget ind"] } }
   }
+  const user = session.user
 
   const raw = {
     boat_id: formData.get("boat_id"),

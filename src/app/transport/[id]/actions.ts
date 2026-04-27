@@ -11,8 +11,9 @@ export async function createTransportRequest(formData: {
   notes?:        string
 }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Ikke logget ind")
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) throw new Error("Ikke logget ind")
+  const user = session.user
 
   const { error } = await supabase
     .from("transport_requests")

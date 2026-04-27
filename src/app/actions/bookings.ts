@@ -1,6 +1,6 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
+import { requireSession } from "@/lib/requireSession"
 import { createServiceClient } from "@/lib/supabase-service"
 import { enumerateNights } from "@/lib/cabinBookingDates"
 import { getAppBaseUrl } from "@/lib/appUrl"
@@ -53,6 +53,16 @@ function transportOreForTrip(
   return 0
 }
 
+function stripeIdempotencyKey(
+  userId: string,
+  cabinId: string,
+  checkIn: string,
+  checkOut: string,
+): string {
+  const raw = `booking-${userId}-${cabinId}-${checkIn}-${checkOut}`
+  return raw.replace(/[^a-zA-Z0-9\-_.]/g, "-").slice(0, 255)
+}
+
 export async function createCabinBooking(
   input: CreateCabinBookingInput,
 ): Promise<CreateCabinBookingResult> {
@@ -60,12 +70,28 @@ export async function createCabinBooking(
     return { error: "Betaling er ikke tilgængelig lige nu" }
   }
 
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) {
-    return { error: "Du skal være logget ind" }
+  const { supabase, user } = await requireSession()
+
+  const { error: rlErr } = await supabase.rpc("consume_rate_limit", {
+    p_user_id: user.id,
+    p_action: "create_cabin_booking",
+    p_max_attempts: 5,
+    p_window_seconds: 600,
+  })
+
+  if (rlErr) {
+    const code = String((rlErr as { code?: string }).code ?? "")
+    const msg = (rlErr.message ?? "").toLowerCase()
+    const details = String((rlErr as { details?: string }).details ?? "").toLowerCase()
+    if (
+      code === "P0001" ||
+      msg.includes("rate_limit") ||
+      details.includes("rate_limit") ||
+      msg.includes("p0001")
+    ) {
+      throw new Error("For mange forsøg — prøv igen senere")
+    }
+    return { error: rlErr.message || "Kunne ikke verificere rate limit" }
   }
 
   const cIn = parseYmd(input.check_in)
@@ -216,6 +242,12 @@ export async function createCabinBooking(
 
   const bookingId = (booking as { id: string }).id
   const base = getAppBaseUrl()
+  const idempotencyKey = stripeIdempotencyKey(
+    user.id,
+    c.id,
+    cIn.d,
+    cOut.d,
+  )
 
   const lineItems: Array<{
     quantity: number
@@ -252,36 +284,39 @@ export async function createCabinBooking(
   }
 
   try {
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      payment_method_types: ["card"],
-      line_items: lineItems,
-      payment_intent_data: {
-        application_fee_amount: platformFeeOre,
-        transfer_data: {
-          destination: o.stripe_account_id,
+    const sessionCheckout = await stripe.checkout.sessions.create(
+      {
+        mode: "payment",
+        payment_method_types: ["card"],
+        line_items: lineItems,
+        payment_intent_data: {
+          application_fee_amount: platformFeeOre,
+          transfer_data: {
+            destination: o.stripe_account_id,
+          },
+          metadata: {
+            booking_id: bookingId,
+            cabin_id: c.id,
+          },
         },
+        success_url: `${base}/booking/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${base}/booking/cancelled`,
         metadata: {
           booking_id: bookingId,
           cabin_id: c.id,
         },
       },
-      success_url: `${base}/booking/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${base}/booking/cancelled`,
-      metadata: {
-        booking_id: bookingId,
-        cabin_id: c.id,
-      },
-    })
+      { idempotencyKey },
+    )
 
-    if (!session.url) {
+    if (!sessionCheckout.url) {
       throw new Error("Manglende session-URL")
     }
 
     const { error: upErr } = await supabase
       .from("cabin_bookings")
       .update({
-        stripe_session_id: session.id,
+        stripe_session_id: sessionCheckout.id,
         updated_at: new Date().toISOString(),
       })
       .eq("id", bookingId)
@@ -291,7 +326,7 @@ export async function createCabinBooking(
       throw upErr
     }
 
-    return { url: session.url }
+    return { url: sessionCheckout.url }
   } catch (e) {
     console.error("[createCabinBooking] stripe", e)
     const service = createServiceClient()

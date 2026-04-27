@@ -1,6 +1,9 @@
 export type CloudinarySignResponse = {
   signature: string
   timestamp: number
+  /** Unix sekund: brug signatur senest inden dette tidspunkt (server: +60s fra udstedelse) */
+  validUntil: number
+  maxAgeSeconds: number
   cloudName: string
   apiKey: string
   folder: string
@@ -36,6 +39,10 @@ export async function uploadImageToCloudinary(
   file: File,
   sign: CloudinarySignResponse,
 ): Promise<string> {
+  const nowSec = Math.floor(Date.now() / 1000)
+  if (nowSec > sign.validUntil) {
+    throw new Error("Signatur udløb — hent en ny og prøv igen")
+  }
   const { signature, timestamp, cloudName, apiKey, folder, eager } = sign
   const fd = new FormData()
   fd.append("file", file)

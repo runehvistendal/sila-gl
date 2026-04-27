@@ -5,8 +5,9 @@ import { createClient } from "@/lib/supabase-server"
 
 export async function confirmBooking(bookingId: string) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Ikke logget ind")
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) throw new Error("Ikke logget ind")
+  const user = session.user
 
   // Verify caller owns the cabin for this booking
   const { data: booking } = await supabase
@@ -35,8 +36,9 @@ export async function confirmBooking(bookingId: string) {
 
 export async function declineBooking(bookingId: string) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Ikke logget ind")
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) throw new Error("Ikke logget ind")
+  const user = session.user
 
   const { data: booking } = await supabase
     .from("cabin_bookings")
@@ -64,8 +66,9 @@ export async function declineBooking(bookingId: string) {
 
 export async function acceptTransportRequest(requestId: string) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Ikke logget ind")
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) throw new Error("Ikke logget ind")
+  const user = session.user
 
   const { error } = await supabase
     .from("transport_requests")
@@ -79,8 +82,9 @@ export async function acceptTransportRequest(requestId: string) {
 
 export async function declineTransportRequest(requestId: string) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Ikke logget ind")
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) throw new Error("Ikke logget ind")
+  const user = session.user
 
   const { error } = await supabase
     .from("transport_requests")
@@ -94,8 +98,9 @@ export async function declineTransportRequest(requestId: string) {
 
 export async function duplicateCabin(cabinId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: "Ikke logget ind" }
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) return { error: "Ikke logget ind" }
+  const user = session.user
 
   const { data: cabin, error: fetchError } = await supabase
     .from("cabins")
@@ -119,8 +124,9 @@ export async function duplicateCabin(cabinId: string): Promise<{ error?: string 
 
 export async function duplicateBoat(boatId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: "Ikke logget ind" }
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) return { error: "Ikke logget ind" }
+  const user = session.user
 
   const { data: boat, error: fetchError } = await supabase
     .from("boats")

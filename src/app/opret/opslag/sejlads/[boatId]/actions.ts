@@ -71,10 +71,10 @@ export async function createSejladsOpslag(
 
   const supabase = await createClient()
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) return { message: "Ikke logget ind" }
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.user) return { message: "Ikke logget ind" }
+  const user = session.user
 
   // Verify boat ownership
   const { data: boat } = await supabase

@@ -57,12 +57,12 @@ export async function createHytte(
 ): Promise<CreateHytteState> {
   const supabase = await createClient()
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.user) {
     return { error: "Du skal være logget ind for at oprette en hytte" }
   }
+  const user = session.user
 
   const offersTransport = formData.get("offers_transport") === "on"
 

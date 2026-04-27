@@ -16,12 +16,12 @@ const ROLES = new Set(["traveler", "provider", "both"])
 export async function updateProfile(formData: FormData): Promise<UpdateProfileResult> {
   const supabase = await createClient()
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.user) {
     return { error: "Du skal være logget ind" }
   }
+  const user = session.user
 
   const fullName = String(formData.get("full_name") ?? "").trim()
   const locationIdRaw = String(formData.get("location_id") ?? "").trim()
@@ -93,12 +93,12 @@ export async function changeEmail(newEmail: string): Promise<UpdateProfileResult
 
   const supabase = await createClient()
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.user) {
     return { error: "Du skal være logget ind" }
   }
+  const user = session.user
 
   const { error } = await supabase.auth.updateUser({ email: next })
 
@@ -117,12 +117,12 @@ export async function updateAvatar(url: string): Promise<UpdateProfileResult> {
 
   const supabase = await createClient()
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.user) {
     return { error: "Du skal være logget ind" }
   }
+  const user = session.user
 
   const { error } = await supabase
     .from("profiles")

@@ -193,18 +193,22 @@ export default function CabinBookingWidget({
       return
     }
     start(async () => {
-      const r = await createCabinBooking({
-        cabin_id: cabin.id,
-        check_in: checkIn,
-        check_out: checkOut,
-        guests,
-        transport_trip: cabin.offers_transport ? transport : "none",
-      })
-      if ("error" in r) {
-        toast.error(r.error)
-        return
+      try {
+        const r = await createCabinBooking({
+          cabin_id: cabin.id,
+          check_in: checkIn,
+          check_out: checkOut,
+          guests,
+          transport_trip: cabin.offers_transport ? transport : "none",
+        })
+        if ("error" in r) {
+          toast.error(r.error)
+          return
+        }
+        window.location.assign(r.url)
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Noget gik galt")
       }
-      window.location.assign(r.url)
     })
   }
 

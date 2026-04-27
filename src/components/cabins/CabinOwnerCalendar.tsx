@@ -52,13 +52,17 @@ export default function CabinOwnerCalendar({
     }
     const currentlyBlocked = manualSet.has(ymd)
     start(async () => {
-      const r = await toggleCabinAvailability(cabinId, ymd, !currentlyBlocked)
-      if ("error" in r) {
-        toast.error(r.error)
-        return
+      try {
+        const r = await toggleCabinAvailability(cabinId, ymd, !currentlyBlocked)
+        if ("error" in r) {
+          toast.error(r.error)
+          return
+        }
+        toast.success(currentlyBlocked ? "Dato frigivet" : "Dato blokeret")
+        router.refresh()
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Noget gik galt")
       }
-      toast.success(currentlyBlocked ? "Dato frigivet" : "Dato blokeret")
-      router.refresh()
     })
   }
 

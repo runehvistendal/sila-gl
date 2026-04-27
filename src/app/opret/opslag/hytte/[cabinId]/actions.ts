@@ -42,10 +42,10 @@ export async function publishCabinListing(
 
   const supabase = await createClient()
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) return { message: "Ikke logget ind" }
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.user) return { message: "Ikke logget ind" }
+  const user = session.user
 
   const { data: cabin } = await supabase
     .from("cabins")
@@ -73,6 +73,7 @@ export async function publishCabinListing(
       published: true,
     })
     .eq("id", cabin_id)
+    .eq("owner_id", user.id)
 
   if (error) {
     return { message: "Noget gik galt. Prøv igen." }

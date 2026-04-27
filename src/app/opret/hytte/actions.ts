@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase-server"
+import { requireCabinOwner } from "@/lib/requireCabinOwner"
+import { requireSession } from "@/lib/requireSession"
 import { isCloudinaryImageUrl } from "@/lib/cloudinaryUrl"
 import { krToOre } from "@/lib/money"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
@@ -32,12 +34,12 @@ export async function createHytte(
 ): Promise<HytteFormState> {
   const supabase = await createClient()
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.user) {
     return { errors: { _form: ["Du skal være logget ind"] } }
   }
+  const user = session.user
 
   const raw = {
     title: formData.get("title"),
@@ -161,12 +163,12 @@ export async function updateHytte(
 ): Promise<HytteFormState> {
   const supabase = await createClient()
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.user) {
     return { errors: { _form: ["Du skal være logget ind"] } }
   }
+  const user = session.user
 
   const raw = {
     cabin_id: formData.get("cabin_id"),
@@ -234,14 +236,10 @@ export async function updateHytte(
     transportFromOut = dataForInsert.transport_from?.trim() ?? null
   }
 
-  const { data: existing } = await supabase
-    .from("cabins")
-    .select("id, owner_id, price_per_night_ore")
-    .eq("id", cabin_id)
-    .single()
-
-  if (!existing || existing.owner_id !== user.id) {
-    return { errors: { _form: ["Hytte ikke fundet"] } }
+  try {
+    await requireCabinOwner(supabase, cabin_id, user.id)
+  } catch {
+    return { errors: { _form: ["Ikke autoriseret"] } }
   }
 
   const { error } = await supabase
@@ -293,25 +291,8 @@ export async function updateCabinImages(
     }
   }
 
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { error: "Du skal være logget ind" }
-  }
-
-  const { data: row } = await supabase
-    .from("cabins")
-    .select("id, owner_id")
-    .eq("id", cabinId)
-    .is("deleted_at", null)
-    .maybeSingle()
-
-  if (!row || row.owner_id !== user.id) {
-    return { error: "Hytte ikke fundet" }
-  }
+  const { supabase, user } = await requireSession()
+  await requireCabinOwner(supabase, cabinId, user.id)
 
   const { error } = await supabase
     .from("cabins")

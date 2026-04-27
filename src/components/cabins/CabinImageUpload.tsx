@@ -29,12 +29,17 @@ export default function CabinImageUpload({ cabinId, initialImages }: Props) {
 
   const persist = useCallback(
     async (next: string[]) => {
-      const r = await updateCabinImages(cabinId, next)
-      if ("error" in r) {
-        toast.error(r.error)
+      try {
+        const r = await updateCabinImages(cabinId, next)
+        if ("error" in r) {
+          toast.error(r.error)
+          return false
+        }
+        return true
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Kunne ikke gemme")
         return false
       }
-      return true
     },
     [cabinId],
   )
