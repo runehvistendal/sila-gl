@@ -154,7 +154,7 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                       <DropdownMenuItem asChild>
                         <Link href="/dashboard?tab=open-requests" className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer">
                           <Inbox size={15} className="text-muted-foreground" />
-                          <span>Åbne ønsker</span>
+                          <span>Gæsteønsker</span>
                         </Link>
                       </DropdownMenuItem>
                     </>
@@ -207,11 +207,11 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                       </p>
                     </div>
                     <Link
-                      href="/mine-hytter"
+                      href="/dashboard"
                       onClick={() => setUserMenuOpen(false)}
                       className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                     >
-                      Mine hytter
+                      Dashboard
                     </Link>
                     <Link
                       href="/opret"
@@ -291,7 +291,7 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
 
             {user ? (
               <>
-                <Link href="/mine-hytter" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">Mine hytter</Link>
+                <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">Dashboard</Link>
                 {isProvider && (
                   <Link href="/opret" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">Opret opslag</Link>
                 )}

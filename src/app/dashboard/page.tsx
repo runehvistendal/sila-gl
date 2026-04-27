@@ -177,7 +177,7 @@ export default async function DashboardPage() {
   const roleType   = profile?.role_type ?? "both"
   const isProvider = roleType === "provider" || roleType === "both"
   const isTraveler = roleType === "traveler" || roleType === "both"
-  const displayName = profile?.full_name ?? user.email ?? null
+  const displayName = profile?.full_name ?? null
   const homeCity    = (profile as Record<string, unknown> | null)?.location as string | null ?? null
 
   return (

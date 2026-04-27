@@ -1,10 +1,11 @@
 "use client"
 
-import { useActionState, useState } from "react"
-import { createHytte, type HytteFormState } from "./actions"
-import { CABIN_FACILITIES, FACILITY_SECTION_LABELS } from "@/lib/cabinFacilities"
+import { useActionState, useState, useEffect } from "react"
+import { createHytte, updateHytte, type HytteFormState } from "./actions"
+import { CABIN_FACILITIES, FACILITY_SECTION_LABELS, getFixedFacilityValueSet } from "@/lib/cabinFacilities"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 import AddOnServicesEditor, { type AddOnService } from "@/components/shared/AddOnServicesEditor"
+import { oreToKr } from "@/lib/money"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,42 +19,90 @@ import {
 } from "@/components/ui/select"
 
 const MAJOR_HUBS = GREENLAND_LOCATIONS.filter((l) => l.is_major_hub)
+const FIXED = getFixedFacilityValueSet()
 
-const ACCESS_TYPES = [
-  { value: "road", label: "Vej" },
-  { value: "boat", label: "Båd" },
-  { value: "helicopter", label: "Helikopter" },
-  { value: "other", label: "Andet" },
-]
-
-function FieldError({ messages }: { messages?: string[] }) {
-  if (!messages?.length) return null
-  return (
-    <p className="text-xs text-destructive mt-1">{messages[0]}</p>
-  )
+function splitFacilities(facilities: string[] | null | undefined) {
+  const list = facilities ?? []
+  const fixedSel = list.filter((f) => FIXED.has(f))
+  const custom = list.filter((f) => !FIXED.has(f))
+  return { fixedSel, custom }
 }
 
-function SectionHeading({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-      {children}
-    </p>
-  )
+export type InitialCabin = {
+  id: string
+  title: string
+  description: string
+  location_hub: string
+  max_guests: number
+  bedrooms: number
+  facilities: string[] | null
+  addon_services: unknown
+  offers_transport: boolean
+  transport_from: string | null
+  transport_price_roundtrip_ore: number | null
 }
 
-export default function HytteForm() {
-  const [state, action, isPending] = useActionState<HytteFormState, FormData>(
-    createHytte,
+interface Props {
+  mode: "create" | "edit"
+  initialCabin?: InitialCabin
+}
+
+export default function HytteForm({ mode, initialCabin }: Props) {
+  const action = mode === "edit" ? updateHytte : createHytte
+  const [state, formAction, isPending] = useActionState<HytteFormState, FormData>(
+    action,
     null,
   )
 
-  const [description, setDescription] = useState("")
-  const [locationHub, setLocationHub] = useState("")
-  const [accessType, setAccessType] = useState("")
-  const [selectedFacilities, setSelectedFacilities] = useState<string[]>([])
-  const [addonServices, setAddonServices] = useState<AddOnService[]>([])
-  const [offersTransport, setOffersTransport] = useState(false)
-  const [transportPriceKr, setTransportPriceKr] = useState("")
+  const { fixedSel: initFixed, custom: initCustom } = initialCabin
+    ? splitFacilities(initialCabin.facilities)
+    : { fixedSel: [], custom: [] }
+
+  const [description, setDescription] = useState(initialCabin?.description ?? "")
+  const [locationHub, setLocationHub] = useState(initialCabin?.location_hub ?? "")
+  const [selectedFacilities, setSelectedFacilities] = useState<string[]>(initFixed)
+  const [customFacilities, setCustomFacilities] = useState<string[]>(initCustom)
+  const [customInput, setCustomInput] = useState("")
+
+  const [addonServices, setAddonServices] = useState<AddOnService[]>(() => {
+    if (!initialCabin?.addon_services) return []
+    if (Array.isArray(initialCabin.addon_services)) {
+      return initialCabin.addon_services as AddOnService[]
+    }
+    return []
+  })
+
+  const [offersTransport, setOffersTransport] = useState(
+    initialCabin?.offers_transport ?? false,
+  )
+  const [transportFrom, setTransportFrom] = useState(
+    initialCabin?.transport_from ?? "",
+  )
+  const [transportPriceKr, setTransportPriceKr] = useState(
+    initialCabin?.transport_price_roundtrip_ore != null
+      ? String(Math.round(oreToKr(initialCabin.transport_price_roundtrip_ore)))
+      : "",
+  )
+
+  useEffect(() => {
+    if (initialCabin) {
+      setDescription(initialCabin.description)
+      setLocationHub(initialCabin.location_hub)
+      const { fixedSel, custom } = splitFacilities(initialCabin.facilities)
+      setSelectedFacilities(fixedSel)
+      setCustomFacilities(custom)
+      if (Array.isArray(initialCabin.addon_services)) {
+        setAddonServices(initialCabin.addon_services as AddOnService[])
+      }
+      setOffersTransport(initialCabin.offers_transport)
+      setTransportFrom(initialCabin.transport_from ?? "")
+      setTransportPriceKr(
+        initialCabin.transport_price_roundtrip_ore != null
+          ? String(Math.round(oreToKr(initialCabin.transport_price_roundtrip_ore)))
+          : "",
+      )
+    }
+  }, [initialCabin])
 
   function toggleFacility(value: string) {
     setSelectedFacilities((prev) =>
@@ -61,16 +110,37 @@ export default function HytteForm() {
     )
   }
 
-  const singleTicketPreview = transportPriceKr
-    ? Math.round(Number(transportPriceKr) * 0.6)
-    : null
+  function addCustomFromInput() {
+    const parts = customInput
+      .split(/[,;\n]/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+    if (parts.length === 0) return
+    setCustomFacilities((prev) => {
+      const next = new Set([...prev, ...parts])
+      return Array.from(next)
+    })
+    setCustomInput("")
+  }
+
+  function removeCustom(tag: string) {
+    setCustomFacilities((prev) => prev.filter((t) => t !== tag))
+  }
+
+  const allFacilityValues = [...selectedFacilities, ...customFacilities]
+  const singlePreviewKr =
+    transportPriceKr && !Number.isNaN(Number(transportPriceKr))
+      ? Math.round(Number(transportPriceKr) * 0.6)
+      : null
 
   return (
-    <form action={action} className="space-y-8">
-      {/* Hidden controlled inputs */}
+    <form action={formAction} className="space-y-8">
+      {mode === "edit" && initialCabin && (
+        <input type="hidden" name="cabin_id" value={initialCabin.id} />
+      )}
+
       <input type="hidden" name="location_hub" value={locationHub} />
-      <input type="hidden" name="access_type" value={accessType} />
-      {selectedFacilities.map((fac) => (
+      {allFacilityValues.map((fac) => (
         <input key={fac} type="hidden" name="facilities" value={fac} />
       ))}
       <input
@@ -86,7 +156,9 @@ export default function HytteForm() {
 
       {/* 1. Titel */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
-        <SectionHeading>Titel</SectionHeading>
+        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          Titel
+        </p>
         <div>
           <Label htmlFor="title">
             Navn på hytten <span className="text-destructive">*</span>
@@ -95,8 +167,10 @@ export default function HytteForm() {
             id="title"
             name="title"
             maxLength={80}
+            defaultValue={initialCabin?.title}
             placeholder="F.eks. Hytte ved fjorden i Nuuk"
             className="mt-1 rounded-xl"
+            required
           />
           <FieldError messages={state?.errors?.title} />
         </div>
@@ -104,7 +178,9 @@ export default function HytteForm() {
 
       {/* 2. Beskrivelse */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
-        <SectionHeading>Beskrivelse</SectionHeading>
+        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          Beskrivelse
+        </p>
         <div>
           <Label htmlFor="description">
             Beskriv hytten <span className="text-destructive">*</span>
@@ -114,6 +190,8 @@ export default function HytteForm() {
             name="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            required
+            minLength={50}
             rows={5}
             placeholder="Beskriv hytten, omgivelserne og hvad gæster kan forvente (mindst 50 tegn)"
             className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
@@ -133,12 +211,14 @@ export default function HytteForm() {
 
       {/* 3. Destination */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
-        <SectionHeading>Destination</SectionHeading>
+        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          Destination
+        </p>
         <div>
           <Label>
             Nærmeste by <span className="text-destructive">*</span>
           </Label>
-          <Select onValueChange={setLocationHub} value={locationHub}>
+          <Select onValueChange={setLocationHub} value={locationHub} required>
             <SelectTrigger className="mt-1 rounded-xl">
               <SelectValue placeholder="Vælg destination" />
             </SelectTrigger>
@@ -154,9 +234,11 @@ export default function HytteForm() {
         </div>
       </div>
 
-      {/* 4. Max gæster + Soverum */}
+      {/* 4. Kapacitet */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
-        <SectionHeading>Kapacitet</SectionHeading>
+        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          Kapacitet
+        </p>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label htmlFor="max_guests">
@@ -168,7 +250,7 @@ export default function HytteForm() {
               type="number"
               min={1}
               max={30}
-              placeholder="4"
+              defaultValue={initialCabin?.max_guests ?? 4}
               className="mt-1 rounded-xl"
             />
             <FieldError messages={state?.errors?.max_guests} />
@@ -183,7 +265,7 @@ export default function HytteForm() {
               type="number"
               min={0}
               max={20}
-              placeholder="2"
+              defaultValue={initialCabin?.bedrooms ?? 1}
               className="mt-1 rounded-xl"
             />
             <FieldError messages={state?.errors?.bedrooms} />
@@ -191,35 +273,14 @@ export default function HytteForm() {
         </div>
       </div>
 
-      {/* 5. Adgangstype */}
-      <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
-        <SectionHeading>Adgangstype</SectionHeading>
-        <div>
-          <Label>
-            Hvordan kommer man til hytten? <span className="text-destructive">*</span>
-          </Label>
-          <Select onValueChange={setAccessType} value={accessType}>
-            <SelectTrigger className="mt-1 rounded-xl">
-              <SelectValue placeholder="Vælg adgangstype" />
-            </SelectTrigger>
-            <SelectContent>
-              {ACCESS_TYPES.map((t) => (
-                <SelectItem key={t.value} value={t.value}>
-                  {t.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <FieldError messages={state?.errors?.access_type} />
-        </div>
-      </div>
-
-      {/* 6. Faciliteter */}
+      {/* 5. Faciliteter + Andet */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-5">
-        <SectionHeading>Faciliteter</SectionHeading>
+        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          Faciliteter
+        </p>
         {(Object.keys(CABIN_FACILITIES) as Array<keyof typeof CABIN_FACILITIES>).map(
           (sectionKey) => (
-            <div key={sectionKey}>
+            <div key={String(sectionKey)}>
               <p className="text-xs font-semibold text-muted-foreground mb-2">
                 {FACILITY_SECTION_LABELS[sectionKey]}
               </p>
@@ -243,11 +304,53 @@ export default function HytteForm() {
             </div>
           ),
         )}
+
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground mb-2">Andet</p>
+          <p className="text-xs text-muted-foreground mb-2">
+            Tilføj fritekst (komma eller Enter) — f.eks. solpanel, generator, sauna
+          </p>
+          <div className="flex flex-wrap gap-2 mb-2 min-h-6">
+            {customFacilities.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1.5 pl-2.5 pr-1 py-1 rounded-full text-sm border border-primary/40 bg-primary/5"
+              >
+                {tag}
+                <button
+                  type="button"
+                  onClick={() => removeCustom(tag)}
+                  className="p-0.5 rounded hover:bg-primary/20"
+                  aria-label={`Fjern ${tag}`}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+          <Input
+            value={customInput}
+            onChange={(e) => setCustomInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault()
+                addCustomFromInput()
+              }
+            }}
+            onBlur={() => {
+              if (customInput.trim()) addCustomFromInput()
+            }}
+            placeholder="f.eks. Solpanel, Generator, Sauna"
+            className="rounded-xl"
+          />
+        </div>
       </div>
 
-      {/* 7. Tilvalgsydelser */}
+      {/* 6. Tilvalgsydelser */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
-        <SectionHeading>Tilvalgsydelser</SectionHeading>
+        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          Tilvalgsydelser
+        </p>
         <AddOnServicesEditor
           services={addonServices}
           onChange={setAddonServices}
@@ -255,17 +358,21 @@ export default function HytteForm() {
         />
       </div>
 
-      {/* 8. Billeder */}
+      {/* 7. Billeder */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6">
-        <SectionHeading>Billeder</SectionHeading>
+        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          Billeder
+        </p>
         <div className="rounded-xl border-2 border-dashed border-border bg-muted/30 py-10 flex flex-col items-center justify-center gap-2 text-muted-foreground">
           <p className="text-sm">Billeder tilføjes i næste trin (Cloudinary)</p>
         </div>
       </div>
 
-      {/* 9. Transport */}
+      {/* 8. Transport */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-4">
-        <SectionHeading>Transport</SectionHeading>
+        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          Transport
+        </p>
         <div className="flex items-center gap-3">
           <Switch
             id="offers_transport_switch"
@@ -279,18 +386,32 @@ export default function HytteForm() {
 
         {offersTransport && (
           <div className="space-y-4 pt-2">
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 space-y-2">
+              <p>
+                <strong>Prisen du angiver</strong> er for transport <strong>tur/retur pr. person</strong>.
+              </p>
+              <p>
+                Gæster der kun vil én vej betaler enkeltbilletprisen — den beregnes
+                automatisk til 60% af tur/retur.
+              </p>
+            </div>
             <div>
-              <Label htmlFor="transport_from">Transport fra (by/havn)</Label>
+              <Label htmlFor="transport_from">
+                Transport fra (by/havn) <span className="text-destructive">*</span>
+              </Label>
               <Input
                 id="transport_from"
                 name="transport_from"
+                value={transportFrom}
+                onChange={(e) => setTransportFrom(e.target.value)}
                 placeholder="F.eks. Nuuk havn"
                 className="mt-1 rounded-xl"
               />
+              <FieldError messages={state?.errors?.transport_from} />
             </div>
             <div>
               <Label htmlFor="transport_price_roundtrip_kr">
-                Tur/retur pris pr. person (kr)
+                Tur/retur pris pr. person (kr) <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="transport_price_roundtrip_kr"
@@ -303,33 +424,41 @@ export default function HytteForm() {
                 placeholder="800"
                 className="mt-1 rounded-xl"
               />
+              <FieldError messages={state?.errors?.transport_price_roundtrip_kr} />
             </div>
-            {singleTicketPreview !== null && transportPriceKr !== "" && (
+            {singlePreviewKr != null && transportPriceKr !== "" && (
               <p className="text-sm text-muted-foreground bg-muted/50 rounded-xl px-4 py-3">
                 Enkeltbilletpris:{" "}
                 <span className="font-semibold text-foreground">
-                  {singleTicketPreview} kr.
+                  {singlePreviewKr.toLocaleString("da-DK")} kr.
                 </span>{" "}
-                (60%)
+                <span className="text-xs">(60% — beregnes automatisk)</span>
               </p>
             )}
           </div>
         )}
       </div>
 
-      {/* Form error */}
       {state?.errors?._form && (
         <p className="text-sm text-destructive">{state.errors._form[0]}</p>
       )}
 
-      {/* 10. Submit */}
       <Button
         type="submit"
         disabled={isPending}
         className="w-full rounded-xl h-12 text-base font-semibold"
       >
-        {isPending ? "Gemmer…" : "Gem hytte"}
+        {isPending
+          ? "Gemmer…"
+          : mode === "edit"
+            ? "Gem ændringer"
+            : "Gem hytte"}
       </Button>
     </form>
   )
+}
+
+function FieldError({ messages }: { messages?: string[] }) {
+  if (!messages?.length) return null
+  return <p className="text-xs text-destructive mt-1">{messages[0]}</p>
 }

@@ -93,7 +93,7 @@ export default function CabinReviews({ cabinId, currentUserId }: Props) {
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
 
-      setReviews((data as Review[]) ?? [])
+      setReviews((data as unknown as Review[]) ?? [])
 
       // 3. Check if current user can review
       if (currentUserId) {
@@ -107,7 +107,7 @@ export default function CabinReviews({ cabinId, currentUserId }: Props) {
 
         setCanReview(!!completedBooking?.length)
 
-        const alreadyDone = (data as Review[] ?? []).some(
+        const alreadyDone = ((data as unknown as Review[]) ?? []).some(
           (r) => r.reviewer_id === currentUserId
         )
         setAlreadyReviewed(alreadyDone)

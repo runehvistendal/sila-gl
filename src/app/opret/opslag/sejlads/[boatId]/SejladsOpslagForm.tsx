@@ -226,15 +226,18 @@ export default function SejladsOpslagForm({ boat }: Props) {
               {state.errors.price_per_seat_roundtrip_kr[0]}
             </p>
           )}
+          <p className="text-sm text-muted-foreground mt-2">
+            Gæster vælger selv om de vil købe enkeltbillet eller returtur ved booking.
+          </p>
         </div>
 
         {singlePrice !== null && priceRoundtrip !== "" && (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground bg-muted/50 rounded-xl px-4 py-3">
             Enkeltbilletpris:{" "}
             <span className="font-semibold text-foreground">
               {singlePrice.toLocaleString("da-DK")} kr.
             </span>{" "}
-            <span className="text-xs">(60%)</span>
+            <span className="text-xs">(60% — beregnes automatisk)</span>
           </p>
         )}
       </div>

@@ -1,7 +1,7 @@
 "use client"
 
-import { useActionState, useState } from "react"
-import { createBaad, type BaadFormState } from "./actions"
+import { useActionState, useState, useEffect } from "react"
+import { createBaad, updateBaad, type BaadFormState } from "./actions"
 import AddOnServicesEditor, { type AddOnService } from "@/components/shared/AddOnServicesEditor"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,28 +20,64 @@ const EXTRA_CHIPS = [
   { value: "binoculars", label: "Kikkert" },
 ]
 
-function FieldError({ messages }: { messages?: string[] }) {
-  if (!messages?.length) return null
-  return <p className="text-xs text-destructive mt-1">{messages[0]}</p>
+const PREDEFINED = new Set([...COMFORT_CHIPS, ...EXTRA_CHIPS].map((c) => c.value))
+
+function splitEquipment(equipment: string[] | null | undefined) {
+  const list = equipment ?? []
+  return {
+    fixed: list.filter((e) => PREDEFINED.has(e)),
+    custom: list.filter((e) => !PREDEFINED.has(e)),
+  }
 }
 
-function SectionHeading({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-      {children}
-    </p>
-  )
+export type InitialBoat = {
+  id: string
+  name: string
+  boat_type: string | null
+  capacity: number
+  description: string | null
+  equipment: string[] | null
+  addon_services: unknown
 }
 
-export default function BaadForm() {
-  const [state, action, isPending] = useActionState<BaadFormState, FormData>(
-    createBaad,
-    null,
-  )
+interface Props {
+  mode: "create" | "edit"
+  initialBoat?: InitialBoat
+}
 
-  const [safetyConfirmed, setSafetyConfirmed] = useState(false)
-  const [selectedEquipment, setSelectedEquipment] = useState<string[]>([])
-  const [addonServices, setAddonServices] = useState<AddOnService[]>([])
+export default function BaadForm({ mode, initialBoat }: Props) {
+  const action = mode === "edit" ? updateBaad : createBaad
+  const [state, formAction, isPending] = useActionState<BaadFormState, FormData>(action, null)
+
+  const { fixed: initFixed, custom: initCustom } = initialBoat
+    ? splitEquipment(initialBoat.equipment)
+    : { fixed: [], custom: [] }
+
+  const [safetyConfirmed, setSafetyConfirmed] = useState(
+    initialBoat ? true : false,
+  )
+  const [selectedEquipment, setSelectedEquipment] = useState<string[]>(initFixed)
+  const [customEquipment, setCustomEquipment] = useState<string[]>(initCustom)
+  const [customInput, setCustomInput] = useState("")
+  const [addonServices, setAddonServices] = useState<AddOnService[]>(() => {
+    if (!initialBoat?.addon_services) return []
+    if (Array.isArray(initialBoat.addon_services)) {
+      return initialBoat.addon_services as AddOnService[]
+    }
+    return []
+  })
+
+  useEffect(() => {
+    if (initialBoat) {
+      const { fixed, custom } = splitEquipment(initialBoat.equipment)
+      setSelectedEquipment(fixed)
+      setCustomEquipment(custom)
+      if (Array.isArray(initialBoat.addon_services)) {
+        setAddonServices(initialBoat.addon_services as AddOnService[])
+      }
+      setSafetyConfirmed(true)
+    }
+  }, [initialBoat])
 
   function toggleEquipment(value: string) {
     setSelectedEquipment((prev) =>
@@ -49,15 +85,36 @@ export default function BaadForm() {
     )
   }
 
+  function addCustomFromInput() {
+    const parts = customInput
+      .split(/[,;\n]/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+    if (parts.length === 0) return
+    setCustomEquipment((prev) => {
+      const next = new Set([...prev, ...parts])
+      return Array.from(next)
+    })
+    setCustomInput("")
+  }
+
+  function removeCustom(tag: string) {
+    setCustomEquipment((prev) => prev.filter((t) => t !== tag))
+  }
+
+  const allEquipment = [...selectedEquipment, ...customEquipment]
+
   return (
-    <form action={action} className="space-y-8">
-      {/* Hidden controlled inputs */}
+    <form action={formAction} className="space-y-8">
+      {mode === "edit" && initialBoat && (
+        <input type="hidden" name="boat_id" value={initialBoat.id} />
+      )}
       <input
         type="hidden"
         name="safety_confirmed"
         value={safetyConfirmed ? "on" : ""}
       />
-      {selectedEquipment.map((eq) => (
+      {allEquipment.map((eq) => (
         <input key={eq} type="hidden" name="equipment" value={eq} />
       ))}
       <input
@@ -66,7 +123,6 @@ export default function BaadForm() {
         value={JSON.stringify(addonServices)}
       />
 
-      {/* Safety info box */}
       <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6 space-y-4">
         <div>
           <p className="text-sm font-semibold text-blue-900 mb-2">
@@ -94,12 +150,15 @@ export default function BaadForm() {
           </span>
         </label>
 
-        <FieldError messages={state?.errors?.safety_confirmed} />
+        {state?.errors?.safety_confirmed && (
+          <p className="text-xs text-destructive mt-1">{state.errors.safety_confirmed[0]}</p>
+        )}
       </div>
 
-      {/* 1. Bådens navn */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
-        <SectionHeading>Bådens navn</SectionHeading>
+        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          Bådens navn
+        </p>
         <div>
           <Label htmlFor="name">
             Navn <span className="text-destructive">*</span>
@@ -108,31 +167,37 @@ export default function BaadForm() {
             id="name"
             name="name"
             maxLength={80}
+            defaultValue={initialBoat?.name}
             placeholder="F.eks. Nordstjernen"
             className="mt-1 rounded-xl"
+            required
           />
-          <FieldError messages={state?.errors?.name} />
+          {state?.errors?.name && (
+            <p className="text-xs text-destructive mt-1">{state.errors.name[0]}</p>
+          )}
         </div>
       </div>
 
-      {/* 2. Bådtype */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
-        <SectionHeading>Bådtype</SectionHeading>
+        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          Bådtype
+        </p>
         <div>
           <Label htmlFor="boat_type">Bådtype</Label>
           <Input
             id="boat_type"
             name="boat_type"
+            defaultValue={initialBoat?.boat_type ?? ""}
             placeholder="Speedbåd, Fiskerbåd, Katamaran"
             className="mt-1 rounded-xl"
           />
-          <FieldError messages={state?.errors?.boat_type} />
         </div>
       </div>
 
-      {/* 3. Kapacitet */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
-        <SectionHeading>Kapacitet</SectionHeading>
+        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          Kapacitet
+        </p>
         <div>
           <Label htmlFor="capacity">
             Antal passagerer <span className="text-destructive">*</span>
@@ -143,21 +208,26 @@ export default function BaadForm() {
             type="number"
             min={1}
             max={50}
-            placeholder="6"
+            defaultValue={initialBoat?.capacity}
             className="mt-1 rounded-xl"
+            required
           />
-          <FieldError messages={state?.errors?.capacity} />
+          {state?.errors?.capacity && (
+            <p className="text-xs text-destructive mt-1">{state.errors.capacity[0]}</p>
+          )}
         </div>
       </div>
 
-      {/* 4. Beskrivelse */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
-        <SectionHeading>Beskrivelse</SectionHeading>
+        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          Beskrivelse
+        </p>
         <div>
           <Label htmlFor="description">Beskriv båden (valgfri)</Label>
           <textarea
             id="description"
             name="description"
+            defaultValue={initialBoat?.description ?? ""}
             rows={4}
             placeholder="Fortæl om båden, dens egenskaber og hvad gæster kan forvente"
             className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
@@ -165,9 +235,10 @@ export default function BaadForm() {
         </div>
       </div>
 
-      {/* 5. Komfort chips */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-5">
-        <SectionHeading>Udstyr</SectionHeading>
+        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          Udstyr
+        </p>
 
         <div>
           <p className="text-xs font-semibold text-muted-foreground mb-2">Komfort om bord</p>
@@ -210,11 +281,52 @@ export default function BaadForm() {
             ))}
           </div>
         </div>
+
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground mb-2">Tilføj eget udstyr</p>
+          <p className="text-xs text-muted-foreground mb-2">
+            Komma eller Enter — tilføjer mærke med ×-knap
+          </p>
+          <div className="flex flex-wrap gap-2 mb-2 min-h-6">
+            {customEquipment.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1.5 pl-2.5 pr-1 py-1 rounded-full text-sm border border-primary/40 bg-primary/5"
+              >
+                {tag}
+                <button
+                  type="button"
+                  onClick={() => removeCustom(tag)}
+                  className="p-0.5 rounded hover:bg-primary/20"
+                  aria-label={`Fjern ${tag}`}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+          <Input
+            value={customInput}
+            onChange={(e) => setCustomInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault()
+                addCustomFromInput()
+              }
+            }}
+            onBlur={() => {
+              if (customInput.trim()) addCustomFromInput()
+            }}
+            placeholder="Eget udstyr"
+            className="rounded-xl"
+          />
+        </div>
       </div>
 
-      {/* 6. Tilvalgsydelser */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
-        <SectionHeading>Tilvalgsydelser</SectionHeading>
+        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          Tilvalgsydelser
+        </p>
         <AddOnServicesEditor
           services={addonServices}
           onChange={setAddonServices}
@@ -222,26 +334,29 @@ export default function BaadForm() {
         />
       </div>
 
-      {/* 7. Billeder */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6">
-        <SectionHeading>Billeder</SectionHeading>
+        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          Billeder
+        </p>
         <div className="rounded-xl border-2 border-dashed border-border bg-muted/30 py-10 flex flex-col items-center justify-center gap-2 text-muted-foreground">
           <p className="text-sm">Billeder tilføjes i næste trin (Cloudinary)</p>
         </div>
       </div>
 
-      {/* Form error */}
       {state?.errors?._form && (
         <p className="text-sm text-destructive">{state.errors._form[0]}</p>
       )}
 
-      {/* Submit */}
       <Button
         type="submit"
         disabled={!safetyConfirmed || isPending}
         className="w-full rounded-xl h-12 text-base font-semibold"
       >
-        {isPending ? "Gemmer…" : "Gem båd"}
+        {isPending
+          ? "Gemmer…"
+          : mode === "edit"
+            ? "Gem ændringer"
+            : "Gem båd"}
       </Button>
     </form>
   )

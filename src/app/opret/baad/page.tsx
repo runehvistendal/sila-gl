@@ -38,7 +38,7 @@ export default async function OpretBaadPage() {
           </p>
         </div>
 
-        <BaadForm />
+        <BaadForm mode="create" />
       </div>
     </main>
   )

@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useEffect } from "react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   Calendar, Clock, Inbox, Home, Briefcase,
   MapPin, Anchor, PlusCircle, Star, Ship, Eye,
@@ -95,7 +95,38 @@ export default function DashboardClient({
   unreadMessages,
 }: Props) {
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
   const urlTab = searchParams.get("tab") ?? "bookings"
+
+  useEffect(() => {
+    const t = searchParams.get("toast")
+    if (!t) return
+
+    const map: Record<string, { title: string; description?: string }> = {
+      "hytte-saved": {
+        title: "Hytte gemt",
+        description:
+          "Vælg 'Udlej en hytte' for at oprette et opslag.",
+      },
+      "cabin-updated": { title: "Ændringer gemt" },
+      "baad-saved": {
+        title: "Båd gemt",
+        description: "Vælg 'Tilbyd transport' for at poste en tur.",
+      },
+      "boat-updated": { title: "Ændringer gemt" },
+    }
+
+    const msg = map[t]
+    if (msg) {
+      toast(msg.title, msg.description ? { description: msg.description } : undefined)
+    }
+
+    const sp = new URLSearchParams(searchParams.toString())
+    sp.delete("toast")
+    const qs = sp.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname)
+  }, [searchParams, pathname, router])
 
   const [activeTab,     setActiveTab]     = useState(urlTab)
   const [bookingFilter, setBookingFilter] = useState<"active" | "history">("active")
@@ -132,7 +163,7 @@ export default function DashboardClient({
           <div>
             <h1 className="text-2xl font-bold text-foreground">Mit dashboard</h1>
             <p className="text-muted-foreground text-sm mt-1">
-              Hej {displayName ?? "der"}
+              {displayName ? `Hej ${displayName}` : "Hej"}
             </p>
             {avgRating && (
               <div className="flex items-center gap-1 mt-1.5">
@@ -155,7 +186,7 @@ export default function DashboardClient({
             )}
             {isProvider && (
               <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl gap-2 text-sm">
-                <Link href="/opret?type=cabin"><PlusCircle className="w-4 h-4" /> Ny annonce</Link>
+                <Link href="/opret"><PlusCircle className="w-4 h-4" /> Nyt opslag</Link>
               </Button>
             )}
           </div>
@@ -183,11 +214,11 @@ export default function DashboardClient({
                 Anmodninger
               </TabsTrigger>
 
-              {/* Tab 3: Åbne ønsker (kun udbydere) */}
+              {/* Tab 3: Gæsteønsker (kun udbydere) */}
               {isProvider && (
                 <TabsTrigger value="open-requests" className="rounded-lg px-4 py-2 text-sm gap-2">
                   <Inbox className="w-4 h-4" />
-                  Åbne ønsker
+                  Gæsteønsker
                   {totalOpenRequests > 0 && (
                     <span className="bg-amber-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                       {totalOpenRequests}
@@ -316,7 +347,7 @@ export default function DashboardClient({
             </div>
           </TabsContent>
 
-          {/* ── TAB 3: ÅBNE ØNSKER ── */}
+          {/* ── TAB 3: Gæsteønsker ── */}
           {isProvider && (
             <TabsContent value="open-requests">
               <div className="space-y-6">

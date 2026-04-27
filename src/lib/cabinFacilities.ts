@@ -34,6 +34,16 @@ export const CABIN_FACILITIES = {
   ],
 } as const
 
+export function getFixedFacilityValueSet(): Set<string> {
+  const s = new Set<string>()
+  for (const items of Object.values(CABIN_FACILITIES)) {
+    for (const item of items) {
+      s.add(item.value)
+    }
+  }
+  return s
+}
+
 export type FacilityKey = keyof typeof CABIN_FACILITIES
 export const FACILITY_SECTION_LABELS: Record<FacilityKey, string> = {
   basis:     "Basis",

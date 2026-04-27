@@ -38,7 +38,7 @@ export default async function OpretHyttePage() {
           </p>
         </div>
 
-        <HytteForm />
+        <HytteForm mode="create" />
       </div>
     </main>
   )
