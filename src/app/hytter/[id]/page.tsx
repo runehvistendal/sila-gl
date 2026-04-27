@@ -3,12 +3,11 @@ import Link from "next/link"
 import { ChevronLeft, MapPin, Users, Anchor, Check, User } from "lucide-react"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
+import { nightsFromBookings } from "@/lib/cabinBookingDates"
 import Navbar from "@/components/layout/Navbar"
 import ListingImageGallery from "@/components/cabins/ListingImageGallery"
 import CabinReviews from "@/components/cabins/CabinReviews"
-import BookingCard from "./BookingCard"
 import CabinBookingWidget from "@/components/cabins/CabinBookingWidget"
-import type { RideShareData } from "@/components/cabins/CabinTransportSection"
 
 export type CabinDetailData = {
   id: string
@@ -46,14 +45,13 @@ export default async function CabinDetailPage({
   const { id } = await params
   const supabase = await createClient()
 
-  /* ── Auth ── */
   const { data: { user } } = await supabase.auth.getUser()
   const navUser = user ? await getNavUserForPage(supabase, user) : null
 
-  /* ── Cabin ── */
   const { data: cabinRaw, error: cabinError } = await supabase
     .from("cabins")
-    .select(`
+    .select(
+      `
       id, title, description, location_hub,
       max_guests, bedrooms,
       price_per_night_ore, cleaning_fee_ore,
@@ -61,7 +59,8 @@ export default async function CabinDetailPage({
       instant_book, offers_transport, transport_price_per_person_ore,
       access_type, owner_id,
       profiles!owner_id ( full_name, avatar_url )
-    `)
+    `,
+    )
     .eq("id", id)
     .eq("published", true)
     .is("deleted_at", null)
@@ -71,31 +70,33 @@ export default async function CabinDetailPage({
 
   const cabin = cabinRaw as unknown as CabinDetailData
 
-  /* ── Ride shares to this location ── */
-  const { data: transportsRaw } = await supabase
-    .from("ride_shares")
-    .select(`
-      id, from_location, to_location, departure_at,
-      seats_available, total_seats, price_per_seat_ore,
-      profiles!skipper_id ( full_name )
-    `)
-    .eq("status", "active")
-    .eq("to_location", cabin.location_hub)
-    .gt("seats_available", 0)
-    .order("departure_at", { ascending: true })
-    .limit(5)
+  const [{ data: occRows }, { data: blockRows }] = await Promise.all([
+    supabase.rpc("get_cabin_occupancy", { p_cabin_id: id }),
+    supabase
+      .from("cabin_availability")
+      .select("date")
+      .eq("cabin_id", id)
+      .eq("is_available", false)
+      .is("deleted_at", null),
+  ])
 
-  const transports = (transportsRaw ?? []) as unknown as RideShareData[]
+  const occupied = nightsFromBookings(
+    (occRows ?? []) as { check_in: string; check_out: string }[],
+  )
+  for (const r of blockRows ?? []) {
+    const d = (r as { date: string }).date
+    if (d) occupied.add(d.slice(0, 10))
+  }
+  const disabledYmd = Array.from(occupied).sort()
 
   const hostName   = cabin.profiles?.full_name ?? null
   const hostAvatar = cabin.profiles?.avatar_url ?? null
 
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen bg-background" style={{ fontFamily: "var(--font-jakarta, system-ui)" }}>
       <Navbar user={navUser} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
-        {/* ── Back ── */}
         <Link
           href="/hytter"
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
@@ -104,7 +105,6 @@ export default async function CabinDetailPage({
           Tilbage til hytter
         </Link>
 
-        {/* ── Title row ── */}
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">{cabin.title}</h1>
           <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
@@ -130,15 +130,10 @@ export default async function CabinDetailPage({
           </div>
         </div>
 
-        {/* ── Gallery ── */}
         <ListingImageGallery images={cabin.images} title={cabin.title} />
 
-        {/* ── Two column layout ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-          {/* ── Left column ── */}
-          <div className="lg:col-span-2 space-y-8">
-
-            {/* Description */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10 mt-6 lg:mt-10">
+          <div className="order-2 lg:order-1 lg:col-span-2 space-y-8">
             <div>
               <h2 className="text-xl font-bold text-foreground mb-3">Om hytten</h2>
               <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
@@ -146,7 +141,6 @@ export default async function CabinDetailPage({
               </p>
             </div>
 
-            {/* Amenities */}
             {cabin.amenities?.length > 0 && (
               <div>
                 <h2 className="text-xl font-bold text-foreground mb-4">Faciliteter</h2>
@@ -161,7 +155,6 @@ export default async function CabinDetailPage({
               </div>
             )}
 
-            {/* Host profile */}
             {hostName && (
               <div>
                 <h2 className="text-xl font-bold text-foreground mb-3">Din vært</h2>
@@ -182,29 +175,26 @@ export default async function CabinDetailPage({
               </div>
             )}
 
-            {/* Reviews */}
             <CabinReviews cabinId={cabin.id} currentUserId={user?.id ?? null} />
           </div>
 
-          {/* ── Right column — booking card + transport ── */}
-          <div className="lg:col-span-1">
-            <BookingCard
-              cabin={cabin}
-              transports={transports}
-              isLoggedIn={!!user}
-            />
+          <div className="order-1 lg:order-2 lg:col-span-1">
+            <div className="lg:sticky lg:top-24">
+              <CabinBookingWidget
+                cabin={{
+                  id: cabin.id,
+                  max_guests: cabin.max_guests,
+                  price_per_night_ore: cabin.price_per_night_ore,
+                  offers_transport: cabin.offers_transport,
+                  transport_price_per_person_ore: cabin.transport_price_per_person_ore,
+                }}
+                isLoggedIn={!!user}
+                loginNextPath={`/hytter/${cabin.id}`}
+                disabledYmd={disabledYmd}
+              />
+            </div>
           </div>
         </div>
-
-        <CabinBookingWidget
-          cabin={{
-            id: cabin.id,
-            max_guests: cabin.max_guests,
-            price_per_night_ore: cabin.price_per_night_ore,
-          }}
-          isLoggedIn={!!user}
-          loginNextPath={`/hytter/${cabin.id}`}
-        />
       </div>
     </main>
   )

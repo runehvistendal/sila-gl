@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
 import HytteForm, { type InitialCabin } from "../../HytteForm"
+import CabinOwnerCalendar from "@/components/cabins/CabinOwnerCalendar"
 
 export const metadata = { title: "Rediger hytte — Sila.gl" }
 
@@ -30,6 +31,25 @@ export default async function RedigerHyttePage({
 
   if (error || !cabin) notFound()
   if (cabin.owner_id !== user.id) notFound()
+
+  const [{ data: calBookings }, { data: calBlocks }] = await Promise.all([
+    supabase
+      .from("cabin_bookings")
+      .select("check_in, check_out, status")
+      .eq("cabin_id", id)
+      .in("status", ["pending", "confirmed", "completed"])
+      .is("deleted_at", null),
+    supabase
+      .from("cabin_availability")
+      .select("date")
+      .eq("cabin_id", id)
+      .eq("is_available", false)
+      .is("deleted_at", null),
+  ])
+
+  const manualBlockedYmd = (calBlocks ?? [])
+    .map((r) => (r as { date: string }).date?.slice(0, 10))
+    .filter(Boolean) as string[]
 
   const initialCabin: InitialCabin = {
     id: cabin.id,
@@ -61,6 +81,20 @@ export default async function RedigerHyttePage({
         </div>
 
         <HytteForm mode="edit" initialCabin={initialCabin} key={cabin.id} />
+
+        <div className="mt-10 max-w-2xl mx-auto">
+          <CabinOwnerCalendar
+            cabinId={cabin.id}
+            bookings={
+              (calBookings ?? []) as {
+                check_in: string
+                check_out: string
+                status: string
+              }[]
+            }
+            manualBlockedYmd={manualBlockedYmd}
+          />
+        </div>
       </div>
     </main>
   )

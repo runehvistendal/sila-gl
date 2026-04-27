@@ -2,14 +2,19 @@
 
 import { createClient } from "@/lib/supabase-server"
 import { createServiceClient } from "@/lib/supabase-service"
+import { enumerateNights } from "@/lib/cabinBookingDates"
 import { getAppBaseUrl } from "@/lib/appUrl"
 import { stripe } from "@/lib/stripe"
+
+export type TransportTrip = "none" | "round_trip" | "outbound" | "return"
 
 export type CreateCabinBookingInput = {
   cabin_id: string
   check_in: string
   check_out: string
   guests: number
+  /** Kun relevant hvis hytten tilbyder transport */
+  transport_trip?: TransportTrip
 }
 
 export type CreateCabinBookingResult = { url: string } | { error: string }
@@ -33,6 +38,19 @@ function nightCount(checkIn: string, checkOut: string): number {
   const a = new Date(checkIn + "T12:00:00.000Z").getTime()
   const b = new Date(checkOut + "T12:00:00.000Z").getTime()
   return Math.max(0, Math.round((b - a) / 86_400_000))
+}
+
+function transportOreForTrip(
+  trip: TransportTrip,
+  perPersonOre: number,
+  guests: number,
+): number {
+  if (trip === "none" || perPersonOre <= 0) return 0
+  if (trip === "round_trip") return perPersonOre * guests * 2
+  if (trip === "outbound" || trip === "return") {
+    return perPersonOre * guests
+  }
+  return 0
 }
 
 export async function createCabinBooking(
@@ -72,7 +90,7 @@ export async function createCabinBooking(
   const { data: cabin, error: cabinErr } = await supabase
     .from("cabins")
     .select(
-      "id, title, price_per_night_ore, owner_id, max_guests, published, deleted_at",
+      "id, title, price_per_night_ore, owner_id, max_guests, published, deleted_at, offers_transport, transport_price_per_person_ore",
     )
     .eq("id", input.cabin_id)
     .maybeSingle()
@@ -89,6 +107,8 @@ export async function createCabinBooking(
     max_guests: number
     published: boolean
     deleted_at: string | null
+    offers_transport: boolean
+    transport_price_per_person_ore: number | null
   }
   if (!c.published || c.deleted_at) {
     return { error: "Hytte er ikke tilgængelig" }
@@ -98,6 +118,19 @@ export async function createCabinBooking(
   }
   if (guests > c.max_guests) {
     return { error: `Højst ${c.max_guests} gæster` }
+  }
+
+  let trip: TransportTrip = input.transport_trip ?? "none"
+  const allowed: TransportTrip[] = ["none", "round_trip", "outbound", "return"]
+  if (!allowed.includes(trip)) trip = "none"
+  if (!c.offers_transport) {
+    trip = "none"
+  }
+
+  const perPerson = c.transport_price_per_person_ore ?? 0
+  const transportTotalOre = transportOreForTrip(trip, perPerson, guests)
+  if (c.offers_transport && trip !== "none" && perPerson <= 0) {
+    return { error: "Transportpris er ikke angivet for denne hytte" }
   }
 
   const { data: owner, error: ownerErr } = await supabase
@@ -122,11 +155,27 @@ export async function createCabinBooking(
     return { error: "Mindst én overnatning" }
   }
 
-  const totalPriceOre = c.price_per_night_ore * nights
-  if (totalPriceOre < 1) {
+  const cabinStayOre = c.price_per_night_ore * nights
+  if (cabinStayOre < 1) {
     return { error: "Ugyldig pris" }
   }
+  const totalPriceOre = cabinStayOre + transportTotalOre
   const platformFeeOre = Math.round(totalPriceOre * 0.15)
+
+  const requestedNights = enumerateNights(cIn.d, cOut.d)
+  if (requestedNights.length > 0) {
+    const { data: manualHits } = await supabase
+      .from("cabin_availability")
+      .select("id")
+      .eq("cabin_id", c.id)
+      .eq("is_available", false)
+      .is("deleted_at", null)
+      .in("date", requestedNights)
+      .limit(1)
+    if (manualHits && manualHits.length > 0) {
+      return { error: "Hytte er ikke ledig (vært har blokeret datoer)" }
+    }
+  }
 
   const { data: overlap } = await supabase
     .from("cabin_bookings")
@@ -154,6 +203,8 @@ export async function createCabinBooking(
       total_price_ore: totalPriceOre,
       platform_fee_ore: platformFeeOre,
       status: "pending",
+      includes_transport: transportTotalOre > 0,
+      transport_total_ore: transportTotalOre,
     })
     .select("id")
     .single()
@@ -166,22 +217,45 @@ export async function createCabinBooking(
   const bookingId = (booking as { id: string }).id
   const base = getAppBaseUrl()
 
+  const lineItems: Array<{
+    quantity: number
+    price_data: {
+      currency: "dkk"
+      unit_amount: number
+      product_data: { name: string; description?: string }
+    }
+  }> = [
+    {
+      quantity: 1,
+      price_data: {
+        currency: "dkk",
+        unit_amount: cabinStayOre,
+        product_data: { name: `${c.title} — overnatning` },
+      },
+    },
+  ]
+  if (transportTotalOre > 0) {
+    const label =
+      trip === "round_trip"
+        ? "Transport (tur-retur)"
+        : trip === "outbound"
+          ? "Transport (udrejse)"
+          : "Transport (hjemrejse)"
+    lineItems.push({
+      quantity: 1,
+      price_data: {
+        currency: "dkk",
+        unit_amount: transportTotalOre,
+        product_data: { name: label },
+      },
+    })
+  }
+
   try {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
-      line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: "dkk",
-            unit_amount: totalPriceOre,
-            product_data: {
-              name: c.title,
-            },
-          },
-        },
-      ],
+      line_items: lineItems,
       payment_intent_data: {
         application_fee_amount: platformFeeOre,
         transfer_data: {

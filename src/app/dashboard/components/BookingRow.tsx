@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import Link from "next/link"
 import { Home, Anchor, Calendar, Users, ChevronRight, Check, X } from "lucide-react"
 import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
@@ -24,6 +25,7 @@ export const STATUS_LABELS: Record<string, string> = {
 
 export interface CabinBookingData {
   id: string
+  cabin_id?: string
   status: string
   check_in: string
   check_out: string
@@ -54,18 +56,36 @@ export default function BookingRow({ booking, isHost }: Props) {
 
   return (
     <div className="bg-white rounded-xl border border-border overflow-hidden">
-      <button
-        className="w-full text-left p-4 sm:p-5 flex items-start justify-between gap-4"
+      <div
+        role="button"
+        tabIndex={0}
+        className="w-full text-left p-4 sm:p-5 flex items-start justify-between gap-4 cursor-pointer"
         onClick={() => setExpanded(!expanded)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault()
+            setExpanded((v) => !v)
+          }
+        }}
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-primary/10">
             <Home className="w-4 h-4 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-sm text-foreground truncate">
-              {booking.cabin_title ?? "Hytte"}
-            </p>
+            {booking.cabin_id ? (
+              <Link
+                href={`/hytter/${booking.cabin_id}`}
+                className="font-semibold text-sm text-foreground truncate hover:text-primary hover:underline block"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {booking.cabin_title ?? "Hytte"}
+              </Link>
+            ) : (
+              <p className="font-semibold text-sm text-foreground truncate">
+                {booking.cabin_title ?? "Hytte"}
+              </p>
+            )}
             <p className="text-xs text-muted-foreground mt-0.5">
               {isHost
                 ? `Fra: ${booking.guest_name ?? "Gæst"}`
@@ -84,7 +104,7 @@ export default function BookingRow({ booking, isHost }: Props) {
           )}
           <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${expanded ? "rotate-90" : ""}`} />
         </div>
-      </button>
+      </div>
 
       {expanded && (
         <div className="px-4 sm:px-5 pb-5 border-t border-border pt-4 space-y-3">

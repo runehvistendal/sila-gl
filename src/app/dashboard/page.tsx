@@ -201,7 +201,7 @@ export default async function DashboardPage() {
     // My bookings as guest
     supabase
       .from("cabin_bookings")
-      .select("id, status, check_in, check_out, num_guests, total_price_ore, guest_message, created_at, cabins!cabin_id(title)")
+      .select("id, cabin_id, status, check_in, check_out, num_guests, total_price_ore, guest_message, created_at, cabins!cabin_id(title)")
       .eq("guest_id", user.id)
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
@@ -212,7 +212,7 @@ export default async function DashboardPage() {
       ? supabase
           .from("cabin_bookings")
           .select(`
-        id, status, check_in, check_out, num_guests, total_price_ore, guest_message, created_at,
+        id, cabin_id, status, check_in, check_out, num_guests, total_price_ore, guest_message, created_at,
         cabins!cabin_id(title),
         profiles!guest_id(full_name)
       `)
@@ -268,6 +268,7 @@ export default async function DashboardPage() {
   /* ── Shape data ── */
   const myBookings: CabinBookingData[] = (myBookingsRaw ?? []).map((b: Record<string, unknown>) => ({
     id:              b.id as string,
+    cabin_id:        b.cabin_id as string,
     status:          b.status as string,
     check_in:        b.check_in as string,
     check_out:       b.check_out as string,
@@ -281,6 +282,7 @@ export default async function DashboardPage() {
 
   const hostBookings: CabinBookingData[] = (hostBookingsRaw ?? []).map((b: Record<string, unknown>) => ({
     id:              b.id as string,
+    cabin_id:        b.cabin_id as string,
     status:          b.status as string,
     check_in:        b.check_in as string,
     check_out:       b.check_out as string,
