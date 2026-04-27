@@ -1,63 +1,93 @@
 # Sila.gl — CLAUDE.md
 
-## Projektbeskrivelse
-Grønlands første marketplace for hytteudlejning, samsejlads og transport.
-Tre søjler: (1) Hytteudlejning, (2) Samsejlads (BlaBlaCar på vandet), (3) Transport A→B.
+## Projekt
+Grønlands marketplace for hytteudlejning og samsejlads.
+"Grønland på lokale vilkår"
+
+Repo: github.com/runehvistendal/sila-gl
+Lokalt: C:\Users\rune\sila-gl
+Base44-ref: github.com/runehvistendal/sila-2 (lokalt: C:\Users\rune\sila-2-ref\src\)
+Supabase: pngpelcaodbwwggaeyue (West EU Ireland)
 
 ## Stack
-Next.js 14 (App Router) + TypeScript + Tailwind + shadcn/ui + Supabase + Stripe Connect + Cloudinary + Mapbox + Vercel
+Next.js 14 (App Router) + TypeScript + Tailwind + shadcn/ui + Supabase + Vercel
 
-## Designregler — MUST FOLLOW
-- Base44-reference: C:\Users\rune\sila-2-ref\src\ — læs ALTID tilsvarende fil inden en ny side bygges
-- Design kopieres 1:1 fra sila-2-ref — kun logik erstattes med Supabase server actions
-- Font: Plus Jakarta Sans (Google Fonts) — importeret i layout.tsx
-- CSS-variabler i globals.css bruges overalt — aldrig hardcodede farver
-- Mobile first på ALT kode
+## Bygget og komplet (27.4.2026)
+- Landingpage (/)
+- Auth (email + Google, httpOnly cookies via @supabase/ssr)
+- Datamodel (10 tabeller, RLS, triggers)
+- /opret (type=cabin + type=transport)
+- /mine-hytter
+- /hytter (søgeside, server-side filtrering)
+- /hytter/[id] (galleri, CabinTransportSection, reviews, bookingkort)
+- /dashboard (5 tabs: bookinger, anmodninger, åbne ønsker, mine opslag, indbakke)
+- /transport (søgeside, TransportCard, TransportFilters)
+- /transport/[id] (info-kort, bookingkort, returtur, anmodningsformular, reviews)
+- Navbar (transparent/scroll, plus-dropdown rolle-baseret)
 
-## Sikkerhedsregler — MÅ ALDRIG BRYDES
-- Roller server-side via RLS — ALDRIG localStorage
-- Stripe-pris ALTID server-side i API route — aldrig frontend
+## Næste i rækkefølge
+1. /profil
+2. Cloudinary billedupload på /opret
+3. Stripe Connect + webhooks
+4. /booking/success + /cancelled
+5. Footer
+6. /admin/*
+
+## Designregel
+Kopiér design 1:1 fra sila-2-ref inden en ny side bygges.
+Læs altid den tilsvarende Base44-fil FØR du skriver kode.
+
+## Sikkerhedsregler — må ALDRIG brydes
+- Roller server-side via Supabase RLS — ALDRIG localStorage
+- Stripe-pris ALTID server-side i API route
 - JWT i httpOnly cookies via @supabase/ssr — ALDRIG localStorage
-- host_id/owner_id sættes via auth.uid() server-side — aldrig fra form
-- Reviews kræver completed booking — valideret med RLS i databasen
-- Favourites filtreret på auth.uid() — aldrig user_email
-- Admin-ruter: Next.js middleware.ts + RLS
-- Filtrering ALTID i Supabase query — aldrig client-side useMemo/filter
+- host_id/owner_id sættes via auth.uid() server-side
+- Reviews kræver completed booking (RLS)
+- Admin-ruter: middleware.ts + RLS
+- Filtrering ALTID i Supabase query — aldrig client-side
+
+## Privatlivs- og kommunikationsregel — må ALDRIG brydes
+- Vis ALDRIG bruger-emails i UI — brug altid full_name (fallback: "Sila-sejler" / "Sila-udbyder")
+- Ingen direkte kontaktinfo (email, telefon, sociale medier) må eksponeres på nogen side
+- Platformen er ENESTE kommunikationskanal mellem gæster og udbydere
+- SELECT-queries må ALDRIG hente email-kolonner til brug i frontend-komponenter
 
 ## Pengebeløb — KRITISK
-- Database: altid øre (integer)
-- Input: bruger skriver kr → konverteres server-side via krToOre()
-- Output: oreToKr() + formatKr() fra src/lib/money.ts
-- Aldrig float/decimal til penge
+- ALLE beløb i databasen = øre (integer)
+- Konvertering KUN i src/lib/money.ts: oreToKr() og krToOre()
+- Aldrig rå øre i UI — aldrig float/decimal til penge
 
-## Terminologi
-- sejler (ikke skipper i UI — skipper_id er OK som DB-feltnavn)
+## ride_shares — korrekte kolonner
+| Kolonne            | Type        | Bemærkning                                   |
+|--------------------|-------------|------------------------------------------------|
+| departure_at       | timestamptz | IKKE departure_date + departure_time separat   |
+| status             | enum        | IKKE active boolean. Aktive: status='active'   |
+| boat_description   | text        | IKKE boat_type                                 |
+| description        | text        | IKKE notes                                     |
+| from_latitude      | numeric     | NOT NULL                                       |
+| from_longitude     | numeric     | NOT NULL                                       |
+| to_latitude        | numeric     | NOT NULL                                       |
+| to_longitude       | numeric     | NOT NULL                                       |
+
+Findes IKKE: images, boat_type, departure_date, active
+
+## cabins — vigtige kolonner
+- owner_id (IKKE host_id)
+- transport_price_per_person_ore (IKKE transport_price_ore)
+
+## profiles
+- role_type: 'traveler' | 'provider' | 'both'
+
+## Terminologi — aldrig fravige
+- sejler (ikke skipper) i UI — skipper_id OK i DB
 - gæst (ikke bruger)
-- hytte (dansk UI — cabin OK i DB)
+- hytte (ikke cabin) i dansk UI
 - samsejlads (ikke ridesharing)
-- udbyder (hytteejer eller sejler)
-
-## Sider — status og byggeplan
-✅ / — landingpage
-✅ /opret?type=cabin — opret hytte (server action, Zod, Supabase insert)
-✅ /opret?type=transport — opret samsejlads (server action, ride_shares)
-✅ /mine-hytter — liste over egne hytter
-
-❌ /hytter — søgeside (ref: Cabins.jsx + CabinCard + CabinFilters)
-❌ /hytter/[id] — detaljeside (ref: CabinDetail.jsx)
-❌ /dashboard — alle tabs (ref: Dashboard.jsx)
-❌ /samsejlads — søgeside (ref: Transport.jsx)
-❌ /samsejlads/[id] — detaljeside (ref: TransportDetail.jsx)
-❌ /profil — rolle server-side (ref: Profile.jsx)
-❌ /booking/success + /cancelled (ref: BookingSuccess.jsx)
-❌ /favoritter (ref: Favourites.jsx)
-❌ Cloudinary billedupload
-❌ Stripe Connect + webhooks
-❌ /admin/* (ref: AdminUsers.jsx, AdminContent.jsx)
+- udbyder (generelt for hytteejer/sejler)
 
 ## Workflow
-- Inden ny side: læs C:\Users\rune\sila-2-ref\src\pages\[side].jsx + alle dens komponenter
-- Server actions i actions.ts ved siden af page.tsx
-- Supabase server client: src/lib/supabase-server.ts
-- Afslut session: git add . && git commit -m "..." && git push
-- Database-ændringer: ny migration-fil → supabase db push
+- Cursor-prompts kopieres ind i Cursor-chatfeltet
+- De erstatter ALDRIG CLAUDE.md direkte
+- Start altid: "Læs CLAUDE.md"
+- Afslut: git add . && git commit -m "..." && git push
+- DB-ændringer: ny migration-fil → supabase db push
