@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase-server"
+import { createServiceClient } from "@/lib/supabase-service"
 import { resolveDisplayName } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
 import DashboardClient from "./DashboardClient"
@@ -66,9 +67,14 @@ export default async function DashboardPage() {
   if (hasAssets && roleType === "traveler") {
     if (process.env.NODE_ENV === "development") {
       // eslint-disable-next-line no-console
-      console.log("[dashboard/reconcile] running UPDATE profiles SET role_type = both")
+      console.log("[dashboard/reconcile] running UPDATE profiles SET role_type = both", {
+        useServiceRole: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+      })
     }
-    const { error: roleUpErr } = await supabase
+    const updateClient = process.env.SUPABASE_SERVICE_ROLE_KEY
+      ? createServiceClient()
+      : supabase
+    const { error: roleUpErr } = await updateClient
       .from("profiles")
       .update({ role_type: "both" })
       .eq("id", user.id)
