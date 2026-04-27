@@ -105,6 +105,10 @@ export default function ProviderOverviewTab({ transportRequests, hostBookings }:
 
   return (
     <div className="space-y-6">
+      <p className="text-sm text-muted-foreground bg-muted/60 border border-border rounded-xl px-4 py-3">
+        Af hensyn til sikker betaling opfordrer Sila til at alle aftaler indgås på platformen.
+      </p>
+
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="bg-white rounded-xl border border-border p-4">

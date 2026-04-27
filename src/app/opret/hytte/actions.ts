@@ -121,6 +121,16 @@ export async function createHytte(
     return { errors: { _form: ["Der opstod en fejl. Prøv igen."] } }
   }
 
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("role_type")
+    .eq("id", user.id)
+    .single()
+
+  if (prof?.role_type === "traveler") {
+    await supabase.from("profiles").update({ role_type: "both" }).eq("id", user.id)
+  }
+
   redirect("/dashboard?tab=mine-opslag&toast=hytte-saved")
 }
 

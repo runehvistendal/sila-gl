@@ -227,7 +227,7 @@ export default function SejladsOpslagForm({ boat }: Props) {
             </p>
           )}
           <p className="text-sm text-muted-foreground mt-2">
-            Gæster vælger selv om de vil købe enkeltbillet eller returtur ved booking.
+            Gæster vælger selv enkeltbillet eller returtur ved booking.
           </p>
         </div>
 

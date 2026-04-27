@@ -388,12 +388,9 @@ export default function HytteForm({ mode, initialCabin }: Props) {
           <div className="space-y-4 pt-2">
             <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 space-y-2">
               <p>
-                <strong>Prisen du angiver</strong> er for transport <strong>tur/retur pr. person</strong>.
+                Prisen du angiver er for transport tur/retur pr. person.
               </p>
-              <p>
-                Gæster der kun vil én vej betaler enkeltbilletprisen — den beregnes
-                automatisk til 60% af tur/retur.
-              </p>
+              <p>Gæster der kun vil én vej betaler 60% automatisk.</p>
             </div>
             <div>
               <Label htmlFor="transport_from">

@@ -173,8 +173,8 @@ export default async function DashboardPage() {
     profiles:        r.profiles as { full_name: string | null } | null,
   }))
 
-  /* ── Role — default to 'both' so all tabs show when role_type is NULL ── */
-  const roleType   = profile?.role_type ?? "both"
+  /* ── Role — DB default is 'traveler'; null behandles som traveler ── */
+  const roleType   = profile?.role_type ?? "traveler"
   const isProvider = roleType === "provider" || roleType === "both"
   const isTraveler = roleType === "traveler" || roleType === "both"
   const displayName = profile?.full_name ?? null
@@ -185,6 +185,7 @@ export default async function DashboardPage() {
       <Navbar user={navUser} />
       <DashboardClient
         displayName={displayName}
+        roleType={roleType}
         isProvider={isProvider}
         isTraveler={isTraveler}
         homeCity={homeCity}

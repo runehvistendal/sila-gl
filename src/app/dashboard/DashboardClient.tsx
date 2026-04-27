@@ -18,6 +18,7 @@ import { acceptTransportRequest, declineTransportRequest, duplicateCabin, duplic
 import EmptyState from "./components/EmptyState"
 import OpenRequestsList, { type TransportRequestData } from "./components/OpenRequestsList"
 import ProviderOverviewTab from "./components/ProviderOverviewTab"
+import DashboardOnboardingBanner from "./components/DashboardOnboardingBanner"
 import { toast } from "sonner"
 
 interface ReviewData {
@@ -64,6 +65,7 @@ interface TransportRequestMine {
 
 interface Props {
   displayName: string | null
+  roleType: string
   isProvider: boolean
   isTraveler: boolean
   homeCity: string | null
@@ -81,6 +83,7 @@ interface Props {
 
 export default function DashboardClient({
   displayName,
+  roleType,
   isProvider,
   isTraveler,
   homeCity,
@@ -97,7 +100,12 @@ export default function DashboardClient({
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
-  const urlTab = searchParams.get("tab") ?? "bookings"
+  const rawTab = searchParams.get("tab") ?? "bookings"
+  const urlTab = (() => {
+    if (!isTraveler && rawTab === "requests") return "bookings"
+    if (!isProvider && (rawTab === "listings" || rawTab === "open-requests")) return "bookings"
+    return rawTab
+  })()
 
   useEffect(() => {
     const t = searchParams.get("toast")
@@ -192,6 +200,8 @@ export default function DashboardClient({
           </div>
         </div>
 
+        {roleType === "traveler" && <DashboardOnboardingBanner />}
+
         {/* ── Tabs ── */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="overflow-x-auto pb-1">
@@ -208,13 +218,15 @@ export default function DashboardClient({
                 )}
               </TabsTrigger>
 
-              {/* Tab 2: Mine anmodninger */}
-              <TabsTrigger value="requests" className="rounded-lg px-4 py-2 text-sm gap-2">
-                <Clock className="w-4 h-4" />
-                Anmodninger
-              </TabsTrigger>
+              {/* Tab 2: Mine ønsker */}
+              {isTraveler && (
+                <TabsTrigger value="requests" className="rounded-lg px-4 py-2 text-sm gap-2">
+                  <Clock className="w-4 h-4" />
+                  Mine ønsker
+                </TabsTrigger>
+              )}
 
-              {/* Tab 3: Gæsteønsker (kun udbydere) */}
+              {/* Tab 3: Gæsteønsker */}
               {isProvider && (
                 <TabsTrigger value="open-requests" className="rounded-lg px-4 py-2 text-sm gap-2">
                   <Inbox className="w-4 h-4" />
@@ -235,18 +247,16 @@ export default function DashboardClient({
                 </TabsTrigger>
               )}
 
-              {/* Tab 5: Indbakke */}
-              {isProvider && (
-                <TabsTrigger value="inbox" className="rounded-lg px-4 py-2 text-sm gap-2">
-                  <Briefcase className="w-4 h-4" />
-                  Indbakke
-                  {pendingHostBookings > 0 && (
-                    <span className="bg-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {pendingHostBookings}
-                    </span>
-                  )}
-                </TabsTrigger>
-              )}
+              {/* Tab 5: Indbakke — alle roller */}
+              <TabsTrigger value="inbox" className="rounded-lg px-4 py-2 text-sm gap-2">
+                <Briefcase className="w-4 h-4" />
+                Indbakke
+                {unreadMessages > 0 && (
+                  <span className="bg-primary text-white text-xs rounded-full min-w-[1.25rem] h-5 px-1 flex items-center justify-center">
+                    {unreadMessages > 99 ? "99+" : unreadMessages}
+                  </span>
+                )}
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -282,9 +292,10 @@ export default function DashboardClient({
                 </button>
               </div>
 
-              {/* My bookings (as guest) */}
+              {/* Som gæst */}
               {isTraveler && (
-                <div>
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-foreground">Mine bookinger</h3>
                   {bookingFilter === "active" ? (
                     activeMyBookings.length > 0 ? (
                       <div className="space-y-3">
@@ -295,44 +306,51 @@ export default function DashboardClient({
                     ) : (
                       <EmptyState icon={Calendar} message="Ingen aktive bookinger" cta="Udforsk hytter" ctaHref="/hytter" />
                     )
+                  ) : historyMyBookings.length > 0 ? (
+                    <div className="space-y-3">
+                      {historyMyBookings.map((b) => (
+                        <BookingRow key={b.id} booking={b} isHost={false} />
+                      ))}
+                    </div>
                   ) : (
-                    historyMyBookings.length > 0 ? (
-                      <div className="space-y-3">
-                        {historyMyBookings.map((b) => (
-                          <BookingRow key={b.id} booking={b} isHost={false} />
-                        ))}
-                      </div>
-                    ) : (
-                      <EmptyState icon={Clock} message="Ingen historik endnu" cta="Udforsk hytter" ctaHref="/hytter" />
-                    )
+                    <EmptyState icon={Clock} message="Ingen historik endnu" cta="Udforsk hytter" ctaHref="/hytter" />
                   )}
                 </div>
               )}
 
-              {/* Host bookings */}
-              {isProvider && hostBookings.length > 0 && (
-                <div className="mt-8">
-                  <h3 className="font-semibold text-foreground mb-3">Indkommende bookinger</h3>
-                  <div className="space-y-3">
-                    {hostBookings
-                      .filter((b) =>
-                        bookingFilter === "active"
-                          ? ["pending", "confirmed"].includes(b.status)
-                          : ["completed", "cancelled"].includes(b.status)
-                      )
-                      .map((b) => (
-                        <BookingRow key={b.id} booking={b} isHost={true} />
-                      ))}
-                  </div>
+              {/* Som udbyder */}
+              {isProvider && (
+                <div className={roleType === "both" && isTraveler ? "mt-10 pt-8 border-t border-border" : ""}>
+                  <h3 className="font-semibold text-foreground mb-3">Indkomne bookinger</h3>
+                  {hostBookings.length === 0 ? (
+                    <p className="text-sm text-muted-foreground bg-muted/50 rounded-xl p-4">
+                      Ingen bookinger på dine opslag endnu.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {hostBookings
+                        .filter((b) =>
+                          bookingFilter === "active"
+                            ? ["pending", "confirmed"].includes(b.status)
+                            : ["completed", "cancelled"].includes(b.status)
+                        )
+                        .map((b) => (
+                          <BookingRow key={b.id} booking={b} isHost={true} />
+                        ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           </TabsContent>
 
-          {/* ── TAB 2: ANMODNINGER ── */}
+          {/* ── TAB 2: MINE ØNSKER ── */}
           <TabsContent value="requests">
             <div className="space-y-8">
               <div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Ønsker du har sendt som gæst
+                </p>
                 <h3 className="font-semibold text-foreground mb-3">Mine transportanmodninger</h3>
                 {myTransportRequests.length === 0 ? (
                   <EmptyState icon={Anchor} message="Ingen transportanmodninger endnu" cta="Anmod om transport" ctaHref="/anmod?type=transport" />
@@ -351,6 +369,9 @@ export default function DashboardClient({
           {isProvider && (
             <TabsContent value="open-requests">
               <div className="space-y-6">
+                <p className="text-sm text-muted-foreground">
+                  Ønsker fra gæster i dit område — byd ind med dit tilbud
+                </p>
                 {/* Toggle — transport only for now (cabin requests table not built yet) */}
                 <div className="flex gap-2 bg-muted rounded-xl p-1 w-fit">
                   <button
@@ -550,14 +571,12 @@ export default function DashboardClient({
           )}
 
           {/* ── TAB 5: INDBAKKE ── */}
-          {isProvider && (
-            <TabsContent value="inbox">
-              <ProviderOverviewTab
-                transportRequests={openTransportRequests}
-                hostBookings={hostBookings}
-              />
-            </TabsContent>
-          )}
+          <TabsContent value="inbox">
+            <ProviderOverviewTab
+              transportRequests={openTransportRequests}
+              hostBookings={hostBookings}
+            />
+          </TabsContent>
         </Tabs>
       </div>
     </div>

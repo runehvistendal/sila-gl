@@ -55,12 +55,13 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
       .eq("id", user.id)
       .single()
       .then(({ data }) => {
-        if (data?.role_type) setRoleType(data.role_type as string)
+        setRoleType((data?.role_type as string | undefined) ?? "traveler")
       })
   }, [user])
 
-  const isProvider = roleType === "provider" || roleType === "both" || roleType === null
-  const isTraveler = roleType === "traveler" || roleType === "both" || roleType === null
+  const effectiveRole = roleType ?? "traveler"
+  const isProvider = effectiveRole === "provider" || effectiveRole === "both"
+  const isTraveler = effectiveRole === "traveler" || effectiveRole === "both"
 
   /* ── UI state ── */
   const [mobileOpen,  setMobileOpen]  = useState(false)
@@ -206,6 +207,15 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                         {user.email}
                       </p>
                     </div>
+                    {effectiveRole === "traveler" && (
+                      <Link
+                        href="/opret"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"
+                      >
+                        🏠 Opret hytte eller båd
+                      </Link>
+                    )}
                     <Link
                       href="/dashboard"
                       onClick={() => setUserMenuOpen(false)}
@@ -213,13 +223,15 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                     >
                       Dashboard
                     </Link>
-                    <Link
-                      href="/opret"
-                      onClick={() => setUserMenuOpen(false)}
-                      className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      Opret opslag
-                    </Link>
+                    {(effectiveRole === "provider" || effectiveRole === "both") && (
+                      <Link
+                        href="/opret"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        Opret opslag
+                      </Link>
+                    )}
                     <button
                       onClick={handleSignOut}
                       className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition-colors border-t border-gray-100 text-destructive"
@@ -292,6 +304,9 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
             {user ? (
               <>
                 <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">Dashboard</Link>
+                {effectiveRole === "traveler" && (
+                  <Link href="/opret" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">🏠 Opret hytte eller båd</Link>
+                )}
                 {isProvider && (
                   <Link href="/opret" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">Opret opslag</Link>
                 )}
