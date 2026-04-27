@@ -19,12 +19,14 @@ import {
 } from "@/lib/greenlandLocations"
 import { updateProfile } from "./actions"
 import { Loader2 } from "lucide-react"
+import AvatarUpload from "@/components/profile/AvatarUpload"
 
 export type ProfileInitial = {
   full_name: string
   location_id: string | null
   language: "da" | "en" | "kl"
   role_type: "traveler" | "provider" | "both"
+  avatar_url: string | null
 }
 
 const ROLE_LABEL: Record<ProfileInitial["role_type"], string> = {
@@ -40,12 +42,6 @@ const LANG_OPTIONS: { value: ProfileInitial["language"]; label: string }[] = [
   { value: "en", label: "English" },
   { value: "kl", label: "Kalaallisut" },
 ]
-
-function initialLetter(fullName: string): string {
-  const t = fullName.trim()
-  if (!t) return "?"
-  return t.charAt(0).toUpperCase()
-}
 
 export default function ProfileForm({ initial }: { initial: ProfileInitial }) {
   const [isPending, startTransition] = useTransition()
@@ -74,22 +70,7 @@ export default function ProfileForm({ initial }: { initial: ProfileInitial }) {
       onSubmit={onSubmit}
       className="w-full max-w-lg mx-auto flex flex-col gap-6 px-4 sm:px-0"
     >
-      <div className="flex flex-col items-center gap-3">
-        <div
-          className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold border-2"
-          style={{
-            backgroundColor: "rgba(74, 156, 199, 0.2)",
-            borderColor: "#4A9CC7",
-            color: "#fff",
-          }}
-          aria-hidden
-        >
-          {initialLetter(fullName)}
-        </div>
-        <p className="text-sm text-white/70 text-center">
-          Profilbillede kan tilføjes senere
-        </p>
-      </div>
+      <AvatarUpload fullName={fullName} initialAvatarUrl={initial.avatar_url} />
 
       <div className="space-y-2">
         <label htmlFor="full_name" className="text-sm font-medium text-white">

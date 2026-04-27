@@ -6,6 +6,7 @@ import { CABIN_FACILITIES, FACILITY_SECTION_LABELS, getFixedFacilityValueSet } f
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 import AddOnServicesEditor, { type AddOnService } from "@/components/shared/AddOnServicesEditor"
 import { oreToKr } from "@/lib/money"
+import CabinImageUpload from "@/components/cabins/CabinImageUpload"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -40,6 +41,7 @@ export type InitialCabin = {
   offers_transport: boolean
   transport_from: string | null
   transport_price_roundtrip_ore: number | null
+  images: string[] | null
 }
 
 interface Props {
@@ -358,17 +360,7 @@ export default function HytteForm({ mode, initialCabin }: Props) {
         />
       </div>
 
-      {/* 7. Billeder */}
-      <div className="bg-white rounded-2xl border border-border shadow-sm p-6">
-        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-          Billeder
-        </p>
-        <div className="rounded-xl border-2 border-dashed border-border bg-muted/30 py-10 flex flex-col items-center justify-center gap-2 text-muted-foreground">
-          <p className="text-sm">Billeder tilføjes i næste trin (Cloudinary)</p>
-        </div>
-      </div>
-
-      {/* 8. Transport */}
+      {/* 7. Transport */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-4">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
           Transport
@@ -432,6 +424,23 @@ export default function HytteForm({ mode, initialCabin }: Props) {
                 <span className="text-xs">(60% — beregnes automatisk)</span>
               </p>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* 8. Billeder — lige over gem (kun redigering) */}
+      <div className="bg-white rounded-2xl border border-border shadow-sm p-6">
+        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          Billeder
+        </p>
+        {mode === "edit" && initialCabin ? (
+          <CabinImageUpload
+            cabinId={initialCabin.id}
+            initialImages={initialCabin.images ?? []}
+          />
+        ) : (
+          <div className="rounded-xl border-2 border-dashed border-border bg-muted/30 py-10 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+            <p className="text-sm">Gem hytten først — derefter kan du uploade billeder under Rediger</p>
           </div>
         )}
       </div>

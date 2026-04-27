@@ -1,8 +1,10 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase-server"
+import { isCloudinaryImageUrl } from "@/lib/cloudinaryUrl"
 import { krToOre } from "@/lib/money"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 const PLACEHOLDER_NIGHT_KR = 100
@@ -270,4 +272,60 @@ export async function updateHytte(
   }
 
   redirect("/dashboard?tab=mine-opslag&toast=cabin-updated")
+}
+
+export type UpdateCabinImagesResult =
+  | { success: true }
+  | { error: string }
+
+const MAX_CABIN_IMAGES = 8
+
+export async function updateCabinImages(
+  cabinId: string,
+  urls: string[],
+): Promise<UpdateCabinImagesResult> {
+  if (urls.length > MAX_CABIN_IMAGES) {
+    return { error: `Højest ${MAX_CABIN_IMAGES} billeder` }
+  }
+  for (const u of urls) {
+    if (!isCloudinaryImageUrl(u)) {
+      return { error: "Ugyldig billed-URL" }
+    }
+  }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: "Du skal være logget ind" }
+  }
+
+  const { data: row } = await supabase
+    .from("cabins")
+    .select("id, owner_id")
+    .eq("id", cabinId)
+    .is("deleted_at", null)
+    .maybeSingle()
+
+  if (!row || row.owner_id !== user.id) {
+    return { error: "Hytte ikke fundet" }
+  }
+
+  const { error } = await supabase
+    .from("cabins")
+    .update({ images: urls })
+    .eq("id", cabinId)
+    .eq("owner_id", user.id)
+
+  if (error) {
+    return { error: error.message || "Kunne ikke gemme billeder" }
+  }
+
+  revalidatePath("/opret/hytte/" + cabinId + "/rediger")
+  revalidatePath("/hytter")
+  revalidatePath("/hytter/" + cabinId)
+  revalidatePath("/dashboard")
+  return { success: true }
 }

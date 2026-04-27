@@ -22,7 +22,7 @@ export default async function RedigerHyttePage({
   const { data: cabin, error } = await supabase
     .from("cabins")
     .select(
-      "id, title, description, location_hub, max_guests, bedrooms, facilities, addon_services, offers_transport, transport_from, transport_price_roundtrip_ore, owner_id",
+      "id, title, description, location_hub, max_guests, bedrooms, facilities, addon_services, offers_transport, transport_from, transport_price_roundtrip_ore, owner_id, images",
     )
     .eq("id", id)
     .is("deleted_at", null)
@@ -43,6 +43,7 @@ export default async function RedigerHyttePage({
     offers_transport: cabin.offers_transport,
     transport_from: cabin.transport_from,
     transport_price_roundtrip_ore: cabin.transport_price_roundtrip_ore,
+    images: (cabin as { images?: string[] | null }).images ?? [],
   }
 
   const navUser = await getNavUserForPage(supabase, user)

@@ -21,7 +21,7 @@ export default async function ProfilPage() {
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "full_name, role_type, location_id, language, location",
+      "full_name, role_type, location_id, language, location, avatar_url",
     )
     .eq("id", user.id)
     .maybeSingle()
@@ -70,6 +70,7 @@ export default async function ProfilPage() {
     location_id: locId,
     language,
     role_type: roleType,
+    avatar_url: (profile as { avatar_url?: string | null }).avatar_url ?? null,
   }
 
   const navUser = await getNavUserForPage(supabase, user)

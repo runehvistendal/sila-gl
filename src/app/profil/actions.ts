@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase-server"
+import { isCloudinaryImageUrl } from "@/lib/cloudinaryUrl"
 import { findLocationById } from "@/lib/greenlandLocations"
 
 export type UpdateProfileResult =
@@ -56,6 +57,37 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
 
   if (error) {
     return { error: error.message || "Kunne ikke gemme profil" }
+  }
+
+  revalidatePath("/profil")
+  revalidatePath("/dashboard")
+  return { success: true }
+}
+
+export async function updateAvatar(url: string): Promise<UpdateProfileResult> {
+  if (!isCloudinaryImageUrl(url)) {
+    return { error: "Ugyldig billed-URL" }
+  }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: "Du skal være logget ind" }
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      avatar_url: url,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", user.id)
+
+  if (error) {
+    return { error: error.message || "Kunne ikke gemme profilbillede" }
   }
 
   revalidatePath("/profil")
