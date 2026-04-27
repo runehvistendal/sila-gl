@@ -2,6 +2,7 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { ChevronLeft, MapPin, Users, Anchor, Check, User } from "lucide-react"
 import { createClient } from "@/lib/supabase-server"
+import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
 import ListingImageGallery from "@/components/cabins/ListingImageGallery"
 import CabinReviews from "@/components/cabins/CabinReviews"
@@ -46,16 +47,7 @@ export default async function CabinDetailPage({
 
   /* ── Auth ── */
   const { data: { user } } = await supabase.auth.getUser()
-  const navUser = user
-    ? {
-        id: user.id,
-        email: user.email ?? null,
-        name:
-          (user.user_metadata?.full_name as string) ??
-          (user.user_metadata?.name as string) ??
-          null,
-      }
-    : null
+  const navUser = user ? await getNavUserForPage(supabase, user.id) : null
 
   /* ── Cabin ── */
   const { data: cabinRaw, error: cabinError } = await supabase

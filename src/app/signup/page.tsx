@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase-server"
+import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
 import SignupForm from "./SignupForm"
 
@@ -8,16 +9,7 @@ export default async function SignupPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const navUser = user
-    ? {
-        id: user.id,
-        email: user.email ?? null,
-        name:
-          (user.user_metadata?.full_name as string) ??
-          (user.user_metadata?.name as string) ??
-          null,
-      }
-    : null
+  const navUser = user ? await getNavUserForPage(supabase, user.id) : null
 
   return (
     <main className="min-h-screen flex flex-col" style={{ backgroundColor: "#09192A" }}>

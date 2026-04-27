@@ -16,12 +16,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { createClient } from "@/lib/supabase"
 import LoginModal from "@/components/auth/LoginModal"
+import type { NavUser } from "@/lib/getNavUser"
 
-export type NavUser = {
-  id: string
-  email?: string | null
-  name?: string | null
-}
+export type { NavUser } from "@/lib/getNavUser"
 
 export default function Navbar({ user }: { user?: NavUser | null }) {
   const router   = useRouter()
@@ -87,7 +84,7 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
     router.refresh()
   }
 
-  const displayName = user?.name ?? user?.email ?? null
+  const displayName = user?.fullName ?? null
   const initial = displayName ? displayName[0].toUpperCase() : "?"
 
   /* Dynamic classes that depend on solid/transparent */
@@ -203,19 +200,12 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                   <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 py-1">
                     <div className="px-4 py-3 border-b border-gray-100">
                       <p className="text-xs text-gray-400">Logget ind som</p>
-                      <p className="text-sm font-semibold text-gray-800 truncate">
-                        {user.email}
-                      </p>
+                      {user.fullName ? (
+                        <p className="text-sm font-semibold text-gray-800 truncate">
+                          {user.fullName}
+                        </p>
+                      ) : null}
                     </div>
-                    {effectiveRole === "traveler" && (
-                      <Link
-                        href="/opret"
-                        onClick={() => setUserMenuOpen(false)}
-                        className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"
-                      >
-                        🏠 Opret hytte eller båd
-                      </Link>
-                    )}
                     <Link
                       href="/dashboard"
                       onClick={() => setUserMenuOpen(false)}
@@ -223,18 +213,10 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                     >
                       Dashboard
                     </Link>
-                    {(effectiveRole === "provider" || effectiveRole === "both") && (
-                      <Link
-                        href="/opret"
-                        onClick={() => setUserMenuOpen(false)}
-                        className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                      >
-                        Opret opslag
-                      </Link>
-                    )}
                     <button
+                      type="button"
                       onClick={handleSignOut}
-                      className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition-colors border-t border-gray-100 text-destructive"
+                      className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition-colors border-t border-gray-100 text-destructive font-medium"
                     >
                       Log ud
                     </button>
@@ -304,12 +286,6 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
             {user ? (
               <>
                 <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">Dashboard</Link>
-                {effectiveRole === "traveler" && (
-                  <Link href="/opret" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">🏠 Opret hytte eller båd</Link>
-                )}
-                {isProvider && (
-                  <Link href="/opret" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">Opret opslag</Link>
-                )}
                 {isTraveler && (
                   <Link href="/anmod?type=cabin" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">Anmod om hytte</Link>
                 )}

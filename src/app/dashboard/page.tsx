@@ -20,18 +20,17 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/")
 
-  const navUser = {
-    id:    user.id,
-    email: user.email ?? null,
-    name:  (user.user_metadata?.full_name as string) ?? (user.user_metadata?.name as string) ?? null,
-  }
-
   /* ── Profile ── */
   const { data: profile } = await supabase
     .from("profiles")
     .select("full_name, role_type, location")
     .eq("id", user.id)
     .single()
+
+  const navUser = {
+    id: user.id,
+    fullName: profile?.full_name ?? null,
+  }
 
   /* ── Parallel data fetching ── */
   const [

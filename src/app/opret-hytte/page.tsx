@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase-server"
+import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
 import CreateHytteForm from "./CreateHytteForm"
 
@@ -17,14 +18,7 @@ export default async function OpretHyttePage() {
     redirect("/")
   }
 
-  const navUser = {
-    id: user.id,
-    email: user.email ?? null,
-    name:
-      (user.user_metadata?.full_name as string) ??
-      (user.user_metadata?.name as string) ??
-      null,
-  }
+  const navUser = await getNavUserForPage(supabase, user.id)
 
   return (
     <main className="min-h-screen bg-background">

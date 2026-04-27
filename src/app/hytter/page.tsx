@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import { createClient } from "@/lib/supabase-server"
+import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
 import CabinFilters, { type FilterValues } from "@/components/cabins/CabinFilters"
 import CabinGrid from "@/components/cabins/CabinGrid"
@@ -33,16 +34,7 @@ export default async function HytterPage({
     data: { user },
   } = await supabase.auth.getUser()
 
-  const navUser = user
-    ? {
-        id: user.id,
-        email: user.email ?? null,
-        name:
-          (user.user_metadata?.full_name as string) ??
-          (user.user_metadata?.name as string) ??
-          null,
-      }
-    : null
+  const navUser = user ? await getNavUserForPage(supabase, user.id) : null
 
   const params = await searchParams
   const { hub, guests, transport, minPrice, maxPrice, sort, search } = params

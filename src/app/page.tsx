@@ -5,6 +5,7 @@ import Navbar from "@/components/layout/Navbar"
 import HeroContent from "./components/HeroContent"
 import MapWrapper from "./components/MapWrapper"
 import { createClient } from "@/lib/supabase-server"
+import { getNavUserForPage } from "@/lib/getNavUser"
 
 const CABINS = [
   { id: 1, title: "Hytte ved Icefjord",   location: "Ilulissat", region: "Qeqertalik", price: 1200, rating: 4.9, reviews: 28, host: "Niels A.",  badge: "Superhytte" },
@@ -39,16 +40,7 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const navUser = user
-    ? {
-        id: user.id,
-        email: user.email ?? null,
-        name:
-          (user.user_metadata?.full_name as string) ??
-          (user.user_metadata?.name as string) ??
-          null,
-      }
-    : null
+  const navUser = user ? await getNavUserForPage(supabase, user.id) : null
 
   return (
     <main>
