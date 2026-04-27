@@ -21,34 +21,118 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/")
 
-  /* ── Profile (server) — én række: nav + tabs + by ── */
+  /* ── Profile + my cabins + my boats (først — reconcile før resten) ── */
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("full_name, role_type, location")
     .eq("id", user.id)
     .maybeSingle()
 
+  const [{ data: myCabinsRaw }, { data: myBoatsRaw }] = await Promise.all([
+    supabase
+      .from("cabins")
+      .select("id, title, location_hub, price_per_night_ore, images, published")
+      .eq("owner_id", user.id)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("boats")
+      .select("id, name, boat_type, capacity")
+      .eq("owner_id", user.id)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false }),
+  ])
+
+  const cabinRowCount = myCabinsRaw?.length ?? 0
+  const boatRowCount = myBoatsRaw?.length ?? 0
+  const hasAssets = cabinRowCount > 0 || boatRowCount > 0
+
+  let roleType =
+    (profile?.role_type as "traveler" | "provider" | "both" | undefined) ?? "traveler"
+  let profileRow = profile
+
   if (process.env.NODE_ENV === "development") {
     // eslint-disable-next-line no-console
-    console.log("[dashboard/profile]", {
-      role_type: profile?.role_type ?? null,
+    console.log("[dashboard/reconcile:inputs]", {
+      authUserId: user.id,
+      profiles_role_type: profile?.role_type ?? null,
       profileError: profileError?.message ?? null,
+      cabinsRowCount: cabinRowCount,
+      boatsRowCount: boatRowCount,
+      willRunUpdate: hasAssets && roleType === "traveler",
     })
   }
 
-  const displayNameResolved = resolveDisplayName(profile, user)
+  if (hasAssets && roleType === "traveler") {
+    if (process.env.NODE_ENV === "development") {
+      // eslint-disable-next-line no-console
+      console.log("[dashboard/reconcile] running UPDATE profiles SET role_type = both")
+    }
+    const { error: roleUpErr } = await supabase
+      .from("profiles")
+      .update({ role_type: "both" })
+      .eq("id", user.id)
+    if (process.env.NODE_ENV === "development") {
+      // eslint-disable-next-line no-console
+      console.log("[dashboard/reconcile] UPDATE result", {
+        error: roleUpErr?.message ?? null,
+        ran: true,
+      })
+    }
+    if (!roleUpErr) {
+      const { data: profileAfter, error: afterErr } = await supabase
+        .from("profiles")
+        .select("full_name, role_type, location")
+        .eq("id", user.id)
+        .maybeSingle()
+      if (process.env.NODE_ENV === "development") {
+        // eslint-disable-next-line no-console
+        console.log("[dashboard/reconcile] profile re-fetched after UPDATE", {
+          role_type: profileAfter?.role_type ?? null,
+          reFetchError: afterErr?.message ?? null,
+        })
+      }
+      if (profileAfter) {
+        profileRow = profileAfter
+      }
+      {
+        const rt = profileRow?.role_type
+        if (rt === "both" || rt === "provider") {
+          roleType = rt
+        } else {
+          /* UPDATE lykkedes; vis provider-tabs selv hvis re-fetch mangler eller er stale */
+          roleType = "both"
+        }
+      }
+    }
+  } else if (process.env.NODE_ENV === "development") {
+    // eslint-disable-next-line no-console
+    console.log("[dashboard/reconcile] UPDATE skipped", {
+      hasAssets,
+      roleType,
+    })
+  }
+
+  const displayNameResolved = resolveDisplayName(profileRow, user)
   const navUser = {
     id: user.id,
     fullName: displayNameResolved,
   }
 
-  /* ── Parallel data fetching ── */
+  if (process.env.NODE_ENV === "development") {
+    // eslint-disable-next-line no-console
+    console.log("[dashboard/DashboardClient] final role_type", {
+      roleTypeSent: roleType,
+    })
+  }
+
+  const cabinIds = (myCabinsRaw ?? []).map((c: { id: string }) => c.id)
+
+  /* ── Parallel data fetching (resterende — genbruger myCabinsRaw / myBoatsRaw) ── */
   const [
     { data: myBookingsRaw },
     { data: hostBookingsRaw },
-    { data: myCabinsRaw },
     { data: myRideSharesRaw },
-    { data: myBoatsRaw },
     { data: openTransportRaw },
     { data: myTransportReqRaw },
     { data: reviewsRaw },
@@ -64,34 +148,19 @@ export default async function DashboardPage() {
       .limit(30),
 
     // Host bookings — bookings on cabins I own
-    supabase
-      .from("cabin_bookings")
-      .select(`
+    cabinIds.length > 0
+      ? supabase
+          .from("cabin_bookings")
+          .select(`
         id, status, check_in, check_out, num_guests, total_price_ore, guest_message, created_at,
         cabins!cabin_id(title),
         profiles!guest_id(full_name)
       `)
-      .in(
-        "cabin_id",
-        (await supabase
-          .from("cabins")
-          .select("id")
-          .eq("owner_id", user.id)
+          .in("cabin_id", cabinIds)
           .is("deleted_at", null)
-          .then((r) => r.data?.map((c: { id: string }) => c.id) ?? [])
-        )
-      )
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .limit(30),
-
-    // My cabins
-    supabase
-      .from("cabins")
-      .select("id, title, location_hub, price_per_night_ore, images, published")
-      .eq("owner_id", user.id)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false }),
+          .order("created_at", { ascending: false })
+          .limit(30)
+      : Promise.resolve({ data: [] }),
 
     // My ride shares
     supabase
@@ -100,14 +169,6 @@ export default async function DashboardPage() {
       .eq("skipper_id", user.id)
       .is("deleted_at", null)
       .order("departure_at", { ascending: false }),
-
-    // My boats
-    supabase
-      .from("boats")
-      .select("id, name, boat_type, capacity")
-      .eq("owner_id", user.id)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false }),
 
     // Open transport requests (for providers to see)
     supabase
@@ -143,29 +204,6 @@ export default async function DashboardPage() {
       .eq("recipient_id", user.id)
       .is("read_at", null),
   ])
-
-  /* ── Rulle: ejet hytte/båd men role_type endnu traveler (fx før migration / missed update) ── */
-  let roleType =
-    (profile?.role_type as "traveler" | "provider" | "both" | undefined) ?? "traveler"
-  const hasAssets =
-    (myCabinsRaw?.length ?? 0) > 0 || (myBoatsRaw?.length ?? 0) > 0
-  if (hasAssets && roleType === "traveler") {
-    const { error: roleUpErr } = await supabase
-      .from("profiles")
-      .update({ role_type: "both" })
-      .eq("id", user.id)
-    if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console
-      console.log("[dashboard/reconcile role]", {
-        before: "traveler",
-        hasAssets,
-        updateError: roleUpErr?.message ?? null,
-      })
-    }
-    if (!roleUpErr) {
-      roleType = "both"
-    }
-  }
 
   /* ── Shape data ── */
   const myBookings: CabinBookingData[] = (myBookingsRaw ?? []).map((b: Record<string, unknown>) => ({
@@ -208,7 +246,7 @@ export default async function DashboardPage() {
   const isProvider = roleType === "provider" || roleType === "both"
   const isTraveler = roleType === "traveler" || roleType === "both"
   const homeCity =
-    (profile?.location as string | null | undefined) ?? null
+    (profileRow?.location as string | null | undefined) ?? null
 
   return (
     <main>
