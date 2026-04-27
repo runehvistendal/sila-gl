@@ -10,7 +10,7 @@ const FALLBACK_BOAT = "https://images.unsplash.com/photo-1544551763-46a013bb70d5
 
 export interface RideShareCardData {
   id: string
-  skipper_id: string | null
+  sejler_id: string | null
   from_location: string
   to_location: string
   departure_at: string

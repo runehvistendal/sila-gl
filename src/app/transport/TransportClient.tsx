@@ -63,8 +63,8 @@ export default function TransportClient({ rideShares }: Props) {
   const getReturnTrip = (rs: RideShareCardData): RideShareCardData | null =>
     rideShares.find(
       (r) =>
-        r.skipper_id    === rs.skipper_id &&
-        r.skipper_id    !== null &&
+        r.sejler_id     === rs.sejler_id &&
+        r.sejler_id     !== null &&
         r.from_location === rs.to_location &&
         r.to_location   === rs.from_location &&
         r.id            !== rs.id

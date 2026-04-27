@@ -26,7 +26,7 @@ export default async function TransportPage() {
   const { data, error } = await supabase
     .from("ride_shares")
     .select(`
-      id, skipper_id, from_location, to_location, departure_at,
+      id, sejler_id:skipper_id, from_location, to_location, departure_at,
       seats_available, total_seats, price_per_seat_ore,
       boat_description, description, status,
       profiles!skipper_id ( full_name, avatar_url )

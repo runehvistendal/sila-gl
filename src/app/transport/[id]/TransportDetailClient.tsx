@@ -4,10 +4,11 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import {
   ArrowRight, ChevronLeft, Calendar, Clock, Users, Anchor,
-  RefreshCw, MessageSquare, User, Star, Check,
+  RefreshCw, MessageSquare, User, Star,
 } from "lucide-react"
 import { format } from "date-fns"
 import { motion, AnimatePresence } from "framer-motion"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -28,6 +29,7 @@ interface ReviewData {
 
 interface RideShareDetail {
   id: string
+  sejler_id: string | null
   from_location: string
   to_location: string
   departure_at: string
@@ -69,7 +71,6 @@ export default function TransportDetailClient({ rideShare, returnTrips, reviews,
   const [selectedReturn, setSelectedReturn] = useState<RideShareDetail | null>(null)
   const [showReqForm,    setShowReqForm]    = useState(false)
   const [reqSent,        setReqSent]        = useState(false)
-  const [toastMsg,       setToastMsg]       = useState("")
   const [reqPending,     startReq]          = useTransition()
 
   const [reqForm, setReqForm] = useState({
@@ -83,18 +84,21 @@ export default function TransportDetailClient({ rideShare, returnTrips, reviews,
   const priceOre      = rideShare.price_per_seat_ore
   const outboundTotal = seats * priceOre
 
-  function showToast(msg: string) {
-    setToastMsg(msg)
-    setTimeout(() => setToastMsg(""), 4000)
-  }
-
   function handleBook() {
-    showToast("Stripe-betaling implementeres snart — tak for din interesse!")
+    // TODO: FJERN når Stripe Connect er integreret
+    // Erstat med: router.push(`/checkout/transport/${rideShare.id}`)
+    toast("Betaling kommer snart", {
+      description: "Stripe-integration er under opsætning.",
+    })
   }
 
   function handleBookBoth(returnPriceOre: number) {
-    const combined = seats * (priceOre + returnPriceOre)
-    showToast(`Book begge: ${formatKr(combined)} — Stripe-betaling implementeres snart.`)
+    // TODO: FJERN når Stripe Connect er integreret
+    // Erstat med: router.push(`/checkout/transport/round-trip`)
+    toast("Betaling kommer snart", {
+      description: "Stripe-integration er under opsætning.",
+    })
+    void returnPriceOre
   }
 
   function handleSendRequest() {
@@ -147,21 +151,6 @@ export default function TransportDetailClient({ rideShare, returnTrips, reviews,
           <Anchor className="w-16 h-16 text-muted-foreground/30" />
         </div>
 
-        {/* ── Toast ── */}
-        <AnimatePresence>
-          {toastMsg && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className="mb-4 bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center gap-2 text-sm text-green-800 font-medium"
-            >
-              <Check className="w-4 h-4 text-green-600 shrink-0" />
-              {toastMsg}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* ── Info card ── */}
         <div className="bg-white rounded-2xl border border-border shadow-sm p-6 sm:p-8 mb-6">
           <div className="flex items-center gap-3 mb-6">
@@ -174,9 +163,9 @@ export default function TransportDetailClient({ rideShare, returnTrips, reviews,
                 <ArrowRight className="w-5 h-5 text-primary shrink-0" />
                 <span>{rideShare.to_location}</span>
               </div>
-              {rideShare.profiles?.full_name && (
-                <p className="text-sm text-muted-foreground">
-                  Sejler: {rideShare.profiles.full_name}
+              {rideShare.profiles && (
+                <p className="text-sm text-muted-foreground break-words">
+                  Sejler: {rideShare.profiles.full_name || "Sila-sejler"}
                 </p>
               )}
             </div>
@@ -604,27 +593,29 @@ export default function TransportDetailClient({ rideShare, returnTrips, reviews,
         </div>
 
         {/* ── Om sejleren ── */}
-        {rideShare.profiles?.full_name && (
+        {rideShare.profiles && (
           <div className="bg-white rounded-2xl border border-border shadow-sm p-6 mb-6">
             <h2 className="text-base font-bold text-foreground mb-3">Om sejleren</h2>
             <button
               onClick={() => router.push("/profil")}
-              className="flex items-center gap-4 p-4 bg-muted/40 rounded-2xl hover:bg-muted transition-colors w-full text-left"
+              className="flex items-center gap-4 p-4 bg-muted/40 rounded-2xl hover:bg-muted transition-colors w-full text-left min-w-0 overflow-hidden"
             >
               <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
                 {rideShare.profiles.avatar_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={rideShare.profiles.avatar_url}
-                    alt={rideShare.profiles.full_name}
+                    alt={rideShare.profiles.full_name ?? "Sila-sejler"}
                     className="w-full h-full object-cover"
                   />
                 ) : (
                   <User className="w-6 h-6 text-primary" />
                 )}
               </div>
-              <div>
-                <p className="font-semibold text-foreground">{rideShare.profiles.full_name}</p>
+              <div className="min-w-0 overflow-hidden">
+                <p className="font-semibold text-foreground break-words">
+                  {rideShare.profiles.full_name || "Sila-sejler"}
+                </p>
                 <p className="text-sm text-primary">Se profil →</p>
               </div>
             </button>
