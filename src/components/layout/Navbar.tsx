@@ -20,6 +20,41 @@ import type { NavUser } from "@/lib/getNavUser"
 
 export type { NavUser } from "@/lib/getNavUser"
 
+function NavAvatarCircle({
+  user,
+  solid,
+  className = "w-8 h-8",
+}: {
+  user: NavUser
+  solid: boolean
+  className?: string
+}) {
+  const displayName = user.fullName ?? null
+  const initial = displayName ? displayName[0].toUpperCase() : "?"
+  return user.avatarUrl ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={user.avatarUrl}
+      alt={displayName ?? "Profil"}
+      className={`${className} rounded-full object-cover shrink-0`}
+      style={{ border: "1px solid rgba(74,156,199,0.4)" }}
+    />
+  ) : (
+    <div
+      className={`${className} rounded-full flex items-center justify-center text-xs font-bold shrink-0`}
+      style={{
+        backgroundColor: solid
+          ? "rgba(74,156,199,0.15)"
+          : "rgba(74,156,199,0.25)",
+        border: "1px solid rgba(74,156,199,0.4)",
+        color: "#4A9CC7",
+      }}
+    >
+      {initial}
+    </div>
+  )
+}
+
 export default function Navbar({ user }: { user?: NavUser | null }) {
   const router   = useRouter()
   const pathname = usePathname()
@@ -85,7 +120,6 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
   }
 
   const displayName = user?.fullName ?? null
-  const initial = displayName ? displayName[0].toUpperCase() : "?"
 
   /* Dynamic classes that depend on solid/transparent */
   const navBg    = solid ? "bg-white/95 backdrop-blur-md border-b border-border shadow-sm" : "bg-transparent"
@@ -178,18 +212,7 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                   className={`flex items-center gap-2 transition-colors ${solid ? "hover:text-foreground" : "hover:text-white"}`}
                 >
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                    style={{
-                      backgroundColor: solid
-                        ? "rgba(74,156,199,0.15)"
-                        : "rgba(74,156,199,0.25)",
-                      border: "1px solid rgba(74,156,199,0.4)",
-                      color: "#4A9CC7",
-                    }}
-                  >
-                    {initial}
-                  </div>
+                  <NavAvatarCircle user={user} solid={solid} />
                   <span className={`max-w-[120px] truncate text-sm ${solid ? "text-foreground" : "text-white/90"}`}>
                     {displayName}
                   </span>
@@ -284,6 +307,17 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
               <X size={22} />
             </button>
           </div>
+
+          {user && (
+            <div className="flex items-center justify-center gap-3 px-4 py-3 border-b border-white/10 shrink-0">
+              <NavAvatarCircle user={user} solid={false} />
+              {displayName ? (
+                <span className="text-sm font-medium text-white/90 truncate max-w-[200px]">
+                  {displayName}
+                </span>
+              ) : null}
+            </div>
+          )}
 
           {/* Nav links */}
           <div className="flex-1 flex flex-col items-center justify-center">

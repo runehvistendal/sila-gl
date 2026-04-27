@@ -32,7 +32,7 @@ export default async function DashboardPage() {
   /* ── Profile + my cabins + my boats (først — reconcile før resten) ── */
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("full_name, role_type, location")
+    .select("full_name, role_type, location, avatar_url")
     .eq("id", user.id)
     .maybeSingle()
 
@@ -105,7 +105,7 @@ export default async function DashboardPage() {
     if (!roleUpErr) {
       const { data: profileAfter, error: afterErr } = await supabase
         .from("profiles")
-        .select("full_name, role_type, location")
+        .select("full_name, role_type, location, avatar_url")
         .eq("id", user.id)
         .maybeSingle()
       if (process.env.NODE_ENV === "development") {
@@ -139,7 +139,7 @@ export default async function DashboardPage() {
   if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
     const { data: svcProfile, error: svcErr } = await createServiceClient()
       .from("profiles")
-      .select("full_name, role_type, location")
+      .select("full_name, role_type, location, avatar_url")
       .eq("id", user.id)
       .maybeSingle()
     if (process.env.NODE_ENV === "development") {
@@ -160,9 +160,11 @@ export default async function DashboardPage() {
   }
 
   const displayNameResolved = resolveDisplayName(profileRow, user)
+  const av = (profileRow as { avatar_url?: string | null } | null)?.avatar_url
   const navUser = {
     id: user.id,
     fullName: displayNameResolved,
+    avatarUrl: av && String(av).trim() ? String(av).trim() : null,
   }
 
   const isProvider = roleType === "provider" || roleType === "both"

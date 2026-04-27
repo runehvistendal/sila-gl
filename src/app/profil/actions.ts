@@ -101,6 +101,7 @@ export async function updateAvatar(url: string): Promise<UpdateProfileResult> {
     return { error: error.message || "Kunne ikke gemme profilbillede" }
   }
 
+  revalidatePath("/")
   revalidatePath("/profil")
   revalidatePath("/dashboard")
   return { success: true }

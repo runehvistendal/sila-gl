@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase-server"
 export type NavUser = {
   id: string
   fullName: string | null
+  avatarUrl: string | null
 }
 
 function metadataFullName(user: User): string | null {
@@ -33,17 +34,21 @@ export async function getNavUserForPage(
 ): Promise<NavUser> {
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("full_name")
+    .select("full_name, role_type, avatar_url")
     .eq("id", user.id)
     .maybeSingle()
 
   const fullName = resolveDisplayName(profile, user)
+  const p = profile as { avatar_url?: string | null } | null | undefined
+  const a = p?.avatar_url
+  const avatarUrl = a && String(a).trim() ? String(a).trim() : null
 
   if (process.env.NODE_ENV === "development") {
     // eslint-disable-next-line no-console
     console.log("[getNavUserForPage]", {
       userId: user.id,
       fullName: fullName ?? null,
+      avatarUrl: avatarUrl ?? null,
       profileError: error?.message ?? null,
       hadProfileRow: profile != null,
     })
@@ -52,5 +57,6 @@ export async function getNavUserForPage(
   return {
     id: user.id,
     fullName,
+    avatarUrl,
   }
 }
