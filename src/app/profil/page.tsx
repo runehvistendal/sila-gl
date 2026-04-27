@@ -24,7 +24,7 @@ export default async function ProfilPage() {
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "full_name, role_type, location_id, language, location, avatar_url, bio, phone",
+      "full_name, role_type, location_id, language, location, avatar_url, bio, phone, stripe_account_id, stripe_onboarding_complete",
     )
     .eq("id", user.id)
     .maybeSingle()
@@ -109,6 +109,21 @@ export default async function ProfilPage() {
 
   const navUser = await getNavUserForPage(supabase, user)
 
+  const pStripe = profile as {
+    stripe_account_id?: string | null
+    stripe_onboarding_complete?: boolean | null
+  }
+  const showStripeConnect =
+    roleType === "provider" || roleType === "both"
+  const stripeConnect = showStripeConnect
+    ? {
+        stripeAccountId: pStripe.stripe_account_id ?? null,
+        stripeOnboardingComplete: Boolean(
+          pStripe.stripe_onboarding_complete,
+        ),
+      }
+    : null
+
   return (
     <main className="min-h-screen flex flex-col bg-gray-50">
       <Navbar user={navUser} />
@@ -118,6 +133,7 @@ export default async function ProfilPage() {
           reviews={reviews}
           avgRating={avgRating}
           email={user.email ?? ""}
+          stripeConnect={stripeConnect}
         />
       </div>
     </main>

@@ -2,7 +2,9 @@ import { createClient } from "@supabase/supabase-js"
 
 /**
  * Service role (bypasser RLS). Må KUN bruges server-side og til
- * snævre, kontrollerede operationer (fx egen bruger efter auth.check).
+ * snævre, kontrollerede operationer (fx egen bruger efter auth.check);
+ * bruges bl.a. til `profiles.role_type`-reconcile og Stripe Connect-felter
+ * når almindelig RLS/klient ikke dækker.
  */
 export function createServiceClient() {
   return createClient(

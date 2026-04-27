@@ -28,6 +28,7 @@ import {
 } from "@/lib/greenlandLocations"
 import { changeEmail, updateProfile } from "./actions"
 import AvatarUpload from "@/components/profile/AvatarUpload"
+import StripeConnectSection from "@/components/profile/StripeConnectSection"
 
 export type ProfileInitial = {
   full_name: string
@@ -110,6 +111,11 @@ type Props = {
   avgRating: number | null
   /** Nuværende auth-e-mail — redigering sker via changeEmail, ikke updateProfile */
   email: string
+  /** Kun for udbyder/begge — fra DB; null = vis ikke Stripe */
+  stripeConnect: {
+    stripeAccountId: string | null
+    stripeOnboardingComplete: boolean
+  } | null
 }
 
 export default function ProfileForm({
@@ -117,6 +123,7 @@ export default function ProfileForm({
   reviews,
   avgRating,
   email,
+  stripeConnect,
 }: Props) {
   const [isPending, startTransition] = useTransition()
   const [isEmailPending, startEmailTransition] = useTransition()
@@ -483,6 +490,13 @@ export default function ProfileForm({
           </Button>
         </div>
       </form>
+
+      {stripeConnect && (
+        <StripeConnectSection
+          stripeAccountId={stripeConnect.stripeAccountId}
+          stripeOnboardingComplete={stripeConnect.stripeOnboardingComplete}
+        />
+      )}
 
       {/* Anmeldelser */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mt-4">
