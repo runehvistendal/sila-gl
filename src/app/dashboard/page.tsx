@@ -16,6 +16,10 @@ interface BoatData {
 
 export const metadata = { title: "Mit dashboard — Sila.gl" }
 
+/* Ingen fuld-route-cache: skal altid afspejle frisk role_type fra DB. */
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 export default async function DashboardPage() {
   const supabase = await createClient()
 
@@ -28,6 +32,16 @@ export default async function DashboardPage() {
     .select("full_name, role_type, location")
     .eq("id", user.id)
     .maybeSingle()
+
+  if (process.env.NODE_ENV === "development") {
+    // eslint-disable-next-line no-console
+    console.log("[dashboard] profiles query (user / RLS):", {
+      userId: user.id,
+      role_type: profile?.role_type ?? null,
+      profileError: profileError?.message ?? null,
+      hadRow: profile != null,
+    })
+  }
 
   const [{ data: myCabinsRaw }, { data: myBoatsRaw }] = await Promise.all([
     supabase
@@ -119,16 +133,44 @@ export default async function DashboardPage() {
     })
   }
 
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const { data: svcProfile, error: svcErr } = await createServiceClient()
+      .from("profiles")
+      .select("full_name, role_type, location")
+      .eq("id", user.id)
+      .maybeSingle()
+    if (process.env.NODE_ENV === "development") {
+      // eslint-disable-next-line no-console
+      console.log("[dashboard] profile read (service / authoritative):", {
+        userId: user.id,
+        role_type: svcProfile?.role_type ?? null,
+        error: svcErr?.message ?? null,
+      })
+    }
+    if (svcProfile) {
+      profileRow = svcProfile
+      const rt = String(svcProfile.role_type ?? "").toLowerCase()
+      if (rt === "traveler" || rt === "provider" || rt === "both") {
+        roleType = rt
+      }
+    }
+  }
+
   const displayNameResolved = resolveDisplayName(profileRow, user)
   const navUser = {
     id: user.id,
     fullName: displayNameResolved,
   }
 
+  const isProvider = roleType === "provider" || roleType === "both"
+  const isTraveler = roleType === "traveler" || roleType === "both"
+
   if (process.env.NODE_ENV === "development") {
     // eslint-disable-next-line no-console
-    console.log("[dashboard/DashboardClient] final role_type", {
-      roleTypeSent: roleType,
+    console.log("[dashboard] → DashboardClient props", {
+      roleType,
+      isProvider,
+      isTraveler,
     })
   }
 
@@ -249,8 +291,6 @@ export default async function DashboardPage() {
     profiles:        r.profiles as { full_name: string | null } | null,
   }))
 
-  const isProvider = roleType === "provider" || roleType === "both"
-  const isTraveler = roleType === "traveler" || roleType === "both"
   const homeCity =
     (profileRow?.location as string | null | undefined) ?? null
 
