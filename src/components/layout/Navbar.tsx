@@ -213,6 +213,13 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                     >
                       Dashboard
                     </Link>
+                    <Link
+                      href="/profil"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      Profil
+                    </Link>
                     <button
                       type="button"
                       onClick={handleSignOut}
@@ -286,6 +293,7 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
             {user ? (
               <>
                 <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">Dashboard</Link>
+                <Link href="/profil" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">Profil</Link>
                 {isTraveler && (
                   <Link href="/anmod?type=cabin" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">Anmod om hytte</Link>
                 )}

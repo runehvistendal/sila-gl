@@ -82,3 +82,28 @@ export function findLocation(query: string): GreenlandLocation | undefined {
 export function getCityNames(): string[] {
   return GREENLAND_LOCATIONS.map((loc) => loc.name_dk)
 }
+
+/** Unik nøgle til DB (postal + navn — nogle postnumre går igen). */
+export function locationToId(loc: GreenlandLocation): string {
+  return `${loc.postal_code}|${loc.name_dk}`
+}
+
+export function findLocationById(
+  id: string | null | undefined,
+): GreenlandLocation | undefined {
+  if (!id) return undefined
+  const i = id.indexOf("|")
+  if (i < 0) return undefined
+  const postal = id.slice(0, i)
+  const name_dk = id.slice(i + 1)
+  return GREENLAND_LOCATIONS.find(
+    (l) => l.postal_code === postal && l.name_dk === name_dk,
+  )
+}
+
+/** Alle byer/bygder — sorteret efter dansk navn (A-Å). */
+export function getAllLocationsSorted(): GreenlandLocation[] {
+  return [...GREENLAND_LOCATIONS].sort((a, b) =>
+    a.name_dk.localeCompare(b.name_dk, "da"),
+  )
+}

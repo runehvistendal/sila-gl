@@ -32,9 +32,17 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
   const isProtected =
-    pathname.startsWith("/dashboard") || pathname.startsWith("/admin")
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/profil")
 
   if (isProtected && !user) {
+    if (pathname.startsWith("/profil")) {
+      const url = request.nextUrl.clone()
+      url.pathname = "/login"
+      url.searchParams.set("next", pathname)
+      return NextResponse.redirect(url)
+    }
     const url = request.nextUrl.clone()
     url.pathname = "/"
     return NextResponse.redirect(url)
