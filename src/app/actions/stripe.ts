@@ -1,14 +1,10 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { getAppBaseUrl } from "@/lib/appUrl"
 import { createClient } from "@/lib/supabase-server"
 import { createServiceClient } from "@/lib/supabase-service"
 import { stripe } from "@/lib/stripe"
-
-function appBaseUrl(): string {
-  const raw = process.env.NEXT_PUBLIC_BASE_URL?.trim() || "http://localhost:3000"
-  return raw.replace(/\/$/, "")
-}
 
 export type ConnectResult = { url: string } | { error: string }
 
@@ -77,7 +73,7 @@ export async function connect(): Promise<ConnectResult> {
     }
   }
 
-  const base = appBaseUrl()
+  const base = getAppBaseUrl()
   const accountLink = await stripe.accountLinks.create({
     account: accountId,
     type: "account_onboarding",

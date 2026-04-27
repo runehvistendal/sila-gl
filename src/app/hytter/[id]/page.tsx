@@ -7,6 +7,7 @@ import Navbar from "@/components/layout/Navbar"
 import ListingImageGallery from "@/components/cabins/ListingImageGallery"
 import CabinReviews from "@/components/cabins/CabinReviews"
 import BookingCard from "./BookingCard"
+import CabinBookingWidget from "@/components/cabins/CabinBookingWidget"
 import type { RideShareData } from "@/components/cabins/CabinTransportSection"
 
 export type CabinDetailData = {
@@ -194,6 +195,16 @@ export default async function CabinDetailPage({
             />
           </div>
         </div>
+
+        <CabinBookingWidget
+          cabin={{
+            id: cabin.id,
+            max_guests: cabin.max_guests,
+            price_per_night_ore: cabin.price_per_night_ore,
+          }}
+          isLoggedIn={!!user}
+          loginNextPath={`/hytter/${cabin.id}`}
+        />
       </div>
     </main>
   )
