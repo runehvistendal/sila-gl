@@ -10,6 +10,7 @@ export type UpdateProfileResult =
   | { error: string }
 
 const LANGS = new Set(["da", "en", "kl"])
+const ROLES = new Set(["traveler", "provider", "both"])
 
 export async function updateProfile(formData: FormData): Promise<UpdateProfileResult> {
   const supabase = await createClient()
@@ -24,6 +25,9 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
   const fullName = String(formData.get("full_name") ?? "").trim()
   const locationIdRaw = String(formData.get("location_id") ?? "").trim()
   const language = String(formData.get("language") ?? "da").trim()
+  const roleTypeRaw = String(formData.get("role_type") ?? "").trim()
+  const bio = String(formData.get("bio") ?? "").trim().slice(0, 500)
+  const phone = String(formData.get("phone") ?? "").trim().slice(0, 30)
 
   if (!fullName || fullName.length > 120) {
     return { error: "Angiv et navn (maks. 120 tegn)" }
@@ -31,6 +35,10 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
 
   if (!LANGS.has(language)) {
     return { error: "Ugyldigt sprog" }
+  }
+
+  if (!ROLES.has(roleTypeRaw)) {
+    return { error: "Ugyldig rolle" }
   }
 
   let locationId: string | null = locationIdRaw || null
@@ -51,6 +59,9 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
       language,
       languages: [language],
       location: locationLabel,
+      role_type: roleTypeRaw,
+      bio: bio || null,
+      phone: phone || null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", user.id)

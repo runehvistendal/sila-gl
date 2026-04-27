@@ -2,7 +2,10 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
-import ProfileForm, { type ProfileInitial } from "./ProfileForm"
+import ProfileForm, {
+  type ProfileInitial,
+  type ProfileReview,
+} from "./ProfileForm"
 
 export const metadata = { title: "Min profil — Sila.gl" }
 
@@ -21,7 +24,7 @@ export default async function ProfilPage() {
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "full_name, role_type, location_id, language, location, avatar_url",
+      "full_name, role_type, location_id, language, location, avatar_url, bio, phone",
     )
     .eq("id", user.id)
     .maybeSingle()
@@ -29,15 +32,11 @@ export default async function ProfilPage() {
   if (profileError) {
     console.error("[profil]", profileError)
     return (
-      <main
-        className="min-h-screen flex flex-col items-center justify-center px-4"
-        style={{ backgroundColor: "#09192A" }}
-      >
-        <p className="text-center text-red-200 text-sm max-w-md">
+      <main className="min-h-screen flex flex-col items-center justify-center px-4 bg-gray-50">
+        <p className="text-center text-red-600 text-sm max-w-md">
           Kunne ikke hente profil ({profileError.message}). Kør{" "}
-          <code className="text-white/90">supabase db push</code> hvis migration for{" "}
-          <code className="text-white/90">location_id</code> / <code className="text-white/90">language</code>{" "}
-          mangler.
+          <code className="text-gray-800">supabase db push</code> hvis relevante
+          migrationer mangler.
         </p>
       </main>
     )
@@ -46,6 +45,39 @@ export default async function ProfilPage() {
   if (!profile) {
     redirect("/login?next=%2Fprofil")
   }
+
+  const { data: reviewsRaw } = await supabase
+    .from("reviews")
+    .select(
+      "id, rating, comment, created_at, reviewer:profiles!reviewer_id(full_name)",
+    )
+    .eq("reviewee_id", user.id)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(10)
+
+  const reviews: ProfileReview[] = (reviewsRaw ?? []).map((row) => {
+    const r = row as {
+      id: string
+      rating: number
+      comment: string | null
+      created_at: string
+      reviewer: { full_name: string } | { full_name: string }[] | null
+    }
+    const rev = Array.isArray(r.reviewer) ? r.reviewer[0] : r.reviewer
+    return {
+      id: r.id,
+      rating: r.rating,
+      comment: r.comment,
+      created_at: r.created_at,
+      reviewer: rev ? { full_name: rev.full_name } : null,
+    }
+  })
+
+  const avgRating =
+    reviews.length > 0
+      ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+      : null
 
   const roleRaw = (profile as { role_type?: string }).role_type ?? "traveler"
   const roleType: ProfileInitial["role_type"] =
@@ -71,24 +103,17 @@ export default async function ProfilPage() {
     language,
     role_type: roleType,
     avatar_url: (profile as { avatar_url?: string | null }).avatar_url ?? null,
+    bio: (profile as { bio?: string | null }).bio?.trim() ?? "",
+    phone: (profile as { phone?: string | null }).phone?.trim() ?? "",
   }
 
   const navUser = await getNavUserForPage(supabase, user)
 
   return (
-    <main
-      className="min-h-screen flex flex-col"
-      style={{ backgroundColor: "#09192A" }}
-    >
+    <main className="min-h-screen flex flex-col bg-gray-50">
       <Navbar user={navUser} />
-      <div className="flex-1 pt-20 pb-16 px-4">
-        <h1
-          className="text-2xl font-bold text-center text-white mb-10 max-w-lg mx-auto"
-          style={{ fontFamily: "var(--font-jakarta, system-ui)" }}
-        >
-          Min profil
-        </h1>
-        <ProfileForm initial={initial} />
+      <div className="flex-1 pt-20 pb-16">
+        <ProfileForm initial={initial} reviews={reviews} avgRating={avgRating} />
       </div>
     </main>
   )
