@@ -18,7 +18,6 @@ import { acceptTransportRequest, declineTransportRequest, duplicateCabin, duplic
 import EmptyState from "./components/EmptyState"
 import OpenRequestsList, { type TransportRequestData } from "./components/OpenRequestsList"
 import ProviderOverviewTab from "./components/ProviderOverviewTab"
-import DashboardOnboardingBanner from "./components/DashboardOnboardingBanner"
 import { toast } from "sonner"
 
 interface ReviewData {
@@ -200,8 +199,6 @@ export default function DashboardClient({
             )}
           </div>
         </div>
-
-        {roleType === "traveler" && <DashboardOnboardingBanner />}
 
         {/* ── Tabs ── */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
