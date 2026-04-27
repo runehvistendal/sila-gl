@@ -21,10 +21,10 @@ Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Ver
 - **Test (kun reference, ikke primær adfærd):** rune.runesen.test@gmail.com  
   `id: 8c29ab7f-fe44-43ef-a1af-64eda151b2f7`
 
-## Bygget og komplet (27.4.2026)
+## Bygget og komplet (28.4.2026)
 - Landingpage (/)
 - Auth (email + Google, httpOnly cookies via @supabase/ssr)
-- Datamodel (11 tabeller inkl. boats, RLS, triggers)
+- Datamodel (12 tabeller inkl. boats + rate_limits, RLS, triggers)
 - /opret — **2 kort:** «Udlej en hytte» / «Tilbyd transport» (ikke tre separate valg på samme måde som tidlig «hytte/båd/opslag»-skitse; se **/opret flow** nedenfor)
 - /opret/hytte (registrér hytte-aktiv, chip-UI faciliteter, transport-switch)
 - /opret/baad (registrér båd-aktiv, sikkerhedsbekræftelse, chips)
@@ -43,6 +43,13 @@ Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Ver
 - NavUser: { id, fullName, avatarUrl, language } — navbar viser profilbillede og sprog dynamisk fra DB via revalidatePath
 - src/lib/cabinFacilities.ts (CABIN_FACILITIES)
 - src/components/shared/AddOnServicesEditor.tsx (DEL G)
+- **Stripe Connect** onboarding (15 % kommission, server-side) ✅
+- **Hyttebooking** med Stripe Checkout + webhook (status: confirmed verificeret) ✅
+- **Sikkerhedsaudit** gennemført — kritiske RLS-fejl rettet, kolonneniveau-sikkerhed på profiles ✅
+- **Kalender UX:** grå strikethrough på optagede datoer (Airbnb-stil) ✅
+- **Cancel-flow:** pending booking annulleres + Stripe session expires ved tilbagetryk ✅
+- **pg_cron cleanup:** pending bookinger udløber automatisk efter 15 min ✅
+- **Rate limiting:** `rate_limits`-tabel + `consume_rate_limit` RPC (5 forsøg / 10 min) ✅
 
 ## /opret flow (præcist)
 - **/opret:** 2 kort (Udlej en hytte / Tilbyd transport)
@@ -54,11 +61,18 @@ Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Ver
 - /opret/opslag/sejlads/[id] → samsejladstur
 
 ## Næste i rækkefølge
-1. Stripe Connect (15% kommission, server-side)
-2. Bookingflow — hytte
-3. Bookingflow — samsejlads
-4. /booking/success + /cancelled
-5. Footer
+1. Hyttekort mangler billede — fix Cloudinary-visning på /hytter
+2. Transportanmodninger — gæst anmoder, udbyder byder ind
+3. Anmeldelsessystem
+4. Samsejlads bookingflow
+5. Mapbox sejlruter
+6. Footer
+7. /admin
+8. i18n (dansk + engelsk med next-intl)
+9. SEO
+10. Stripe webhook til Vercel (ved deploy)
+11. MobilePay (fase 3)
+12. Udbyderguide til Stripe onboarding (fase 3)
 
 ## Aktiv arkitektur: aktiver + opslag
 - Aktiver: cabins (hytte) + boats (båd) — gemmes med `published=false` indtil opslag
@@ -91,11 +105,18 @@ Rolle-**UPDATE** (reconcile, server): `src/lib/supabase-service.ts` med **`SUPAB
 - Roller server-side via Supabase RLS — **ALDRIG** localStorage
 - Stripe-pris **ALTID** server-side (API route / server action) — **aldrig** fra frontend
 - JWT i **httpOnly** cookies via @supabase/ssr — **ALDRIG** localStorage
-- **service_role** (`createServiceClient` i `supabase-service.ts`): bruges **KUN** til **UPDATE** af `profiles.role_type` (reconcile) — **aldrig** som generel data­klient. Øvrige queries: almindelig **anon + session** (`createClient` server).
+- **service_role** (`createServiceClient` i `supabase-service.ts`): bruges **KUN** til UPDATE af `profiles.role_type` (reconcile) + cancel-operationer der passerer update-guard-trigger — **aldrig** som generel dataklient. Øvrige queries: almindelig **anon + session** (`createClient` server).
 - `host_id` / `owner_id` sættes via `auth.uid()` server-side
 - Reviews kræver completed booking (RLS)
 - Admin-ruter: middleware + RLS
 - Filtrering **ALTID** i Supabase query — aldrig «hemmelig» forretningslogik kun client-side
+- **profiles følsomme felter** (`stripe_account_id`, `phone`, `stripe_onboarding_complete`): læses **ALDRIG** direkte via `.from("profiles").select(...)` fra klientkode eller server actions — brug udelukkende:
+  - `get_my_sensitive_profile()` — egne data
+  - `get_owner_stripe_info(cabin_id)` — ejerens Stripe-info i bookingflow
+- **cabin_bookings immutable felter** (`total_price_ore`, `platform_fee_ore`, `stripe_session_id`, `stripe_payment_intent_id`, `guest_id`, `cabin_id`, `check_in`, `check_out`, `num_guests`): beskyttet af BEFORE UPDATE trigger `cabin_bookings_guard_update` — service_role passerer (auth.uid() IS NULL)
+- **handle_new_user trigger**: fallback `full_name = 'Sila-bruger'` — aldrig email som fallback
+- **Ingen console.log** af service role key eller andre secrets — ikke engang prefix
+- **Rate limiting**: alle server actions der skriver kritiske data bruger `consume_rate_limit` RPC
 
 ## Privatlivs- og kommunikationsregel — må ALDRIG brydes
 - Vis **ALDRIG** bruger-e-mails i UI — brug `full_name` (fallback: «Sila-sejler» / «Sila-udbyder»)
