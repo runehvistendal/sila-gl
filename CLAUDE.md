@@ -37,7 +37,10 @@ Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Ver
 - /dashboard (rollebaserede tabs — se **Rollemodel**)
 - /transport (søgeside, TransportCard, TransportFilters)
 - /transport/[id] (info-kort, bookingkort, t/r-toggle, anmodningsformular, reviews)
-- Navbar (transparent/scroll, plus-dropdown → /opret; full_name, initial)
+- /profil (avatar, roller, anmeldelser, telefon med landekode, email-skift via Supabase Auth, bio, sprog synkroniseret med navbar)
+- Cloudinary (avatar + hyttebilleder)
+- Navbar (transparent/scroll, plus-dropdown → /opret)
+- NavUser: { id, fullName, avatarUrl, language } — navbar viser profilbillede og sprog dynamisk fra DB via revalidatePath
 - src/lib/cabinFacilities.ts (CABIN_FACILITIES)
 - src/components/shared/AddOnServicesEditor.tsx (DEL G)
 
@@ -51,12 +54,11 @@ Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Ver
 - /opret/opslag/sejlads/[id] → samsejladstur
 
 ## Næste i rækkefølge
-1. /profil
-2. Cloudinary billedupload (hytter + både)
-3. Stripe Connect (15% kommission, **server-side**)
-4. Bookingflow — hytte
-5. Bookingflow — samsejlads
-6. (Backlog) /booking/success + /cancelled, Footer, /admin/*
+1. Stripe Connect (15% kommission, server-side)
+2. Bookingflow — hytte
+3. Bookingflow — samsejlads
+4. /booking/success + /cancelled
+5. Footer
 
 ## Aktiv arkitektur: aktiver + opslag
 - Aktiver: cabins (hytte) + boats (båd) — gemmes med `published=false` indtil opslag
