@@ -113,7 +113,12 @@ export default async function ProfilPage() {
     <main className="min-h-screen flex flex-col bg-gray-50">
       <Navbar user={navUser} />
       <div className="flex-1 pt-20 pb-16">
-        <ProfileForm initial={initial} reviews={reviews} avgRating={avgRating} />
+        <ProfileForm
+          initial={initial}
+          reviews={reviews}
+          avgRating={avgRating}
+          email={user.email ?? ""}
+        />
       </div>
     </main>
   )

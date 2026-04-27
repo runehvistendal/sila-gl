@@ -96,9 +96,16 @@ type Props = {
   initial: ProfileInitial
   reviews: ProfileReview[]
   avgRating: number | null
+  /** Kun til eget overblik — styres af Supabase Auth, gemmes ikke via updateProfile */
+  email: string
 }
 
-export default function ProfileForm({ initial, reviews, avgRating }: Props) {
+export default function ProfileForm({
+  initial,
+  reviews,
+  avgRating,
+  email,
+}: Props) {
   const [isPending, startTransition] = useTransition()
   const [locationId, setLocationId] = useState(
     initial.location_id ?? "__none__",
@@ -210,7 +217,7 @@ export default function ProfileForm({ initial, reviews, avgRating }: Props) {
         </div>
       </div>
 
-      <form onSubmit={onSubmit} className="mt-4 space-y-4">
+      <form onSubmit={onSubmit} className="mt-4">
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2 space-y-1.5">
@@ -276,7 +283,29 @@ export default function ProfileForm({ initial, reviews, avgRating }: Props) {
               />
             </div>
 
-            <div className="space-y-1.5 sm:col-span-2 sm:max-w-md">
+            <div className="sm:col-span-2 space-y-1.5">
+              <label htmlFor="profile_email" className="text-sm font-medium text-gray-800">
+                E-mail
+              </label>
+              <Input
+                id="profile_email"
+                name="email_display"
+                type="email"
+                value={email}
+                disabled
+                readOnly
+                autoComplete="email"
+                tabIndex={-1}
+                className="bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200 rounded-lg h-10 px-3 opacity-100 disabled:opacity-100 focus-visible:ring-0"
+                aria-readonly
+              />
+              <p className="text-xs text-gray-500">
+                Din e-mail bruges kun til kontakt ved problemer og vises ikke
+                offentligt.
+              </p>
+            </div>
+
+            <div className="space-y-1.5 sm:max-w-md">
               <span className="text-sm font-medium text-gray-800">Visningssprog</span>
               <Select
                 value={language}
@@ -314,24 +343,8 @@ export default function ProfileForm({ initial, reviews, avgRating }: Props) {
             </div>
           </div>
 
-          <Button
-            type="submit"
-            disabled={isPending}
-            className="w-full mt-6 h-12 rounded-lg font-semibold text-white border-0 hover:opacity-95"
-            style={{ backgroundColor: "#4A9CC7" }}
-          >
-            {isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin mr-2 inline" />
-                Gemmer…
-              </>
-            ) : (
-              "✓ Gem profil"
-            )}
-          </Button>
-        </div>
+          <hr className="w-full border-0 border-t border-gray-100 my-2" />
 
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
           <h2 className="font-semibold text-gray-900">Jeg er…</h2>
           <p className="text-sm text-gray-500 mt-1">
             Vælg hvilke funktioner du vil se i dit dashboard. Du kan altid
@@ -397,6 +410,22 @@ export default function ProfileForm({ initial, reviews, avgRating }: Props) {
               </p>
             </button>
           </div>
+
+          <Button
+            type="submit"
+            disabled={isPending}
+            className="w-full mt-6 h-12 rounded-lg font-semibold text-white border-0 hover:opacity-95"
+            style={{ backgroundColor: "#4A9CC7" }}
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin mr-2 inline" />
+                Gemmer…
+              </>
+            ) : (
+              "✓ Gem profil"
+            )}
+          </Button>
         </div>
       </form>
 
