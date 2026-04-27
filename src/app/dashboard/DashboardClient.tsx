@@ -263,9 +263,14 @@ export default function DashboardClient({
               className="mb-6 rounded-xl border border-border bg-muted/50 px-4 py-4 sm:px-5 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 -mt-2"
               aria-label="Bliv udbyder"
             >
-              <p className="text-sm text-foreground font-medium pr-0 sm:pr-4">
-                Har du en hytte eller båd du vil udleje?
-              </p>
+              <div className="pr-0 sm:pr-4 space-y-1">
+                <p className="text-sm font-semibold text-foreground">
+                  Har du en hytte eller båd?
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Udlej din hytte eller tilbyd transport på vandet
+                </p>
+              </div>
               <Button variant="default" asChild className="rounded-xl w-full sm:w-auto shrink-0 gap-0">
                 <Link href="/opret">Opret nyt opslag →</Link>
               </Button>
