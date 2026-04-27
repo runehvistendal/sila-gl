@@ -1,0 +1,34 @@
+---
+description: Sila — sessionstatus, næste fokus og vigtige beslutninger (hold synk med hukommelse.md)
+alwaysApply: true
+---
+
+# Sila.gl — agent-hukommelse (spejler hukommelse.md)
+
+Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort status til sessioner.
+
+## Status (27.4.2026)
+
+- Seneste: profil komplet, Cloudinary, navbar sprog/avatar-synk.
+- Ingen kendte bugs.
+
+## Næste fokus
+
+- **Stripe Connect** (15 % kommission, server-side) — se CLAUDE.md, sektionen «Næste i rækkefølge».
+
+## Vigtige beslutninger (gældende)
+
+- **/profil:** lyst design (`bg-gray-50`), ikke mørkt som resten.
+- **Roller:** brugeren vælger aktivt; kan skifte når som helst.
+- **Telefon:** react-phone-number-input, E.164, `defaultCountry: GL`.
+- **Email-skift:** `supabase.auth.updateUser` med bekræftelse til ny adresse.
+- **Navbar sprog + avatar:** `NavUser` + `revalidatePath("/")` (ingen særskilt client-fetch til sprog).
+- **Cloudinary:** signed uploads, `sila/avatars` og `sila/cabins/[id]`.
+
+## Ikke nu (backlog / Fase 3)
+
+- IP-geolocation til sprog/lokation.
+- next-intl: ruter `/da/`, `/en/`, `/kl/`.
+- Kalaallisut (`kl`): JSON-oversættelser, involvér lokale.
+
+*Opdatér denne regel sammen med [hukommelse.md](hukommelse.md) når status eller beslutninger ændres.*
