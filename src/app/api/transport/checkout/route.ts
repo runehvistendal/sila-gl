@@ -132,8 +132,8 @@ export async function POST(request: Request) {
         transfer_data: { destination: skipper.stripe_account_id },
         metadata: { booking_id: bookingId, ride_share_id: rideShareId },
       },
-      success_url: `${base}/samsejlads/${rideShareId}/bekraeftelse?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url:  `${base}/samsejlads/${rideShareId}`,
+      success_url: `${base}/transport/${rideShareId}/bekraeftelse?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url:  `${base}/transport/${rideShareId}`,
       metadata: {
         booking_id:    bookingId,
         ride_share_id: rideShareId,

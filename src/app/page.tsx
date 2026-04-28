@@ -192,7 +192,7 @@ export default async function Home() {
               </div>
 
               <Link
-                href="/samsejlads"
+                href="/transport"
                 className="inline-flex items-center gap-2 px-8 py-3 rounded-full text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
               >
                 Find en bådtur <ArrowRight size={15} />
@@ -261,9 +261,8 @@ export default async function Home() {
             <div>
               <p className="text-xs font-bold uppercase tracking-wider mb-4 text-primary">Platformer</p>
               <div className="flex flex-col gap-2.5 text-sm text-primary-foreground/60">
-                <Link href="/hytter"     className="hover:text-primary-foreground transition-colors">Hytter</Link>
-                <Link href="/samsejlads" className="hover:text-primary-foreground transition-colors">Samsejlads</Link>
-                <Link href="/transport"  className="hover:text-primary-foreground transition-colors">Transport</Link>
+                <Link href="/hytter"    className="hover:text-primary-foreground transition-colors">Hytter</Link>
+                <Link href="/transport" className="hover:text-primary-foreground transition-colors">Samsejlads & transport</Link>
               </div>
             </div>
             <div>

@@ -192,7 +192,7 @@ export default function CabinTransportSection({ cabin, transports, guests, onTra
                   )}
                 </div>
                 <Link
-                  href={`/samsejlads/${tr.id}`}
+                  href={`/transport/${tr.id}`}
                   className="shrink-0 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
                 >
                   Se &amp; Book

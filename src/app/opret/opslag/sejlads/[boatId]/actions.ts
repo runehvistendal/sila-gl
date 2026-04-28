@@ -87,6 +87,12 @@ export async function createSejladsOpslag(
     return { message: "Du har ikke adgang til denne båd" }
   }
 
+  // Reject past departure dates
+  const today = new Date().toISOString().slice(0, 10)
+  if (departure_date < today) {
+    return { errors: { departure_date: ["Afgangsdato kan ikke være i fortiden"] } }
+  }
+
   // Lookup lat/lng for from/to
   const fromLoc = GREENLAND_LOCATIONS.find(
     (l) => l.name_dk === from_location || l.name_gl === from_location

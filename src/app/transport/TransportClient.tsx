@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import dynamic from "next/dynamic"
 import Link from "next/link"
 import { Anchor, Grid, Map, ArrowRight, MessageSquare } from "lucide-react"
 import { format } from "date-fns"
@@ -9,6 +10,19 @@ import { Button } from "@/components/ui/button"
 import { krToOre } from "@/lib/money"
 import TransportCard, { type RideShareCardData } from "./components/TransportCard"
 import TransportFilters, { type TransportFilterValues } from "./components/TransportFilters"
+import type { TransportMapRoute } from "@/components/map/TransportMap"
+
+const TransportMap = dynamic(() => import("@/components/map/TransportMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-72 rounded-xl border border-border bg-muted flex items-center justify-center">
+      <div className="flex items-center gap-2 text-muted-foreground text-sm">
+        <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+        Indlæser kort...
+      </div>
+    </div>
+  ),
+})
 
 export interface OpenTransportRequest {
   id: string
@@ -45,6 +59,7 @@ export default function TransportClient({ rideShares, openRequests }: Props) {
   const [filters, setFilters]   = useState<TransportFilterValues>(DEFAULT_FILTERS)
   const [view, setView]         = useState<"grid" | "map">("grid")
   const [showAll, setShowAll]   = useState(false)
+  const [selectedRouteId, setSelectedRouteId] = useState<string | undefined>()
 
   const filtered = useMemo(() => {
     const q = filters.search.toLowerCase()
@@ -91,6 +106,32 @@ export default function TransportClient({ rideShares, openRequests }: Props) {
 
   const visible = showAll ? filtered : filtered.slice(0, 9)
 
+  const mapRoutes = useMemo<TransportMapRoute[]>(() =>
+    filtered
+      .filter((rs) => {
+        const loc = rs as RideShareCardData & { from_latitude?: number; from_longitude?: number; to_latitude?: number; to_longitude?: number }
+        return loc.from_latitude && loc.from_longitude && loc.to_latitude && loc.to_longitude
+      })
+      .map((rs) => {
+        const loc = rs as RideShareCardData & { from_latitude: number; from_longitude: number; to_latitude: number; to_longitude: number }
+        return {
+          id:        rs.id,
+          fromName:  rs.from_location,
+          fromLat:   loc.from_latitude,
+          fromLng:   loc.from_longitude,
+          toName:    rs.to_location,
+          toLat:     loc.to_latitude,
+          toLng:     loc.to_longitude,
+          meta: {
+            departure:      rs.departure_at,
+            seatsAvailable: rs.seats_available,
+            priceOre:       rs.price_per_seat_ore,
+            skipperName:    rs.profiles?.full_name ?? undefined,
+          },
+        }
+      }),
+  [filtered])
+
   return (
     <div className="min-h-screen pt-16 bg-background">
       {/* ── Header ── */}
@@ -125,10 +166,16 @@ export default function TransportClient({ rideShares, openRequests }: Props) {
       {/* ── Content ── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         {view === "map" ? (
-          <div className="text-center py-24 bg-white rounded-2xl border border-dashed border-border">
-            <Map className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-            <p className="text-muted-foreground font-medium">Kortvisning kommer snart</p>
-          </div>
+          <TransportMap
+            routes={mapRoutes}
+            mode="overview"
+            selectedId={selectedRouteId}
+            onSelect={(id) => {
+              setSelectedRouteId(id)
+              setView("grid")
+            }}
+            className="h-[420px] md:h-[520px]"
+          />
         ) : filtered.length === 0 ? (
           <div className="text-center py-24">
             <Anchor className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />

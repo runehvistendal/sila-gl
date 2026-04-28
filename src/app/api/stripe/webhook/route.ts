@@ -144,8 +144,8 @@ export async function POST(request: Request) {
       }
 
       await notifyRideShareBookingConfirmed(bookingId)
-      revalidatePath("/samsejlads")
-      revalidatePath(`/samsejlads/${rideShareId}`)
+      revalidatePath("/transport")
+      revalidatePath(`/transport/${rideShareId}`)
       revalidatePath("/dashboard")
       return new Response("ok", { status: 200 })
     }

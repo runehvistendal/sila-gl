@@ -21,9 +21,11 @@ export default async function TransportDetailPage({ params }: PageProps) {
       id, sejler_id:skipper_id, from_location, to_location, departure_at,
       seats_available, total_seats, price_per_seat_ore,
       boat_description, description, status,
+      from_latitude, from_longitude, to_latitude, to_longitude,
       profiles!skipper_id ( id, full_name, avatar_url )
     `)
     .eq("id", id)
+    .in("status", ["active", "full"])
     .single()
 
   if (error || !rideShare) notFound()
@@ -55,6 +57,8 @@ export default async function TransportDetailPage({ params }: PageProps) {
         profiles!reviewer_id ( full_name )
       `)
       .eq("reviewee_id", rs.profiles?.id ?? "")
+      .not("published_at", "is", null)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(20),
   ])

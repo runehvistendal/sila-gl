@@ -7,7 +7,7 @@
 Komplet og fungerende:
 - Landingpage, auth, datamodel, /opret, /mine-hytter
 - /hytter, /hytter/[id] med sticky booking-widget
-- /transport, /transport/[id]
+- /transport, /transport/[id] (inkl. Stripe Checkout + bekræftelsesside)
 - /dashboard (alle tabs), /profil (komplet)
 - Cloudinary: avatar + hyttebilleder (CabinCard bruger nu `<img>` + MountainSnow placeholder)
 - Stripe Connect onboarding (udbyder forbinder Stripe)
@@ -17,10 +17,11 @@ Komplet og fungerende:
 - pg_cron: pending bookinger udløber automatisk efter 15 min
 - Rate limiting: 5 forsøg / 10 min pr. bruger (`rate_limits` tabel + RPC)
 - Sikkerhedsaudit: RLS på alle 12 tabeller, ownership checks, immutable felter beskyttet
-- **Transportanmodninger** (ny): /transport/anmod, /transport/anmodninger/[id], chat, tilbud, Stripe betaling, webhook
-- **Anmeldelsessystem** (ny): dobbelt-blind, 30-dages vindue, trigger, pg_cron, ReviewForm, dashboard review-knap, /profil/[id] offentlig
-- **Samsejlads bookingflow** (ny): /samsejlads søgeside, /samsejlads/[id] detaljeside + booking, /samsejlads/opret, /samsejlads/[id]/bekraeftelse, Stripe Checkout, webhook
-- **Mapbox kortvisning** (ny): SejlruteMap (rute + markører på /samsejlads/[id]), SamsejladsOversigt (alle ruter + popup på /samsejlads)
+- **Transportanmodninger**: /transport/anmod, /transport/anmodninger/[id], chat, tilbud, Stripe betaling, webhook
+- **Anmeldelsessystem**: dobbelt-blind, 30-dages vindue, trigger, pg_cron, ReviewForm, dashboard review-knap, /profil/[id] offentlig
+- **Samsejlads bookingflow**: /transport søgeside, /transport/[id] detaljeside + booking, /samsejlads/opret, /transport/[id]/bekraeftelse, Stripe Checkout, webhook
+- **Mapbox kortvisning**: `TransportMap` (mode: overview + detail) på /transport og /transport/[id]
+- **Transport konsolidering**: /samsejlads slettet, `/transport` er nu ét samlet entrypoint for samsejlads + transport. `return_ride_share_id` kolonne tilføjet.
 
 Ingen kendte bugs.
 
@@ -56,6 +57,7 @@ Ingen kendte bugs.
 | `20260428200000_fix_reviews_rls` | transport_offer_id på reviews, reviews_insert RLS med alle 3 booking-typer |
 | `20260428210000_reviews_system` | published_at, expires_at, reviewer_role, reviews_select_public RLS, dobbelt-blind trigger, pg_cron |
 | `20260428220000_ride_share_bookings_stripe` | stripe_session_id på ride_share_bookings, get_skipper_stripe_info RPC |
+| `20260428_return_trip` | return_ride_share_id kolonne på ride_shares |
 
 ## Næste trin (i rækkefølge)
 

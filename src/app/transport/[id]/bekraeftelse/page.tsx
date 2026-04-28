@@ -23,13 +23,12 @@ export default async function BekraeftelsePage({
   const { id: rideShareId } = await params
   const { session_id } = await searchParams
 
-  if (!session_id) redirect(`/samsejlads/${rideShareId}`)
+  if (!session_id) redirect(`/transport/${rideShareId}`)
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const navUser = user ? await getNavUserForPage(supabase, user) : null
 
-  // Fetch Stripe session for confirmation details
   let sessionData: {
     from: string
     to: string
@@ -41,7 +40,6 @@ export default async function BekraeftelsePage({
   try {
     const session = await stripe.checkout.sessions.retrieve(session_id)
     if (session.metadata?.type === "ride_share") {
-      // Fetch ride_share for route info
       const { data: rs } = await supabase
         .from("ride_shares")
         .select("from_location, to_location, departure_at")
@@ -51,11 +49,11 @@ export default async function BekraeftelsePage({
       if (rs) {
         const r = rs as { from_location: string; to_location: string; departure_at: string }
         sessionData = {
-          from:       r.from_location,
-          to:         r.to_location,
-          departure:  r.departure_at,
-          numSeats:   parseInt(session.metadata.seats_booked ?? "1", 10),
-          totalOre:   session.amount_total ?? 0,
+          from:      r.from_location,
+          to:        r.to_location,
+          departure: r.departure_at,
+          numSeats:  parseInt(session.metadata.seats_booked ?? "1", 10),
+          totalOre:  session.amount_total ?? 0,
         }
       }
     }
@@ -130,7 +128,7 @@ export default async function BekraeftelsePage({
               Gå til dashboard
             </Button>
           </Link>
-          <Link href="/samsejlads">
+          <Link href="/transport">
             <Button variant="outline" className="w-full sm:w-auto rounded-xl">
               Find flere ture
             </Button>

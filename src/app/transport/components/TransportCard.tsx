@@ -8,6 +8,16 @@ import { formatKr, oreToKr } from "@/lib/money"
 
 const FALLBACK_BOAT = "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600&h=400&fit=crop&q=80"
 
+export interface ReturnTripData {
+  id: string
+  from_location: string
+  to_location: string
+  departure_at: string
+  seats_available: number
+  price_per_seat_ore: number
+  status: string
+}
+
 export interface RideShareCardData {
   id: string
   sejler_id: string | null
@@ -20,6 +30,12 @@ export interface RideShareCardData {
   boat_description: string | null
   description: string | null
   status: string
+  from_latitude?: number | null
+  from_longitude?: number | null
+  to_latitude?: number | null
+  to_longitude?: number | null
+  return_ride_share_id?: string | null
+  return_trip?: ReturnTripData | null
   profiles: { full_name: string | null; avatar_url: string | null } | null
 }
 
@@ -28,7 +44,9 @@ interface Props {
   returnTrip?: RideShareCardData | null
 }
 
-export default function TransportCard({ rideShare, returnTrip = null }: Props) {
+export default function TransportCard({ rideShare, returnTrip: returnTripProp = null }: Props) {
+  // Prefer explicit DB-linked return trip, fall back to heuristically found one
+  const returnTrip: ReturnTripData | null = rideShare.return_trip ?? returnTripProp ?? null
   const skipper = rideShare.profiles
 
   return (
@@ -79,6 +97,7 @@ export default function TransportCard({ rideShare, returnTrip = null }: Props) {
               <p className="text-xs text-muted-foreground">pr. person</p>
             </>
           )}
+
         </div>
       </div>
 
@@ -107,16 +126,14 @@ export default function TransportCard({ rideShare, returnTrip = null }: Props) {
       </div>
 
       {/* Return trip badge */}
-      <div className="mb-4 min-h-[2.5rem] flex items-start">
+      <div className="mb-4 min-h-[2rem] flex items-start">
         {returnTrip ? (
-          <div className="bg-green-50 border border-green-200 rounded-xl px-3 py-2 flex items-center gap-2 w-full">
-            <ArrowLeft className="w-3.5 h-3.5 text-green-600 shrink-0" />
-            <span className="text-xs font-medium text-green-700 line-clamp-2">
-              Returtur {format(new Date(returnTrip.departure_at), "d. MMM")} — {oreToKr(rideShare.price_per_seat_ore + returnTrip.price_per_seat_ore).toLocaleString("da-DK")} kr. t/r
-            </span>
-          </div>
+          <span className="inline-flex items-center gap-1.5 text-xs bg-green-50 border border-green-200 text-green-700 px-2.5 py-1 rounded-full font-medium">
+            <ArrowLeft className="w-3 h-3 shrink-0" />
+            Retur: {format(new Date(returnTrip.departure_at), "d. MMM")} · {returnTrip.seats_available} plads{returnTrip.seats_available !== 1 ? "er" : ""}
+          </span>
         ) : (
-          <div className="min-h-[2.5rem]" />
+          <div className="min-h-[2rem]" />
         )}
       </div>
 

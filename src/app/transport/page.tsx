@@ -10,6 +10,8 @@ export const metadata = {
   description: "Find lokale sejlere der tilbyder pladser langs Grønlands kyst.",
 }
 
+export const dynamic = "force-dynamic"
+
 export default async function TransportPage() {
   const supabase = await createClient()
 
@@ -23,10 +25,12 @@ export default async function TransportPage() {
         id, sejler_id:skipper_id, from_location, to_location, departure_at,
         seats_available, total_seats, price_per_seat_ore,
         boat_description, description, status,
-        profiles!skipper_id ( full_name, avatar_url )
+        from_latitude, from_longitude, to_latitude, to_longitude,
+        return_ride_share_id,
+        profiles!skipper_id ( full_name, avatar_url ),
+        return_trip:return_ride_share_id ( id, from_location, to_location, departure_at, seats_available, price_per_seat_ore, status )
       `)
-      .eq("status", "active")
-      .gt("seats_available", 0)
+      .in("status", ["active", "full"])
       .order("departure_at", { ascending: true }),
 
     supabase

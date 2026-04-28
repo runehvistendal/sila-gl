@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import {
   ArrowRight, ChevronLeft, Calendar, Clock, Users, Anchor,
@@ -17,6 +18,18 @@ import { formatKr, oreToKr } from "@/lib/money"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 import { createTransportRequest } from "./actions"
 
+const TransportMap = dynamic(() => import("@/components/map/TransportMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-64 bg-muted rounded-2xl flex items-center justify-center mb-6">
+      <div className="flex items-center gap-2 text-muted-foreground text-sm">
+        <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+        Indlæser kort...
+      </div>
+    </div>
+  ),
+})
+
 const LOCATIONS = [...new Set(GREENLAND_LOCATIONS.map((l) => l.name_dk))].sort()
 
 interface ReviewData {
@@ -31,7 +44,11 @@ interface RideShareDetail {
   id: string
   sejler_id: string | null
   from_location: string
+  from_latitude: number | null
+  from_longitude: number | null
   to_location: string
+  to_latitude: number | null
+  to_longitude: number | null
   departure_at: string
   seats_available: number
   total_seats: number
@@ -84,21 +101,33 @@ export default function TransportDetailClient({ rideShare, returnTrips, reviews,
   const priceOre      = rideShare.price_per_seat_ore
   const outboundTotal = seats * priceOre
 
-  function handleBook() {
-    // TODO: FJERN når Stripe Connect er integreret
-    // Erstat med: router.push(`/checkout/transport/${rideShare.id}`)
-    toast("Betaling kommer snart", {
-      description: "Stripe-integration er under opsætning.",
-    })
+  const [bookPending, setBookPending] = useState(false)
+
+  async function handleBook() {
+    if (bookPending) return
+    setBookPending(true)
+    try {
+      const res = await fetch("/api/transport/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ride_share_id: rideShare.id, seats_booked: seats }),
+      })
+      const json = await res.json() as { url?: string; error?: string }
+      if (!res.ok || !json.url) {
+        toast.error(json.error ?? "Noget gik galt. Prøv igen.")
+        return
+      }
+      router.push(json.url)
+    } catch {
+      toast.error("Forbindelsesfejl. Prøv igen.")
+    } finally {
+      setBookPending(false)
+    }
   }
 
-  function handleBookBoth(returnPriceOre: number) {
-    // TODO: FJERN når Stripe Connect er integreret
-    // Erstat med: router.push(`/checkout/transport/round-trip`)
-    toast("Betaling kommer snart", {
-      description: "Stripe-integration er under opsætning.",
-    })
+  async function handleBookBoth(returnPriceOre: number) {
     void returnPriceOre
+    toast("Tur-retur betaling", { description: "Bestil de to ture separat." })
   }
 
   function handleSendRequest() {
@@ -146,10 +175,26 @@ export default function TransportDetailClient({ rideShare, returnTrips, reviews,
           Tilbage til samsejlads
         </button>
 
-        {/* ── Image placeholder ── */}
-        <div className="w-full h-80 bg-muted rounded-2xl flex items-center justify-center mb-6">
-          <Anchor className="w-16 h-16 text-muted-foreground/30" />
-        </div>
+        {/* ── Route map ── */}
+        {rideShare.from_latitude && rideShare.to_latitude ? (
+          <TransportMap
+            mode="detail"
+            routes={[{
+              id:       rideShare.id,
+              fromName: rideShare.from_location,
+              fromLat:  rideShare.from_latitude,
+              fromLng:  rideShare.from_longitude ?? 0,
+              toName:   rideShare.to_location,
+              toLat:    rideShare.to_latitude,
+              toLng:    rideShare.to_longitude ?? 0,
+            }]}
+            className="w-full h-64 md:h-80 mb-6"
+          />
+        ) : (
+          <div className="w-full h-64 bg-muted rounded-2xl flex items-center justify-center mb-6">
+            <Anchor className="w-16 h-16 text-muted-foreground/30" />
+          </div>
+        )}
 
         {/* ── Info card ── */}
         <div className="bg-white rounded-2xl border border-border shadow-sm p-6 sm:p-8 mb-6">
@@ -577,9 +622,10 @@ export default function TransportDetailClient({ rideShare, returnTrips, reviews,
                   ) : (
                     <Button
                       onClick={handleBook}
+                      disabled={bookPending}
                       className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl font-semibold"
                     >
-                      Gå til betaling — {formatKr(outboundTotal)}
+                      {bookPending ? "Åbner betaling…" : `Gå til betaling — ${formatKr(outboundTotal)}`}
                     </Button>
                   )}
                 </div>

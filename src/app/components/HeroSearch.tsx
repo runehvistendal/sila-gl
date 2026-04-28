@@ -1,10 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { Search, MapPin, House, Anchor, Ship } from "lucide-react"
+import { Search, MapPin, House, Anchor } from "lucide-react"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 
-type Category = "hytter" | "samsejlads" | "transport"
+type Category = "hytter" | "transport"
 
 const majorHubs = GREENLAND_LOCATIONS.filter((l) => l.is_major_hub)
 const quickCities = GREENLAND_LOCATIONS.filter((l) => l.type === "by").slice(0, 6)
@@ -17,18 +17,11 @@ const CATEGORY_CONFIG = {
     cityPrefix: "Hytter i",
     href: "/hytter",
   },
-  samsejlads: {
-    Icon: Anchor,
-    label: "Samsejlads",
-    locationPlaceholder: "Alle afgangsbyer",
-    cityPrefix: "Samsejlads fra",
-    href: "/samsejlads",
-  },
   transport: {
-    Icon: Ship,
-    label: "Transport",
+    Icon: Anchor,
+    label: "Samsejlads & transport",
     locationPlaceholder: "Alle afgangsbyer",
-    cityPrefix: "Transport fra",
+    cityPrefix: "Sejlads fra",
     href: "/transport",
   },
 } as const
@@ -60,8 +53,7 @@ export default function HeroSearch() {
             onChange={(e) => setCategory(e.target.value as Category)}
           >
             <option value="hytter">Hytteudlejning</option>
-            <option value="samsejlads">Samsejlads</option>
-            <option value="transport">Transport</option>
+            <option value="transport">Samsejlads & transport</option>
           </select>
         </div>
 
