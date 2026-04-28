@@ -52,8 +52,11 @@ Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Ver
 - **Rate limiting:** `rate_limits`-tabel + `consume_rate_limit` RPC (5 forsøg / 10 min) ✅
 - **Transportanmodninger:** /transport/anmod (tur-type, returdato, passagerer), /transport/anmodninger/[id] (Realtime chat, tilbudskort, accept → Stripe Checkout, webhook) ✅
 - **Anmeldelsessystem:** dobbelt-blind (trigger), 30-dages vindue (pg_cron), alle 3 booking-typer, ReviewForm + ReviewDialog, dashboard review-knap, /profil/[id] offentlig ✅
-- **Samsejlads bookingflow:** /samsejlads (søgeside, filter), /samsejlads/[id] (detaljeside, book-knap → Stripe), /samsejlads/opret (server action, fra/til/departure_at/pris), /samsejlads/[id]/bekraeftelse, webhook (seats_available atomisk, status=full) ✅
-- **Mapbox kortvisning:** SejlruteMap (dark-v11, LineLayer + CircleLayer, fit bounds) på /samsejlads/[id]; SamsejladsOversigt (alle ruter + popup) på /samsejlads; dynamic import SSR=false ✅
+- **Samsejlads bookingflow:** fusioneret ind i /transport — /samsejlads eksisterer ikke længere ✅
+- **Mapbox kortvisning:** `TransportMap.tsx` (streets-v12, buet linje via createArc, ⚓/🏁 HTML-markorer, fitBounds, flyTo, lazy load overview / direct load detail) på /transport og /transport/[id] ✅
+- **Returture:** `return_ride_share_id` på ride_shares, badge på listekort, alternative ture fra andre sejlere på /transport/[id] ✅
+- **Timezone:** `src/lib/nuukTime.ts` — America/Godthab (UTC-3), alle departure_at vises i Nuuk-tid ✅
+- **Testdata:** 4 profiler (Malik, Sara, Hans, Aviaja), 3 hytter, 8 transportture ✅
 - **src/lib/notifications.ts** — placeholder funktioner (notify*) ✅
 - **/profil/[id]** — offentlig profilside med anmeldelser og gennemsnitsscore ✅
 
@@ -67,18 +70,14 @@ Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Ver
 - /opret/opslag/sejlads/[id] → samsejladstur
 
 ## Næste i rækkefølge
-1. ~~Hyttekort mangler billede~~ ✅
-2. ~~Transportanmodninger~~ ✅
-3. ~~Anmeldelsessystem~~ ✅
-4. ~~Samsejlads bookingflow~~ ✅
-5. ~~Mapbox sejlruter~~ ✅
-6. Footer
-7. /admin
-8. i18n (dansk + engelsk med next-intl)
-9. SEO
-10. Stripe webhook til Vercel (ved deploy)
-11. MobilePay (fase 3)
-12. Udbyderguide til Stripe onboarding (fase 3)
+1. Footer
+2. /admin
+3. Samsejlads opret-flow (sejler opretter tur med returtur-tilvalg)
+4. i18n (dansk + engelsk, next-intl)
+5. SEO — metadata, sitemap, landingssider pr. destination
+6. Premium-placering (299 kr/md, Stripe subscription)
+7. Gæstegebyr 3-5% (tilføjes ved 20+ listings)
+8. Offentlig lancering
 
 ## Aktiv arkitektur: aktiver + opslag
 - Aktiver: cabins (hytte) + boats (båd) — gemmes med `published=false` indtil opslag
@@ -123,6 +122,11 @@ Rolle-**UPDATE** (reconcile, server): `src/lib/supabase-service.ts` med **`SUPAB
 - **handle_new_user trigger**: fallback `full_name = 'Sila-bruger'` — aldrig email som fallback
 - **Ingen console.log** af service role key eller andre secrets — ikke engang prefix
 - **Rate limiting**: alle server actions der skriver kritiske data bruger `consume_rate_limit` RPC
+- **ride_shares lokationer**: `from_location` og `to_location` gemmes som **lowercase** i DB — visning altid via `getLocationName()` fra `GREENLAND_LOCATIONS` (name_dk)
+- **departure_at**: gemmes som UTC i DB — vises KUN via `src/lib/nuukTime.ts` (America/Godthab, UTC-3)
+- **/samsejlads eksisterer ikke** — al funktionalitet (søgeside, detaljeside, opret, bekræftelse) er på **/transport**
+- `TransportMap.tsx` erstatter de slettede `SejlruteMap.tsx` og `SamsejladsOversigt.tsx`
+- **Alternative returture query**: `WHERE from_location = [to_location] AND skipper_id != [denne turs skipper_id]` — vises kun når `return_ride_share_id IS NULL`
 
 ## Privatlivs- og kommunikationsregel — må ALDRIG brydes
 - Vis **ALDRIG** bruger-e-mails i UI — brug `full_name` (fallback: «Sila-sejler» / «Sila-udbyder»)

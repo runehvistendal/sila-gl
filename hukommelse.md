@@ -2,26 +2,24 @@
 
 > På tværs af sessioner: læs **[CLAUDE.md](./CLAUDE.md)** for fuld projektkontekst; denne fil er kort status og beslutninger.
 
-## Status (28.4.2026)
+## Status (28.4.2026 — slutning af dag)
 
-Komplet og fungerende:
-- Landingpage, auth, datamodel, /opret, /mine-hytter
-- /hytter, /hytter/[id] med sticky booking-widget
-- /transport, /transport/[id] (inkl. Stripe Checkout + bekræftelsesside)
-- /dashboard (alle tabs), /profil (komplet)
-- Cloudinary: avatar + hyttebilleder (CabinCard bruger nu `<img>` + MountainSnow placeholder)
-- Stripe Connect onboarding (udbyder forbinder Stripe)
-- Hyttebooking: Stripe checkout + webhook (confirmed verificeret)
-- Kalender: grå strikethrough på optagede datoer
-- Cancel-flow: pending annulleres ved tilbagetryk (Stripe session expires)
-- pg_cron: pending bookinger udløber automatisk efter 15 min
-- Rate limiting: 5 forsøg / 10 min pr. bruger (`rate_limits` tabel + RPC)
-- Sikkerhedsaudit: RLS på alle 12 tabeller, ownership checks, immutable felter beskyttet
-- **Transportanmodninger**: /transport/anmod, /transport/anmodninger/[id], chat, tilbud, Stripe betaling, webhook
-- **Anmeldelsessystem**: dobbelt-blind, 30-dages vindue, trigger, pg_cron, ReviewForm, dashboard review-knap, /profil/[id] offentlig
-- **Samsejlads bookingflow**: /transport søgeside, /transport/[id] detaljeside + booking, /samsejlads/opret, /transport/[id]/bekraeftelse, Stripe Checkout, webhook
-- **Mapbox kortvisning**: `TransportMap` (mode: overview + detail) på /transport og /transport/[id]
-- **Transport konsolidering**: /samsejlads slettet, `/transport` er nu ét samlet entrypoint for samsejlads + transport. `return_ride_share_id` kolonne tilføjet.
+Komplet: Landingpage, auth, datamodel (12 tabeller + RLS + triggers),
+/opret, /mine-hytter, /hytter, /hytter/[id], /transport, /transport/[id],
+/transport/[id]/bekraeftelse, /transport/anmod, /transport/anmodninger/[id],
+/dashboard, /profil/[id], Cloudinary, Stripe Connect, hyttebooking+webhook,
+transportanmodninger+chat+Stripe+webhook, anmeldelsessystem (dobbelt-blind),
+RLS, rate limiting, notifications.ts placeholder.
+
+Samsejlads: /samsejlads slettet og fusioneret ind i /transport.
+Mapbox TransportMap.tsx: streets-v12, buet linje (createArc),
+grøn afgangsmarker (⚓), rød ankomstmarker (🏁), fitBounds, flyTo,
+lazy load via IntersectionObserver (kun overview), direct load (detail).
+Returture: return_ride_share_id på ride_shares, badge på listekort,
+alternative transportmuligheder fra andre sejlere på /transport/[id].
+Timezone: src/lib/nuukTime.ts — America/Godthab, alle tider vises i Nuuk-tid.
+Testdata: 4 profiler (Malik, Sara, Hans, Aviaja), 3 hytter, 8 transportture.
+DB: alle from_location/to_location er lowercase i ride_shares.
 
 Ingen kendte bugs.
 
@@ -61,18 +59,14 @@ Ingen kendte bugs.
 
 ## Næste trin (i rækkefølge)
 
-1. ~~Hyttekort mangler billede~~ ✅
-2. ~~Transportanmodninger~~ ✅
-3. ~~Anmeldelsessystem~~ ✅
-4. ~~Samsejlads bookingflow~~ ✅
-5. ~~Mapbox sejlruter~~ ✅
-6. Footer
-7. /admin
-8. i18n (dansk + engelsk med next-intl)
-9. SEO
-10. Stripe webhook til Vercel (ved deploy)
-11. MobilePay (fase 3)
-12. Udbyderguide til Stripe onboarding (fase 3)
+1. Footer
+2. /admin
+3. Samsejlads opret-flow (sejler opretter tur med returtur-tilvalg)
+4. i18n (dansk + engelsk, next-intl)
+5. SEO — metadata, sitemap, landingssider pr. destination
+6. Premium-placering (299 kr/md, Stripe subscription)
+7. Gæstegebyr 3-5% (tilføjes ved 20+ listings)
+8. Offentlig lancering
 
 ## Fremtidige features (ikke nu)
 
