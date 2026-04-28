@@ -186,12 +186,20 @@ CREATE POLICY "boats_owner_all"
 --    Anonyme besøgende på /hytter/[id] bør også se anmeldelser
 -- ──────────────────────────────────────────────────────────────
 
-DROP POLICY IF EXISTS reviews_select_authenticated ON public.reviews;
-CREATE POLICY "reviews_select_public"
-  ON public.reviews
-  FOR SELECT
-  TO public
-  USING (deleted_at IS NULL);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'reviews' 
+    AND policyname = 'reviews_select_public'
+  ) THEN
+    CREATE POLICY "reviews_select_public"
+      ON public.reviews
+      FOR SELECT
+      TO public
+      USING (deleted_at IS NULL);
+  END IF;
+END $$;
 
 -- ──────────────────────────────────────────────────────────────
 -- 8. LAV: Manglende indexes på foreign keys

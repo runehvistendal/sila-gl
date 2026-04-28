@@ -9,7 +9,7 @@ Komplet og fungerende:
 - /hytter, /hytter/[id] med sticky booking-widget
 - /transport, /transport/[id]
 - /dashboard (alle tabs), /profil (komplet)
-- Cloudinary: avatar + hyttebilleder
+- Cloudinary: avatar + hyttebilleder (CabinCard bruger nu `<img>` + MountainSnow placeholder)
 - Stripe Connect onboarding (udbyder forbinder Stripe)
 - Hyttebooking: Stripe checkout + webhook (confirmed verificeret)
 - Kalender: grå strikethrough på optagede datoer
@@ -17,12 +17,13 @@ Komplet og fungerende:
 - pg_cron: pending bookinger udløber automatisk efter 15 min
 - Rate limiting: 5 forsøg / 10 min pr. bruger (`rate_limits` tabel + RPC)
 - Sikkerhedsaudit: RLS på alle 12 tabeller, ownership checks, immutable felter beskyttet
+- **Transportanmodninger** (ny): /transport/anmod, /transport/anmodninger/[id], chat, tilbud, Stripe betaling, webhook
 
 Ingen kendte bugs.
 
 ## Næste session starter med
 
-**1. Hyttekort mangler billede** — fix Cloudinary-visning på /hytter (se CLAUDE.md "Næste i rækkefølge").
+**Anmeldelsessystem** — se CLAUDE.md "Næste i rækkefølge".
 
 ## Vigtige beslutninger (gældende)
 
@@ -51,8 +52,8 @@ Ingen kendte bugs.
 
 ## Næste trin (i rækkefølge)
 
-1. Hyttekort mangler billede — fix Cloudinary-visning på /hytter
-2. Transportanmodninger — gæst anmoder, udbyder byder ind
+1. ~~Hyttekort mangler billede~~ ✅
+2. ~~Transportanmodninger~~ ✅
 3. Anmeldelsessystem
 4. Samsejlads bookingflow
 5. Mapbox sejlruter

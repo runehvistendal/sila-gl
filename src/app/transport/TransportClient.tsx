@@ -2,11 +2,23 @@
 
 import { useState, useMemo } from "react"
 import Link from "next/link"
-import { Anchor, Grid, Map, ArrowRight } from "lucide-react"
+import { Anchor, Grid, Map, ArrowRight, MessageSquare } from "lucide-react"
+import { format } from "date-fns"
+import { da } from "date-fns/locale"
 import { Button } from "@/components/ui/button"
 import { krToOre } from "@/lib/money"
 import TransportCard, { type RideShareCardData } from "./components/TransportCard"
 import TransportFilters, { type TransportFilterValues } from "./components/TransportFilters"
+
+export interface OpenTransportRequest {
+  id: string
+  from_location: string
+  to_location: string
+  desired_date: string
+  num_passengers: number
+  trip_type: string
+  status: string
+}
 
 const DEFAULT_FILTERS: TransportFilterValues = {
   search:   "",
@@ -18,11 +30,18 @@ const DEFAULT_FILTERS: TransportFilterValues = {
   minSeats: "",
 }
 
-interface Props {
-  rideShares: RideShareCardData[]
+const TRIP_TYPE_SHORT: Record<string, string> = {
+  one_way:    "Enkelttur",
+  round_trip: "Tur-retur",
+  return:     "Kun retur",
 }
 
-export default function TransportClient({ rideShares }: Props) {
+interface Props {
+  rideShares:   RideShareCardData[]
+  openRequests: OpenTransportRequest[]
+}
+
+export default function TransportClient({ rideShares, openRequests }: Props) {
   const [filters, setFilters]   = useState<TransportFilterValues>(DEFAULT_FILTERS)
   const [view, setView]         = useState<"grid" | "map">("grid")
   const [showAll, setShowAll]   = useState(false)
@@ -141,6 +160,55 @@ export default function TransportClient({ rideShares }: Props) {
         )}
       </div>
 
+      {/* ── Åbne transportanmodninger ── */}
+      {openRequests.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 border-t border-border">
+          <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+            <div>
+              <h2 className="text-xl font-bold text-foreground">Åbne transportanmodninger</h2>
+              <p className="text-sm text-muted-foreground">Gæster der søger transport — byd ind med et tilbud</p>
+            </div>
+            <Link
+              href="/transport/anmod"
+              className="text-sm text-primary font-semibold hover:text-primary/80 flex items-center gap-1"
+            >
+              Opret ny <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {openRequests.map((r) => (
+              <Link
+                key={r.id}
+                href={`/transport/anmodninger/${r.id}`}
+                className="block bg-white rounded-2xl border border-border p-4 hover:shadow-card-hover hover:border-primary/20 transition-all"
+              >
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+                    <Anchor className="w-4 h-4 text-primary" />
+                  </div>
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                    Åben
+                  </span>
+                </div>
+                <p className="font-semibold text-sm text-foreground">
+                  {r.from_location} → {r.to_location}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {format(new Date(r.desired_date), "d. MMM yyyy", { locale: da })}
+                  {" · "}{r.num_passengers} passager{r.num_passengers !== 1 ? "er" : ""}
+                  {" · "}{TRIP_TYPE_SHORT[r.trip_type] ?? r.trip_type}
+                </p>
+                <div className="flex items-center gap-1 mt-3 text-primary text-xs font-semibold">
+                  <MessageSquare className="w-3 h-3" />
+                  Se anmodning
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* ── CTA ── */}
       <section className="py-16 bg-primary/5 border-t border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -154,7 +222,7 @@ export default function TransportClient({ rideShares }: Props) {
               </p>
             </div>
             <Button asChild size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl px-6 font-semibold gap-2 whitespace-nowrap">
-              <Link href="/opret?type=transport">
+              <Link href="/transport/anmod">
                 Anmod om transport <ArrowRight className="w-4 h-4" />
               </Link>
             </Button>

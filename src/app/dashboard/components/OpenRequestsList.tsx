@@ -24,7 +24,7 @@ interface Props {
 function RequestCard({ r, highlight }: { r: TransportRequestData; highlight?: boolean }) {
   return (
     <Link
-      href={`/transport/${r.id}`}
+      href={`/transport/anmodninger/${r.id}`}
       className={`block w-full text-left bg-white rounded-xl border p-4 ${
         highlight ? "border-primary/30 shadow-sm" : "border-border"
       } hover:shadow-md hover:border-primary/20 transition-all`}

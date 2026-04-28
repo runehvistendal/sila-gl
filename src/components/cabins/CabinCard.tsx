@@ -2,8 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import Image from "next/image"
-import { MapPin, Anchor, ChevronLeft, ChevronRight, Zap, Users } from "lucide-react"
+import { MapPin, Anchor, ChevronLeft, ChevronRight, Zap, Users, MountainSnow } from "lucide-react"
 import { formatKr } from "@/lib/money"
 
 export interface CabinCardData {
@@ -18,14 +17,21 @@ export interface CabinCardData {
   host_name: string | null
 }
 
-const FALLBACK =
-  "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe3e?w=600&h=400&fit=crop&q=80"
+function isValidUrl(url: string): boolean {
+  try {
+    return url.startsWith("https://") || url.startsWith("http://")
+  } catch {
+    return false
+  }
+}
 
 export default function CabinCard({ cabin }: { cabin: CabinCardData }) {
-  const images = cabin.images?.length ? cabin.images : [FALLBACK]
+  // Only use images that look like real URLs (Cloudinary secure_url etc.)
+  const images = (cabin.images ?? []).filter(isValidUrl)
+  const hasImages = images.length > 0
+
   const [idx, setIdx] = useState(0)
   const [imgError, setImgError] = useState(false)
-  const imgSrc = imgError ? FALLBACK : images[idx]
 
   function prev(e: React.MouseEvent) {
     e.preventDefault()
@@ -41,16 +47,20 @@ export default function CabinCard({ cabin }: { cabin: CabinCardData }) {
   return (
     <Link href={`/hytter/${cabin.id}`} className="group block">
       {/* Image */}
-      <div className="relative overflow-hidden rounded-2xl aspect-[4/3] mb-3 bg-gradient-to-br from-primary/30 to-accent/30">
-        <Image
-          src={imgSrc}
-          alt={cabin.title}
-          fill
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          className="object-cover group-hover:scale-105 transition-transform duration-500"
-          onError={() => setImgError(true)}
-          unoptimized={imgSrc.startsWith("http")}
-        />
+      <div className="relative overflow-hidden rounded-2xl aspect-[4/3] mb-3 bg-gradient-to-br from-primary/20 to-accent/20">
+        {hasImages && !imgError ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={images[idx]}
+            alt={cabin.title}
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-primary/40">
+            <MountainSnow size={36} strokeWidth={1.5} />
+          </div>
+        )}
 
         {/* Carousel arrows */}
         {images.length > 1 && (

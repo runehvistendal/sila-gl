@@ -60,6 +60,7 @@ interface TransportRequestMine {
   desired_date: string
   num_passengers: number
   status: string
+  offer_count?: number
 }
 
 interface Props {
@@ -122,7 +123,8 @@ export default function DashboardClient({
         title: "Båd gemt",
         description: "Vælg 'Tilbyd transport' for at poste en tur.",
       },
-      "boat-updated": { title: "Ændringer gemt" },
+      "boat-updated":                  { title: "Ændringer gemt" },
+      "transport-request-created":      { title: "Transportanmodning sendt", description: "Sejlere vil svare med tilbud." },
     }
 
     const msg = map[t]
@@ -189,7 +191,7 @@ export default function DashboardClient({
             )}
             {isTraveler && (
               <Button variant="outline" asChild className="rounded-xl gap-2 text-sm">
-                <Link href="/anmod?type=transport"><Anchor className="w-4 h-4" /> Anmod om transport</Link>
+                <Link href="/transport/anmod"><Anchor className="w-4 h-4" /> Anmod om transport</Link>
               </Button>
             )}
             {isProvider && (
@@ -370,7 +372,7 @@ export default function DashboardClient({
                 </p>
                 <h3 className="font-semibold text-foreground mb-3">Mine transportanmodninger</h3>
                 {myTransportRequests.length === 0 ? (
-                  <EmptyState icon={Anchor} message="Ingen transportanmodninger endnu" cta="Anmod om transport" ctaHref="/anmod?type=transport" />
+                  <EmptyState icon={Anchor} message="Ingen transportanmodninger endnu" cta="Anmod om transport" ctaHref="/transport/anmod" />
                 ) : (
                   <div className="space-y-3">
                     {myTransportRequests.map((r) => (
@@ -600,8 +602,8 @@ export default function DashboardClient({
   )
 }
 
-/* ── Transport request row with Accepter/Afvis for quoted status ── */
-function TransportRequestRow({ r }: { r: { id: string; from_location: string; to_location: string; desired_date: string; num_passengers: number; status: string } }) {
+/* ── Transport request row with offer count and chat link ── */
+function TransportRequestRow({ r }: { r: { id: string; from_location: string; to_location: string; desired_date: string; num_passengers: number; status: string; offer_count?: number } }) {
   const [isPending, startTransition] = useTransition()
 
   return (
@@ -615,6 +617,9 @@ function TransportRequestRow({ r }: { r: { id: string; from_location: string; to
             {r.desired_date ? format(new Date(r.desired_date), "d. MMM yyyy") : "—"}
             {" · "}
             {r.num_passengers} passager{r.num_passengers !== 1 ? "er" : ""}
+            {r.offer_count !== undefined && r.offer_count > 0 && (
+              <span className="ml-2 font-medium text-primary">· {r.offer_count} tilbud</span>
+            )}
           </p>
         </div>
         <Badge className={`${STATUS_COLORS[r.status] ?? "bg-gray-100 text-gray-500"} border-0 text-xs`}>
@@ -622,28 +627,35 @@ function TransportRequestRow({ r }: { r: { id: string; from_location: string; to
         </Badge>
       </div>
 
-      {/* Accepter / Afvis — vises kun når en sejler har sendt et tilbud */}
-      {r.status === "matched" && (
-        <div className="flex gap-2 mt-3 pt-3 border-t border-border">
-          <Button
-            size="sm"
-            disabled={isPending}
-            onClick={() => startTransition(async () => { await acceptTransportRequest(r.id) })}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg gap-1.5"
-          >
-            <Check className="w-3.5 h-3.5" /> Accepter
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={isPending}
-            onClick={() => startTransition(async () => { await declineTransportRequest(r.id) })}
-            className="rounded-lg gap-1.5 text-destructive border-destructive/30 hover:bg-destructive hover:text-white"
-          >
-            <X className="w-3.5 h-3.5" /> Afvis
-          </Button>
-        </div>
-      )}
+      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border flex-wrap">
+        <Button size="sm" asChild variant="outline" className="rounded-lg gap-1.5 text-primary border-primary/30 hover:bg-primary/5">
+          <Link href={`/transport/anmodninger/${r.id}`}>
+            <Eye className="w-3.5 h-3.5" /> Se chat og tilbud
+          </Link>
+        </Button>
+
+        {r.status === "matched" && (
+          <>
+            <Button
+              size="sm"
+              disabled={isPending}
+              onClick={() => startTransition(async () => { await acceptTransportRequest(r.id) })}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg gap-1.5"
+            >
+              <Check className="w-3.5 h-3.5" /> Bekræft
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isPending}
+              onClick={() => startTransition(async () => { await declineTransportRequest(r.id) })}
+              className="rounded-lg gap-1.5 text-destructive border-destructive/30 hover:bg-destructive hover:text-white"
+            >
+              <X className="w-3.5 h-3.5" /> Afvis
+            </Button>
+          </>
+        )}
+      </div>
     </div>
   )
 }

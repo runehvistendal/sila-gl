@@ -236,10 +236,10 @@ export default async function DashboardPage() {
       .order("created_at", { ascending: false })
       .limit(100),
 
-    // My transport requests (as requester)
+    // My transport requests (as requester) + offer count
     supabase
       .from("transport_requests")
-      .select("id, from_location, to_location, desired_date, num_passengers, status")
+      .select("id, from_location, to_location, desired_date, num_passengers, status, transport_offers(count)")
       .eq("guest_id", user.id)
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
@@ -320,7 +320,15 @@ export default async function DashboardPage() {
         myRideShares={(myRideSharesRaw ?? []) as Parameters<typeof DashboardClient>[0]["myRideShares"]}
         myBoats={(myBoatsRaw ?? []) as BoatData[]}
         openTransportRequests={openTransportRequests}
-        myTransportRequests={(myTransportReqRaw ?? []) as Parameters<typeof DashboardClient>[0]["myTransportRequests"]}
+        myTransportRequests={(myTransportReqRaw ?? []).map((r: Record<string, unknown>) => ({
+          id:             r.id as string,
+          from_location:  r.from_location as string,
+          to_location:    r.to_location as string,
+          desired_date:   r.desired_date as string,
+          num_passengers: r.num_passengers as number,
+          status:         r.status as string,
+          offer_count:    (r.transport_offers as Array<{ count: number }> | null)?.[0]?.count ?? 0,
+        }))}
         reviews={(reviewsRaw ?? []).map((r: Record<string, unknown>) => ({
           id:         r.id as string,
           rating:     r.rating as number,
