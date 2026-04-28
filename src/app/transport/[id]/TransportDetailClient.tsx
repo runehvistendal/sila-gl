@@ -11,18 +11,17 @@ import {
 import { formatNuukDate, formatNuukTime } from "@/lib/nuukTime"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 import { motion, AnimatePresence } from "framer-motion"
-
-const getLocationName = (id: string) =>
-  GREENLAND_LOCATIONS.find((l) => l.name_dk.toLowerCase() === id.toLowerCase())?.name_dk ??
-  id.charAt(0).toUpperCase() + id.slice(1)
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { formatKr, oreToKr } from "@/lib/money"
-import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 import { createTransportRequest } from "./actions"
+
+const getLocationName = (id: string) =>
+  GREENLAND_LOCATIONS.find((l) => l.name_dk.toLowerCase() === id.toLowerCase())?.name_dk ??
+  id.charAt(0).toUpperCase() + id.slice(1)
 
 const TransportMap = dynamic(() => import("@/components/map/TransportMap"), {
   ssr: false,
