@@ -443,53 +443,8 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
                       })}
                     </div>
                   ) : (
-                    <div className="mb-3">
-                      <div className="bg-muted rounded-xl p-4 text-sm text-muted-foreground text-center mb-3">
-                        Ingen returture fra samme sejler
-                      </div>
-
-                      {/* Alternative return trips from other skippers */}
-                      {alternativeReturnTrips.length > 0 ? (
-                        <div>
-                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                            Andre tilgængelige sejlture fra {rideShare.to_location}:
-                          </p>
-                          <div className="space-y-2">
-                            {alternativeReturnTrips.map((alt) => (
-                              <Link
-                                key={alt.id}
-                                href={`/transport/${alt.id}`}
-                                className="flex items-center justify-between p-3 bg-muted border border-border hover:border-primary/40 rounded-xl transition-colors group"
-                              >
-                                <div className="min-w-0">
-                                  <p className="text-sm font-semibold text-foreground">
-                                    {alt.from_location} → {alt.to_location}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground mt-0.5">
-                                    {formatNuukDate(alt.departure_at)}
-                                    {formatNuukTime(alt.departure_at) ? ` kl. ${formatNuukTime(alt.departure_at)}` : ""}
-                                    {" · "}{alt.seats_available} plads{alt.seats_available !== 1 ? "er" : ""}
-                                  </p>
-                                  {alt.profiles && (
-                                    <p className="text-xs text-primary font-medium mt-0.5">
-                                      Sejler: {alt.profiles.full_name ?? "Sila-sejler"}
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="text-right shrink-0 ml-3">
-                                  <p className="text-sm font-bold text-primary">{formatKr(alt.price_per_seat_ore)}</p>
-                                  <p className="text-xs text-muted-foreground">pr. plads</p>
-                                  <span className="text-xs text-primary group-hover:text-primary/70">Se tur →</span>
-                                </div>
-                              </Link>
-                            ))}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="bg-muted rounded-xl p-4 text-sm text-muted-foreground text-center">
-                          Ingen tilgængelige sejlture fra {rideShare.to_location} endnu.
-                        </div>
-                      )}
+                    <div className="bg-muted rounded-xl p-4 text-sm text-muted-foreground text-center mb-3">
+                      Ingen returture fra samme sejler
                     </div>
                   )}
 
@@ -683,6 +638,51 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
             Sikker betaling via Stripe
           </p>
         </div>
+
+        {/* ── Alternative returture fra andre sejlere ── */}
+        {ticketType === "return" && returnTrips.length === 0 && (
+          <div className="bg-white rounded-2xl border border-border shadow-sm p-6 mb-6">
+            <h2 className="text-base font-bold text-foreground mb-3">
+              Andre sejlture fra {rideShare.to_location}
+            </h2>
+            {alternativeReturnTrips.length > 0 ? (
+              <div className="space-y-2">
+                {alternativeReturnTrips.map((alt) => (
+                  <Link
+                    key={alt.id}
+                    href={`/transport/${alt.id}`}
+                    className="flex items-center justify-between p-3 bg-muted border border-border hover:border-primary/40 rounded-xl transition-colors group"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">
+                        {alt.from_location} → {alt.to_location}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {formatNuukDate(alt.departure_at)}
+                        {formatNuukTime(alt.departure_at) ? ` kl. ${formatNuukTime(alt.departure_at)}` : ""}
+                        {" · "}{alt.seats_available} plads{alt.seats_available !== 1 ? "er" : ""}
+                      </p>
+                      {alt.profiles && (
+                        <p className="text-xs text-primary font-medium mt-0.5">
+                          Sejler: {alt.profiles.full_name ?? "Sila-sejler"}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0 ml-3">
+                      <p className="text-sm font-bold text-primary">{formatKr(alt.price_per_seat_ore)}</p>
+                      <p className="text-xs text-muted-foreground">pr. plads</p>
+                      <span className="text-xs text-primary group-hover:text-primary/80">Se tur →</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground bg-muted rounded-xl p-4 text-center">
+                Ingen tilgængelige sejlture fra {rideShare.to_location} endnu.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* ── Om sejleren ── */}
         {rideShare.profiles && (
