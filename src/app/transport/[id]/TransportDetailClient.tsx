@@ -61,6 +61,7 @@ interface RideShareDetail {
   boat_description: string | null
   description: string | null
   status: string
+  return_ride_share_id?: string | null
   profiles: { id: string; full_name: string | null; avatar_url: string | null } | null
 }
 
@@ -643,50 +644,64 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
           </p>
         </div>
 
-        {/* ── Alternative returture fra andre sejlere ── */}
-        {ticketType === "return" && returnTrips.length === 0 && (
-          <div className="bg-white rounded-2xl border border-border shadow-sm p-6 mb-6">
-            <h2 className="text-base font-bold text-foreground mb-3">
-              Andre sejlture fra {getLocationName(rideShare.to_location)}
-            </h2>
-            {alternativeReturnTrips.length > 0 ? (
-              <div className="space-y-2">
-                {alternativeReturnTrips.map((alt) => (
-                  <Link
-                    key={alt.id}
-                    href={`/transport/${alt.id}`}
-                    className="flex items-center justify-between p-3 bg-muted border border-border hover:border-primary/40 rounded-xl transition-colors group"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground">
-                        {getLocationName(alt.from_location)} → {getLocationName(alt.to_location)}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {formatNuukDate(alt.departure_at)}
-                        {formatNuukTime(alt.departure_at) ? ` kl. ${formatNuukTime(alt.departure_at)}` : ""}
-                        {" · "}{alt.seats_available} plads{alt.seats_available !== 1 ? "er" : ""}
-                      </p>
-                      {alt.profiles && (
-                        <p className="text-xs text-primary font-medium mt-0.5">
-                          Sejler: {alt.profiles.full_name ?? "Sila-sejler"}
+        {/* ── Alternative transportmuligheder fra andre sejlere ── */}
+        {ticketType === "return" && !rideShare.return_ride_share_id && (() => {
+          console.log("alternativeReturnTrips:", alternativeReturnTrips)
+          return (
+            <div className="bg-white rounded-2xl border border-border shadow-sm p-6 mb-6">
+              <h2 className="text-base font-bold text-foreground mb-4">
+                Andre tilgængelige transportmuligheder til {getLocationName(rideShare.to_location)}
+              </h2>
+              {alternativeReturnTrips.length > 0 ? (
+                <div className="space-y-4">
+                  {alternativeReturnTrips.map((alt) => (
+                    <div key={alt.id} className="border border-border rounded-2xl overflow-hidden">
+                      <div className="p-4">
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="min-w-0">
+                            <p className="font-bold text-foreground">
+                              {getLocationName(alt.from_location)} → {getLocationName(alt.to_location)}
+                            </p>
+                            {alt.profiles && (
+                              <p className="text-sm font-semibold text-primary mt-0.5">
+                                Sejler: {alt.profiles.full_name ?? "Sila-sejler"}
+                              </p>
+                            )}
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {formatNuukDate(alt.departure_at)}
+                              {formatNuukTime(alt.departure_at) ? ` kl. ${formatNuukTime(alt.departure_at)}` : ""}
+                              {" · "}{alt.seats_available} plads{alt.seats_available !== 1 ? "er" : ""} ledige
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="font-bold text-primary">{formatKr(alt.price_per_seat_ore)}</p>
+                            <p className="text-xs text-muted-foreground">pr. plads</p>
+                          </div>
+                        </div>
+                        <Link
+                          href={`/transport/${alt.id}?from=${rideShare.id}`}
+                          className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+                        >
+                          Book denne returtur →
+                        </Link>
+                      </div>
+                      <div className="flex items-start gap-2 bg-amber-50 border-t border-amber-200 px-4 py-3">
+                        <span className="text-amber-500 text-sm leading-none mt-0.5">⚠️</span>
+                        <p className="text-xs text-amber-800">
+                          Denne tur udbydes af en anden sejler. Du modtager to separate betalingskvitteringer.
                         </p>
-                      )}
+                      </div>
                     </div>
-                    <div className="text-right shrink-0 ml-3">
-                      <p className="text-sm font-bold text-primary">{formatKr(alt.price_per_seat_ore)}</p>
-                      <p className="text-xs text-muted-foreground">pr. plads</p>
-                      <span className="text-xs text-primary group-hover:text-primary/80">Se tur →</span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground bg-muted rounded-xl p-4 text-center">
-                Ingen tilgængelige sejlture fra {getLocationName(rideShare.to_location)} endnu.
-              </p>
-            )}
-          </div>
-        )}
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground bg-muted rounded-xl p-4 text-center">
+                  Ingen tilgængelige transportmuligheder til {getLocationName(rideShare.to_location)} endnu.
+                </p>
+              )}
+            </div>
+          )
+        })()}
 
         {/* ── Om sejleren ── */}
         {rideShare.profiles && (

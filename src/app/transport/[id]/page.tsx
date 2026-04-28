@@ -20,7 +20,7 @@ export default async function TransportDetailPage({ params }: PageProps) {
     .select(`
       id, sejler_id:skipper_id, from_location, to_location, departure_at,
       seats_available, total_seats, price_per_seat_ore,
-      boat_description, description, status,
+      boat_description, description, status, return_ride_share_id,
       from_latitude, from_longitude, to_latitude, to_longitude,
       profiles!skipper_id ( id, full_name, avatar_url )
     `)

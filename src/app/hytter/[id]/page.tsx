@@ -132,7 +132,7 @@ export default async function CabinDetailPage({
 
         <ListingImageGallery images={cabin.images} title={cabin.title} />
 
-        <div className="max-w-4xl space-y-8 mt-6 lg:mt-10">
+        <div className="max-w-5xl space-y-8 mt-6 lg:mt-10">
           <div>
             <h2 className="text-xl font-bold text-foreground mb-3">Om hytten</h2>
             <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
