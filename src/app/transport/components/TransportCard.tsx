@@ -5,8 +5,15 @@ import { ArrowRight, ArrowLeft, Calendar, Users, Anchor, User } from "lucide-rea
 import { Button } from "@/components/ui/button"
 import { formatNuukDate, formatNuukDateShort } from "@/lib/nuukTime"
 import { formatKr, oreToKr } from "@/lib/money"
+import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 
 const FALLBACK_BOAT = "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600&h=400&fit=crop&q=80"
+
+const getLocationName = (id: string) =>
+  GREENLAND_LOCATIONS.find((l) => l.name_dk.toLowerCase() === id.toLowerCase())?.name_dk ??
+  id.charAt(0).toUpperCase() + id.slice(1)
+
+const shortBoat = (s: string) => s.length > 25 ? s.slice(0, 25) + "…" : s
 
 export interface ReturnTripData {
   id: string
@@ -73,9 +80,9 @@ export default function TransportCard({ rideShare, returnTrip: returnTripProp = 
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 font-semibold text-foreground text-sm">
-            <span className="truncate">{rideShare.from_location}</span>
+            <span className="truncate">{getLocationName(rideShare.from_location)}</span>
             <ArrowRight className="w-4 h-4 text-primary shrink-0" />
-            <span className="truncate">{rideShare.to_location}</span>
+            <span className="truncate">{getLocationName(rideShare.to_location)}</span>
           </div>
           {skipper?.full_name && (
             <p className="text-xs text-muted-foreground mt-0.5">Sejler: {skipper.full_name}</p>
@@ -118,9 +125,7 @@ export default function TransportCard({ rideShare, returnTrip: returnTripProp = 
         {rideShare.boat_description && (
           <span className="inline-flex items-center gap-1.5 text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">
             <Anchor className="w-3 h-3" />
-            {rideShare.boat_description.length > 20
-              ? rideShare.boat_description.slice(0, 20) + "…"
-              : rideShare.boat_description}
+            {shortBoat(rideShare.boat_description)}
           </span>
         )}
       </div>

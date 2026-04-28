@@ -9,7 +9,12 @@ import {
   RefreshCw, MessageSquare, User, Star,
 } from "lucide-react"
 import { formatNuukDate, formatNuukTime } from "@/lib/nuukTime"
+import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 import { motion, AnimatePresence } from "framer-motion"
+
+const getLocationName = (id: string) =>
+  GREENLAND_LOCATIONS.find((l) => l.name_dk.toLowerCase() === id.toLowerCase())?.name_dk ??
+  id.charAt(0).toUpperCase() + id.slice(1)
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -182,10 +187,10 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
             mode="detail"
             routes={[{
               id:       rideShare.id,
-              fromName: rideShare.from_location,
+              fromName: getLocationName(rideShare.from_location),
               fromLat:  rideShare.from_latitude,
               fromLng:  rideShare.from_longitude ?? 0,
-              toName:   rideShare.to_location,
+              toName:   getLocationName(rideShare.to_location),
               toLat:    rideShare.to_latitude,
               toLng:    rideShare.to_longitude ?? 0,
             }]}
@@ -205,9 +210,9 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
             </div>
             <div>
               <div className="flex items-center gap-2 text-xl font-bold text-foreground flex-wrap">
-                <span>{rideShare.from_location}</span>
+                <span>{getLocationName(rideShare.from_location)}</span>
                 <ArrowRight className="w-5 h-5 text-primary shrink-0" />
-                <span>{rideShare.to_location}</span>
+                <span>{getLocationName(rideShare.to_location)}</span>
               </div>
               {rideShare.profiles && (
                 <p className="text-sm text-muted-foreground break-words">
@@ -268,7 +273,7 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
               <span className="font-semibold text-sm text-foreground">Afgang</span>
             </div>
             <p className="text-sm text-muted-foreground ml-6">
-              {rideShare.from_location} → {rideShare.to_location} · {formatNuukDate(rideShare.departure_at)}
+              {getLocationName(rideShare.from_location)} → {getLocationName(rideShare.to_location)} · {formatNuukDate(rideShare.departure_at)}
             </p>
             <p className="text-sm font-semibold text-primary ml-6 mt-1">
               {oreToKr(priceOre).toLocaleString("da-DK")} kr./plads
@@ -359,7 +364,7 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
                               <div className="flex items-center justify-between gap-3">
                                 <div>
                                   <p className="text-sm font-semibold">
-                                    {rt.from_location} → {rt.to_location}
+                                    {getLocationName(rt.from_location)} → {getLocationName(rt.to_location)}
                                   </p>
                                   <p className="text-xs text-muted-foreground">
                                     {formatNuukDate(rt.departure_at)} · {rt.seats_available} pladser
@@ -643,7 +648,7 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
         {ticketType === "return" && returnTrips.length === 0 && (
           <div className="bg-white rounded-2xl border border-border shadow-sm p-6 mb-6">
             <h2 className="text-base font-bold text-foreground mb-3">
-              Andre sejlture fra {rideShare.to_location}
+              Andre sejlture fra {getLocationName(rideShare.to_location)}
             </h2>
             {alternativeReturnTrips.length > 0 ? (
               <div className="space-y-2">
@@ -655,7 +660,7 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
                   >
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-foreground">
-                        {alt.from_location} → {alt.to_location}
+                        {getLocationName(alt.from_location)} → {getLocationName(alt.to_location)}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {formatNuukDate(alt.departure_at)}
@@ -678,7 +683,7 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
               </div>
             ) : (
               <p className="text-sm text-muted-foreground bg-muted rounded-xl p-4 text-center">
-                Ingen tilgængelige sejlture fra {rideShare.to_location} endnu.
+                Ingen tilgængelige sejlture fra {getLocationName(rideShare.to_location)} endnu.
               </p>
             )}
           </div>
