@@ -33,7 +33,8 @@ export default async function TransportDetailPage({ params }: PageProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rs = rideShare as any
 
-  const [returnTripsRes, reviewsRes] = await Promise.all([
+  const [returnTripsRes, altReturnTripsRes, reviewsRes] = await Promise.all([
+    // Returture fra SAMME sejler (direkte kobling)
     supabase
       .from("ride_shares")
       .select(`
@@ -45,8 +46,24 @@ export default async function TransportDetailPage({ params }: PageProps) {
       .eq("from_location", rs.to_location)
       .eq("to_location", rs.from_location)
       .eq("skipper_id", rs.sejler_id)
-      .eq("status", "active")
+      .in("status", ["active", "full"])
       .neq("id", id)
+      .order("departure_at", { ascending: true })
+      .limit(5),
+
+    // Alternative returture fra ANDRE sejlere (vises kun når ingen direkte kobling)
+    supabase
+      .from("ride_shares")
+      .select(`
+        id, sejler_id:skipper_id, from_location, to_location, departure_at,
+        seats_available, total_seats, price_per_seat_ore,
+        boat_description, description, status,
+        profiles!skipper_id ( id, full_name, avatar_url )
+      `)
+      .eq("from_location", rs.to_location)
+      .in("status", ["active", "full"])
+      .neq("id", id)
+      .neq("skipper_id", rs.sejler_id)
       .order("departure_at", { ascending: true })
       .limit(5),
 
@@ -69,6 +86,7 @@ export default async function TransportDetailPage({ params }: PageProps) {
       <TransportDetailClient
         rideShare={rs}
         returnTrips={(returnTripsRes.data ?? []) as typeof rs[]}
+        alternativeReturnTrips={(altReturnTripsRes.data ?? []) as typeof rs[]}
         reviews={(reviewsRes.data ?? []) as any[]}
         isLoggedIn={!!user}
       />

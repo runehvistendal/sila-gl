@@ -69,10 +69,10 @@ export async function createSamsejlads(
     return { errors: { to_location: ["Afgangs- og ankomstby må ikke være ens"] } }
   }
 
-  // Combine date + optional time into TIMESTAMPTZ
+  // Brugerens input er Nuuk-lokal tid (UTC-3) — gem som korrekt UTC
   const departureAt = data.departure_time
-    ? new Date(`${data.departure_date}T${data.departure_time}:00`).toISOString()
-    : new Date(`${data.departure_date}T00:00:00`).toISOString()
+    ? new Date(`${data.departure_date}T${data.departure_time}:00-03:00`).toISOString()
+    : new Date(`${data.departure_date}T00:00:00-03:00`).toISOString()
 
   // Money conversion — ONLY here, per CLAUDE.md
   const price_per_seat_ore = krToOre(data.price_per_seat_kr)

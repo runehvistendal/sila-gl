@@ -132,68 +132,62 @@ export default async function CabinDetailPage({
 
         <ListingImageGallery images={cabin.images} title={cabin.title} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10 mt-6 lg:mt-10">
-          <div className="order-2 lg:order-1 lg:col-span-2 space-y-8">
+        <div className="max-w-2xl space-y-8 mt-6 lg:mt-10">
+          <div>
+            <h2 className="text-xl font-bold text-foreground mb-3">Om hytten</h2>
+            <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
+              {cabin.description || "Ingen beskrivelse endnu."}
+            </p>
+          </div>
+
+          {cabin.amenities?.length > 0 && (
             <div>
-              <h2 className="text-xl font-bold text-foreground mb-3">Om hytten</h2>
-              <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
-                {cabin.description || "Ingen beskrivelse endnu."}
-              </p>
+              <h2 className="text-xl font-bold text-foreground mb-4">Faciliteter</h2>
+              <div className="grid grid-cols-2 gap-3">
+                {cabin.amenities.map((a, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm text-foreground">
+                    <Check className="w-4 h-4 text-primary shrink-0" />
+                    {AMENITY_LABELS[a] ?? a}
+                  </div>
+                ))}
+              </div>
             </div>
+          )}
 
-            {cabin.amenities?.length > 0 && (
-              <div>
-                <h2 className="text-xl font-bold text-foreground mb-4">Faciliteter</h2>
-                <div className="grid grid-cols-2 gap-3">
-                  {cabin.amenities.map((a, i) => (
-                    <div key={i} className="flex items-center gap-2 text-sm text-foreground">
-                      <Check className="w-4 h-4 text-primary shrink-0" />
-                      {AMENITY_LABELS[a] ?? a}
-                    </div>
-                  ))}
+          {hostName && (
+            <div>
+              <h2 className="text-xl font-bold text-foreground mb-3">Din vært</h2>
+              <div className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-border hover:border-primary/30 hover:shadow-card transition-all w-full text-left">
+                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
+                  {hostAvatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={hostAvatar} alt={hostName} className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-6 h-6 text-primary" />
+                  )}
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">{hostName}</p>
+                  <p className="text-sm text-primary">Se profil →</p>
                 </div>
               </div>
-            )}
-
-            {hostName && (
-              <div>
-                <h2 className="text-xl font-bold text-foreground mb-3">Din vært</h2>
-                <div className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-border hover:border-primary/30 hover:shadow-card transition-all w-full text-left">
-                  <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
-                    {hostAvatar ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={hostAvatar} alt={hostName} className="w-full h-full object-cover" />
-                    ) : (
-                      <User className="w-6 h-6 text-primary" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-foreground">{hostName}</p>
-                    <p className="text-sm text-primary">Se profil →</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <CabinReviews cabinId={cabin.id} ownerId={cabin.owner_id} currentUserId={user?.id ?? null} />
-          </div>
-
-          <div className="order-1 lg:order-2 lg:col-span-1">
-            <div className="lg:sticky lg:top-24">
-              <CabinBookingWidget
-                cabin={{
-                  id: cabin.id,
-                  max_guests: cabin.max_guests,
-                  price_per_night_ore: cabin.price_per_night_ore,
-                  offers_transport: cabin.offers_transport,
-                  transport_price_per_person_ore: cabin.transport_price_per_person_ore,
-                }}
-                isLoggedIn={!!user}
-                loginNextPath={`/hytter/${cabin.id}`}
-                disabledYmd={disabledYmd}
-              />
             </div>
-          </div>
+          )}
+
+          <CabinBookingWidget
+            cabin={{
+              id: cabin.id,
+              max_guests: cabin.max_guests,
+              price_per_night_ore: cabin.price_per_night_ore,
+              offers_transport: cabin.offers_transport,
+              transport_price_per_person_ore: cabin.transport_price_per_person_ore,
+            }}
+            isLoggedIn={!!user}
+            loginNextPath={`/hytter/${cabin.id}`}
+            disabledYmd={disabledYmd}
+          />
+
+          <CabinReviews cabinId={cabin.id} ownerId={cabin.owner_id} currentUserId={user?.id ?? null} />
         </div>
       </div>
     </main>

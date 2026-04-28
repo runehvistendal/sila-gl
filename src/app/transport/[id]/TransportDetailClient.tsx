@@ -2,12 +2,13 @@
 
 import { useState, useTransition } from "react"
 import dynamic from "next/dynamic"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   ArrowRight, ChevronLeft, Calendar, Clock, Users, Anchor,
   RefreshCw, MessageSquare, User, Star,
 } from "lucide-react"
-import { format } from "date-fns"
+import { formatNuukDate, formatNuukTime } from "@/lib/nuukTime"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -62,6 +63,7 @@ interface RideShareDetail {
 interface Props {
   rideShare: RideShareDetail
   returnTrips: RideShareDetail[]
+  alternativeReturnTrips: RideShareDetail[]
   reviews: ReviewData[]
   isLoggedIn: boolean
 }
@@ -79,7 +81,7 @@ function StarRow({ rating }: { rating: number }) {
   )
 }
 
-export default function TransportDetailClient({ rideShare, returnTrips, reviews, isLoggedIn }: Props) {
+export default function TransportDetailClient({ rideShare, returnTrips, alternativeReturnTrips, reviews, isLoggedIn }: Props) {
   const router = useRouter()
 
   const [seats,          setSeats]          = useState(1)
@@ -159,8 +161,7 @@ export default function TransportDetailClient({ rideShare, returnTrips, reviews,
     ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
     : null
 
-  const depTimeFmt = format(new Date(rideShare.departure_at), "HH:mm")
-  const depTime = depTimeFmt !== "00:00" ? depTimeFmt : null
+  const depTime = formatNuukTime(rideShare.departure_at)
 
   return (
     <div className="min-h-screen pt-16 bg-background">
@@ -222,7 +223,7 @@ export default function TransportDetailClient({ rideShare, returnTrips, reviews,
                 <Calendar className="w-3.5 h-3.5" />Dato
               </div>
               <p className="font-semibold text-sm">
-                {format(new Date(rideShare.departure_at), "d. MMM yyyy")}
+                {formatNuukDate(rideShare.departure_at)}
               </p>
             </div>
             {depTime && (
@@ -267,7 +268,7 @@ export default function TransportDetailClient({ rideShare, returnTrips, reviews,
               <span className="font-semibold text-sm text-foreground">Afgang</span>
             </div>
             <p className="text-sm text-muted-foreground ml-6">
-              {rideShare.from_location} → {rideShare.to_location} · {format(new Date(rideShare.departure_at), "d. MMM yyyy")}
+              {rideShare.from_location} → {rideShare.to_location} · {formatNuukDate(rideShare.departure_at)}
             </p>
             <p className="text-sm font-semibold text-primary ml-6 mt-1">
               {oreToKr(priceOre).toLocaleString("da-DK")} kr./plads
@@ -361,7 +362,7 @@ export default function TransportDetailClient({ rideShare, returnTrips, reviews,
                                     {rt.from_location} → {rt.to_location}
                                   </p>
                                   <p className="text-xs text-muted-foreground">
-                                    {format(new Date(rt.departure_at), "d. MMM yyyy")} · {rt.seats_available} pladser
+                                    {formatNuukDate(rt.departure_at)} · {rt.seats_available} pladser
                                   </p>
                                   {rt.profiles && (
                                     <p className="text-xs text-primary font-medium mt-0.5">
@@ -442,8 +443,53 @@ export default function TransportDetailClient({ rideShare, returnTrips, reviews,
                       })}
                     </div>
                   ) : (
-                    <div className="bg-muted rounded-xl p-4 text-sm text-muted-foreground text-center mb-3">
-                      Ingen returture tilgængelige fra samme sejler
+                    <div className="mb-3">
+                      <div className="bg-muted rounded-xl p-4 text-sm text-muted-foreground text-center mb-3">
+                        Ingen returture fra samme sejler
+                      </div>
+
+                      {/* Alternative return trips from other skippers */}
+                      {alternativeReturnTrips.length > 0 ? (
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                            Andre tilgængelige sejlture fra {rideShare.to_location}:
+                          </p>
+                          <div className="space-y-2">
+                            {alternativeReturnTrips.map((alt) => (
+                              <Link
+                                key={alt.id}
+                                href={`/transport/${alt.id}`}
+                                className="flex items-center justify-between p-3 bg-muted border border-border hover:border-primary/40 rounded-xl transition-colors group"
+                              >
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-foreground">
+                                    {alt.from_location} → {alt.to_location}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    {formatNuukDate(alt.departure_at)}
+                                    {formatNuukTime(alt.departure_at) ? ` kl. ${formatNuukTime(alt.departure_at)}` : ""}
+                                    {" · "}{alt.seats_available} plads{alt.seats_available !== 1 ? "er" : ""}
+                                  </p>
+                                  {alt.profiles && (
+                                    <p className="text-xs text-primary font-medium mt-0.5">
+                                      Sejler: {alt.profiles.full_name ?? "Sila-sejler"}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="text-right shrink-0 ml-3">
+                                  <p className="text-sm font-bold text-primary">{formatKr(alt.price_per_seat_ore)}</p>
+                                  <p className="text-xs text-muted-foreground">pr. plads</p>
+                                  <span className="text-xs text-primary group-hover:text-primary/70">Se tur →</span>
+                                </div>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-muted rounded-xl p-4 text-sm text-muted-foreground text-center">
+                          Ingen tilgængelige sejlture fra {rideShare.to_location} endnu.
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -693,7 +739,7 @@ export default function TransportDetailClient({ rideShare, returnTrips, reviews,
                       {r.profiles?.full_name ?? "Anonym"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {format(new Date(r.created_at), "d. MMM yyyy")}
+                      {new Date(r.created_at).toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric" })}
                     </p>
                   </div>
                   <StarRow rating={r.rating} />

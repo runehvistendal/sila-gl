@@ -104,10 +104,10 @@ export async function createSejladsOpslag(
   if (!fromLoc) return { errors: { from_location: ["Ukendt afgangssted"] } }
   if (!toLoc) return { errors: { to_location: ["Ukendt destination"] } }
 
-  // Build departure_at timestamptz
+  // Brugerens input er Nuuk-lokal tid (UTC-3) — gem som korrekt UTC
   const departure_at = departure_time
-    ? `${departure_date}T${departure_time}:00`
-    : `${departure_date}T00:00:00`
+    ? new Date(`${departure_date}T${departure_time}:00-03:00`).toISOString()
+    : new Date(`${departure_date}T00:00:00-03:00`).toISOString()
 
   // Price calculation
   const price_per_seat_roundtrip_ore = krToOre(price_per_seat_roundtrip_kr)

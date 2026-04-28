@@ -50,10 +50,9 @@ type Props = {
 }
 
 const TRIP_OPTIONS: { value: TransportTrip; label: string }[] = [
-  { value: "none", label: "Uden transport" },
-  { value: "round_trip", label: "Tur-retur" },
   { value: "outbound", label: "Kun udrejse" },
   { value: "return", label: "Kun hjemrejse" },
+  { value: "round_trip", label: "Tur-retur" },
 ]
 
 function parseYmdLocal(s: string): Date {
@@ -77,7 +76,9 @@ export default function CabinBookingWidget({
 
   const [range, setRange] = useState<DateRange | undefined>(undefined)
   const [guestsInput, setGuestsInput] = useState("1")
-  const [transport, setTransport] = useState<TransportTrip>("none")
+  const [transport, setTransport] = useState<TransportTrip>(
+    cabin.offers_transport ? "outbound" : "none"
+  )
 
   const guests = Math.floor(Number(guestsInput)) || 0
   const guestInvalid = guests < 1 || guests > cabin.max_guests
@@ -224,7 +225,7 @@ export default function CabinBookingWidget({
     nights < 1 ||
     !checkIn ||
     !checkOut ||
-    (cabin.offers_transport && transport !== "none" && perPerson <= 0)
+    (cabin.offers_transport && perPerson <= 0)
 
   return (
     <div
@@ -297,7 +298,7 @@ export default function CabinBookingWidget({
           {cabin.offers_transport && perPerson > 0 && (
             <div>
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">
-                Transport (valgfrit)
+                Transport
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {TRIP_OPTIONS.map((o) => (

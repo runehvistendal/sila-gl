@@ -2,8 +2,8 @@
 
 import Link from "next/link"
 import { ArrowRight, ArrowLeft, Calendar, Users, Anchor, User } from "lucide-react"
-import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
+import { formatNuukDate, formatNuukDateShort } from "@/lib/nuukTime"
 import { formatKr, oreToKr } from "@/lib/money"
 
 const FALLBACK_BOAT = "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600&h=400&fit=crop&q=80"
@@ -105,7 +105,7 @@ export default function TransportCard({ rideShare, returnTrip: returnTripProp = 
       <div className="flex flex-wrap gap-2 mb-4">
         <span className="inline-flex items-center gap-1.5 text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">
           <Calendar className="w-3 h-3" />
-          {format(new Date(rideShare.departure_at), "d. MMM yyyy")}
+          {formatNuukDate(rideShare.departure_at)}
         </span>
         <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full ${
           rideShare.seats_available > 0
@@ -130,7 +130,7 @@ export default function TransportCard({ rideShare, returnTrip: returnTripProp = 
         {returnTrip ? (
           <span className="inline-flex items-center gap-1.5 text-xs bg-green-50 border border-green-200 text-green-700 px-2.5 py-1 rounded-full font-medium">
             <ArrowLeft className="w-3 h-3 shrink-0" />
-            Retur: {format(new Date(returnTrip.departure_at), "d. MMM")} · {returnTrip.seats_available} plads{returnTrip.seats_available !== 1 ? "er" : ""}
+            Retur: {formatNuukDateShort(returnTrip.departure_at)} · {returnTrip.seats_available} plads{returnTrip.seats_available !== 1 ? "er" : ""}
           </span>
         ) : (
           <div className="min-h-[2rem]" />

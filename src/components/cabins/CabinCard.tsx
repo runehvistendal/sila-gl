@@ -96,7 +96,7 @@ export default function CabinCard({ cabin }: { cabin: CabinCardData }) {
         {cabin.offers_transport && (
           <div className="absolute top-3 left-3 z-10">
             <span className="inline-flex items-center gap-1 bg-card text-primary shadow-sm text-xs font-semibold px-2.5 py-0.5 rounded-md">
-              <Anchor size={11} /> Transport
+              <Anchor size={11} /> Transport tilbydes
             </span>
           </div>
         )}
