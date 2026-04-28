@@ -9,12 +9,12 @@ Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort 
 
 ## Status (28.4.2026)
 
-- Seneste: samsejlads bookingflow (/samsejlads, /opret, /[id], bekraeftelse, Stripe, webhook).
+- Seneste: Mapbox kortvisning (SejlruteMap + SamsejladsOversigt, dark-v11, dynamic import).
 - Ingen kendte bugs.
 
 ## Næste fokus
 
-- **Mapbox sejlruter** — se CLAUDE.md, sektionen «Næste i rækkefølge».
+- **Footer** — se CLAUDE.md, sektionen «Næste i rækkefølge».
 
 ## Vigtige beslutninger (gældende)
 

@@ -2,14 +2,27 @@
 
 import { useState, useMemo } from "react"
 import Link from "next/link"
+import dynamic from "next/dynamic"
 import { format } from "date-fns"
 import { da } from "date-fns/locale"
-import { Anchor, Users, ArrowRight, Search, PlusCircle, User } from "lucide-react"
+import { Anchor, Users, ArrowRight, PlusCircle, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 import { formatKr } from "@/lib/money"
 import type { RideShareCardData } from "./page"
+
+const SamsejladsOversigt = dynamic(() => import("@/components/map/SamsejladsOversigt"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-56 rounded-xl border border-white/10 bg-[#09192A]/60 flex items-center justify-center">
+      <div className="flex items-center gap-2 text-white/50 text-sm">
+        <div className="w-4 h-4 border-2 border-[#4A9CC7]/40 border-t-[#4A9CC7] rounded-full animate-spin" />
+        Indlæser kort...
+      </div>
+    </div>
+  ),
+})
 
 const HUBS = GREENLAND_LOCATIONS.filter((l) => l.is_major_hub)
 const ALL_LOCATIONS = [...HUBS, ...GREENLAND_LOCATIONS.filter((l) => !l.is_major_hub)]
@@ -118,6 +131,16 @@ export default function SamsejladsClient({ rideShares }: { rideShares: RideShare
           </Link>
         </div>
       </div>
+
+      {/* Overview map */}
+      {rideShares.length > 0 && (
+        <div className="max-w-5xl mx-auto px-4 -mt-4 mb-0 relative z-10">
+          <SamsejladsOversigt
+            rideShares={rideShares.filter((rs) => rs.status === "active")}
+            className="h-56"
+          />
+        </div>
+      )}
 
       <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Filters */}

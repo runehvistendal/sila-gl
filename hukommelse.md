@@ -20,12 +20,13 @@ Komplet og fungerende:
 - **Transportanmodninger** (ny): /transport/anmod, /transport/anmodninger/[id], chat, tilbud, Stripe betaling, webhook
 - **Anmeldelsessystem** (ny): dobbelt-blind, 30-dages vindue, trigger, pg_cron, ReviewForm, dashboard review-knap, /profil/[id] offentlig
 - **Samsejlads bookingflow** (ny): /samsejlads søgeside, /samsejlads/[id] detaljeside + booking, /samsejlads/opret, /samsejlads/[id]/bekraeftelse, Stripe Checkout, webhook
+- **Mapbox kortvisning** (ny): SejlruteMap (rute + markører på /samsejlads/[id]), SamsejladsOversigt (alle ruter + popup på /samsejlads)
 
 Ingen kendte bugs.
 
 ## Næste session starter med
 
-**Mapbox sejlruter** — se CLAUDE.md "Næste i rækkefølge".
+**Footer** — se CLAUDE.md "Næste i rækkefølge".
 
 ## Vigtige beslutninger (gældende)
 
@@ -62,7 +63,7 @@ Ingen kendte bugs.
 2. ~~Transportanmodninger~~ ✅
 3. ~~Anmeldelsessystem~~ ✅
 4. ~~Samsejlads bookingflow~~ ✅
-5. Mapbox sejlruter
+5. ~~Mapbox sejlruter~~ ✅
 6. Footer
 7. /admin
 8. i18n (dansk + engelsk med next-intl)

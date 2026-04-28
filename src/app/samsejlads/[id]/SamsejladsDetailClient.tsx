@@ -2,16 +2,29 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
+import dynamic from "next/dynamic"
 import { format } from "date-fns"
 import { da } from "date-fns/locale"
 import {
-  Anchor, ArrowRight, Users, Clock, Ship, User, Star, AlertCircle, Loader2,
+  Anchor, ArrowRight, Users, Ship, User, Star, AlertCircle, Loader2, MapPin,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { StarBar } from "@/components/cabins/CabinReviews"
 import { formatKr } from "@/lib/money"
 import type { RideShareDetail } from "./page"
+
+const SejlruteMap = dynamic(() => import("@/components/map/SejlruteMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-48 md:h-64 rounded-xl border border-white/10 bg-[#09192A] flex items-center justify-center">
+      <div className="flex items-center gap-2 text-white/50 text-sm">
+        <div className="w-4 h-4 border-2 border-[#4A9CC7]/40 border-t-[#4A9CC7] rounded-full animate-spin" />
+        Indlæser kort...
+      </div>
+    </div>
+  ),
+})
 
 interface ReviewRow {
   id: string
@@ -113,6 +126,21 @@ export default function SamsejladsDetailClient({ rideShare: rs, reviews, current
               </div>
             )}
           </div>
+        </div>
+
+        {/* Route map */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-2">
+            <MapPin className="w-4 h-4 text-[#4A9CC7]" />
+            <span className="text-sm font-medium text-foreground">
+              {rs.from_location} → {rs.to_location}
+            </span>
+          </div>
+          <SejlruteMap
+            fromLocation={rs.from_location}
+            toLocation={rs.to_location}
+            className="h-48 md:h-64"
+          />
         </div>
 
         <div className="grid sm:grid-cols-[1fr_300px] gap-6">

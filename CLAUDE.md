@@ -53,6 +53,7 @@ Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Ver
 - **Transportanmodninger:** /transport/anmod (tur-type, returdato, passagerer), /transport/anmodninger/[id] (Realtime chat, tilbudskort, accept → Stripe Checkout, webhook) ✅
 - **Anmeldelsessystem:** dobbelt-blind (trigger), 30-dages vindue (pg_cron), alle 3 booking-typer, ReviewForm + ReviewDialog, dashboard review-knap, /profil/[id] offentlig ✅
 - **Samsejlads bookingflow:** /samsejlads (søgeside, filter), /samsejlads/[id] (detaljeside, book-knap → Stripe), /samsejlads/opret (server action, fra/til/departure_at/pris), /samsejlads/[id]/bekraeftelse, webhook (seats_available atomisk, status=full) ✅
+- **Mapbox kortvisning:** SejlruteMap (dark-v11, LineLayer + CircleLayer, fit bounds) på /samsejlads/[id]; SamsejladsOversigt (alle ruter + popup) på /samsejlads; dynamic import SSR=false ✅
 - **src/lib/notifications.ts** — placeholder funktioner (notify*) ✅
 - **/profil/[id]** — offentlig profilside med anmeldelser og gennemsnitsscore ✅
 
@@ -70,7 +71,7 @@ Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Ver
 2. ~~Transportanmodninger~~ ✅
 3. ~~Anmeldelsessystem~~ ✅
 4. ~~Samsejlads bookingflow~~ ✅
-5. Mapbox sejlruter
+5. ~~Mapbox sejlruter~~ ✅
 6. Footer
 7. /admin
 8. i18n (dansk + engelsk med next-intl)
