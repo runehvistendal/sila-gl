@@ -50,6 +50,10 @@ Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Ver
 - **Cancel-flow:** pending booking annulleres + Stripe session expires ved tilbagetryk ✅
 - **pg_cron cleanup:** pending bookinger udløber automatisk efter 15 min ✅
 - **Rate limiting:** `rate_limits`-tabel + `consume_rate_limit` RPC (5 forsøg / 10 min) ✅
+- **Transportanmodninger:** /transport/anmod (tur-type, returdato, passagerer), /transport/anmodninger/[id] (Realtime chat, tilbudskort, accept → Stripe Checkout, webhook) ✅
+- **Anmeldelsessystem:** dobbelt-blind (trigger), 30-dages vindue (pg_cron), alle 3 booking-typer, ReviewForm + ReviewDialog, dashboard review-knap, /profil/[id] offentlig ✅
+- **src/lib/notifications.ts** — placeholder funktioner (notify*) ✅
+- **/profil/[id]** — offentlig profilside med anmeldelser og gennemsnitsscore ✅
 
 ## /opret flow (præcist)
 - **/opret:** 2 kort (Udlej en hytte / Tilbyd transport)
@@ -61,9 +65,9 @@ Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Ver
 - /opret/opslag/sejlads/[id] → samsejladstur
 
 ## Næste i rækkefølge
-1. Hyttekort mangler billede — fix Cloudinary-visning på /hytter
-2. Transportanmodninger — gæst anmoder, udbyder byder ind
-3. Anmeldelsessystem
+1. ~~Hyttekort mangler billede~~ ✅
+2. ~~Transportanmodninger~~ ✅
+3. ~~Anmeldelsessystem~~ ✅
 4. Samsejlads bookingflow
 5. Mapbox sejlruter
 6. Footer

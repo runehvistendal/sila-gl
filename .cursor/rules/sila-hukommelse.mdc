@@ -7,14 +7,14 @@ alwaysApply: true
 
 Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort status til sessioner.
 
-## Status (27.4.2026)
+## Status (28.4.2026)
 
-- Seneste: profil komplet, Cloudinary, navbar sprog/avatar-synk.
+- Seneste: transportanmodninger (chat, tilbud, Stripe), anmeldelsessystem (dobbelt-blind, trigger, pg_cron), /profil/[id] offentlig.
 - Ingen kendte bugs.
 
 ## Næste fokus
 
-- **Stripe Connect** (15 % kommission, server-side) — se CLAUDE.md, sektionen «Næste i rækkefølge».
+- **Samsejlads bookingflow** — se CLAUDE.md, sektionen «Næste i rækkefølge».
 
 ## Vigtige beslutninger (gældende)
 
