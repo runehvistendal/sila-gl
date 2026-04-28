@@ -172,7 +172,7 @@ export default function TransportDetailClient({ rideShare, returnTrips, reviews,
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
         >
           <ChevronLeft className="w-4 h-4" />
-          Tilbage til samsejlads
+          Tilbage til transport
         </button>
 
         {/* ── Route map ── */}

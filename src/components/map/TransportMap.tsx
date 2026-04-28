@@ -42,6 +42,38 @@ function midpoint(a: [number, number], b: [number, number]): [number, number] {
   return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
 }
 
+/** Buet linje der buer vestover (ud over havet langs Grønlands kyst) */
+function createArc(
+  from: [number, number],
+  to:   [number, number],
+  points = 30
+): [number, number][] {
+  const coords: [number, number][] = []
+  for (let i = 0; i <= points; i++) {
+    const t     = i / points
+    const lng   = from[0] + (to[0] - from[0]) * t
+    const lat   = from[1] + (to[1] - from[1]) * t
+    const bulge = Math.sin(Math.PI * t) * -4
+    coords.push([lng + bulge, lat])
+  }
+  return coords
+}
+
+/** Custom HTML-markør med farve og emoji */
+function makeMarkerEl(color: string, emoji: string): HTMLDivElement {
+  const el = document.createElement("div")
+  el.style.cssText = `
+    width:32px;height:32px;border-radius:50%;
+    background:${color};border:3px solid white;
+    box-shadow:0 2px 8px rgba(0,0,0,.3);
+    display:flex;align-items:center;
+    justify-content:center;font-size:14px;
+    cursor:default;
+  `
+  el.innerHTML = emoji
+  return el
+}
+
 export default function TransportMap({
   routes,
   selectedId,
@@ -55,59 +87,56 @@ export default function TransportMap({
 
   if (!process.env.NEXT_PUBLIC_MAPBOX_TOKEN) return null
 
-  // ── Initialise map (lazy via IntersectionObserver) ───────────────────────
+  // ── Shared map factory ───────────────────────────────────────────────────
+  function initMap(el: HTMLDivElement) {
+    if (mapRef.current) return
+    const map = new mapboxgl.Map({
+      container:          el,
+      style:              "mapbox://styles/mapbox/streets-v12",
+      center:             GREENLAND_CENTER,
+      zoom:               mode === "detail" ? 5 : 3.5,
+      maxBounds:          GREENLAND_BOUNDS,
+      fadeDuration:       0,
+      renderWorldCopies:  false,
+      attributionControl: false,
+    })
+    mapRef.current = map
+    map.addControl(new mapboxgl.AttributionControl({ compact: true }), "bottom-right")
+    if (mode === "detail") {
+      map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right")
+    }
+    map.on("load", () => {
+      if (mode === "detail") renderDetail(map)
+      else renderOverview(map)
+      setLoaded(true)
+    })
+  }
+
+  // ── Initialise: detail = immediately, overview = IntersectionObserver ────
   useEffect(() => {
     const el = containerRef.current
     if (!el || mapRef.current) return
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (!entries[0].isIntersecting) return
+    if (mode === "detail") {
+      initMap(el)
+    } else {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (!entries[0].isIntersecting) return
+          observer.disconnect()
+          initMap(el)
+        },
+        { threshold: 0.1 }
+      )
+      observer.observe(el)
+      return () => {
         observer.disconnect()
-
-        const map = new mapboxgl.Map({
-          container:          el,
-          style:              "mapbox://styles/mapbox/streets-v12",
-          center:             GREENLAND_CENTER,
-          zoom:               mode === "detail" ? 5 : 3.5,
-          maxBounds:          GREENLAND_BOUNDS,
-          fadeDuration:       0,
-          renderWorldCopies:  false,
-          attributionControl: false,
-        })
-
-        mapRef.current = map
-
-        map.addControl(new mapboxgl.AttributionControl({ compact: true }), "bottom-right")
-        if (mode === "detail") {
-          map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right")
-        }
-
-        map.on("load", () => {
-          if (mode === "detail") {
-            renderDetail(map)
-          } else {
-            renderOverview(map)
-          }
-          setLoaded(true)
-        })
-
-        return () => {
-          map.remove()
-          mapRef.current = null
-        }
-      },
-      { threshold: 0.1 }
-    )
-
-    observer.observe(el)
+        if (mapRef.current) { mapRef.current.remove(); mapRef.current = null }
+      }
+    }
 
     return () => {
-      observer.disconnect()
-      if (mapRef.current) {
-        mapRef.current.remove()
-        mapRef.current = null
-      }
+      if (mapRef.current) { mapRef.current.remove(); mapRef.current = null }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -132,13 +161,13 @@ export default function TransportMap({
     const from: [number, number] = [route.fromLng, route.fromLat]
     const to:   [number, number] = [route.toLng,   route.toLat]
 
-    // Route line
+    // Buet linje (arc vestover langs kysten)
     map.addSource("route", {
       type: "geojson",
       data: {
         type: "Feature",
         properties: {},
-        geometry: { type: "LineString", coordinates: [from, to] },
+        geometry: { type: "LineString", coordinates: createArc(from, to) },
       },
     })
     map.addLayer({
@@ -151,45 +180,39 @@ export default function TransportMap({
       paint: { "line-color": "#4A9CC7", "line-width": 6, "line-opacity": 0.2, "line-blur": 4 },
     })
 
-    // Departure marker (green)
-    map.addSource("from-point", {
+    // Labels via symbol layer (vises over markørerne)
+    map.addSource("label-points", {
       type: "geojson",
-      data: { type: "Feature", properties: { label: route.fromName }, geometry: { type: "Point", coordinates: from } },
+      data: {
+        type: "FeatureCollection",
+        features: [
+          { type: "Feature", properties: { label: route.fromName }, geometry: { type: "Point", coordinates: from } },
+          { type: "Feature", properties: { label: route.toName },   geometry: { type: "Point", coordinates: to } },
+        ],
+      },
     })
     map.addLayer({
-      id: "from-circle", type: "circle", source: "from-point",
-      paint: { "circle-radius": 8, "circle-color": "#22c55e", "circle-stroke-width": 2, "circle-stroke-color": "#ffffff" },
-    })
-    map.addLayer({
-      id: "from-label", type: "symbol", source: "from-point",
+      id: "point-labels", type: "symbol", source: "label-points",
       layout: {
-        "text-field": ["get", "label"], "text-size": 12,
-        "text-offset": [0, -1.6], "text-anchor": "bottom",
-        "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"],
+        "text-field":  ["get", "label"],
+        "text-size":   13,
+        "text-offset": [0, -2.4],
+        "text-anchor": "bottom",
+        "text-font":   ["DIN Pro Medium", "Arial Unicode MS Regular"],
       },
       paint: { "text-color": "#111827", "text-halo-color": "#ffffff", "text-halo-width": 1.5 },
     })
 
-    // Arrival marker (red)
-    map.addSource("to-point", {
-      type: "geojson",
-      data: { type: "Feature", properties: { label: route.toName }, geometry: { type: "Point", coordinates: to } },
-    })
-    map.addLayer({
-      id: "to-circle", type: "circle", source: "to-point",
-      paint: { "circle-radius": 8, "circle-color": "#ef4444", "circle-stroke-width": 2, "circle-stroke-color": "#ffffff" },
-    })
-    map.addLayer({
-      id: "to-label", type: "symbol", source: "to-point",
-      layout: {
-        "text-field": ["get", "label"], "text-size": 12,
-        "text-offset": [0, -1.6], "text-anchor": "bottom",
-        "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"],
-      },
-      paint: { "text-color": "#111827", "text-halo-color": "#ffffff", "text-halo-width": 1.5 },
-    })
+    // HTML-markører placeret præcist på koordinaterne
+    new mapboxgl.Marker({ element: makeMarkerEl("#22c55e", "⚓") })
+      .setLngLat(from)
+      .addTo(map)
 
-    // Fit to route
+    new mapboxgl.Marker({ element: makeMarkerEl("#ef4444", "🏁") })
+      .setLngLat(to)
+      .addTo(map)
+
+    // Fit til ruten
     const bounds = new mapboxgl.LngLatBounds(from, from)
     bounds.extend(to)
     map.fitBounds(bounds, { padding: 80, maxZoom: 8, duration: 800 })
