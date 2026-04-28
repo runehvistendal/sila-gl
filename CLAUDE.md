@@ -52,6 +52,7 @@ Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Ver
 - **Rate limiting:** `rate_limits`-tabel + `consume_rate_limit` RPC (5 forsøg / 10 min) ✅
 - **Transportanmodninger:** /transport/anmod (tur-type, returdato, passagerer), /transport/anmodninger/[id] (Realtime chat, tilbudskort, accept → Stripe Checkout, webhook) ✅
 - **Anmeldelsessystem:** dobbelt-blind (trigger), 30-dages vindue (pg_cron), alle 3 booking-typer, ReviewForm + ReviewDialog, dashboard review-knap, /profil/[id] offentlig ✅
+- **Samsejlads bookingflow:** /samsejlads (søgeside, filter), /samsejlads/[id] (detaljeside, book-knap → Stripe), /samsejlads/opret (server action, fra/til/departure_at/pris), /samsejlads/[id]/bekraeftelse, webhook (seats_available atomisk, status=full) ✅
 - **src/lib/notifications.ts** — placeholder funktioner (notify*) ✅
 - **/profil/[id]** — offentlig profilside med anmeldelser og gennemsnitsscore ✅
 
@@ -68,7 +69,7 @@ Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Ver
 1. ~~Hyttekort mangler billede~~ ✅
 2. ~~Transportanmodninger~~ ✅
 3. ~~Anmeldelsessystem~~ ✅
-4. Samsejlads bookingflow
+4. ~~Samsejlads bookingflow~~ ✅
 5. Mapbox sejlruter
 6. Footer
 7. /admin

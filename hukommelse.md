@@ -19,12 +19,13 @@ Komplet og fungerende:
 - Sikkerhedsaudit: RLS på alle 12 tabeller, ownership checks, immutable felter beskyttet
 - **Transportanmodninger** (ny): /transport/anmod, /transport/anmodninger/[id], chat, tilbud, Stripe betaling, webhook
 - **Anmeldelsessystem** (ny): dobbelt-blind, 30-dages vindue, trigger, pg_cron, ReviewForm, dashboard review-knap, /profil/[id] offentlig
+- **Samsejlads bookingflow** (ny): /samsejlads søgeside, /samsejlads/[id] detaljeside + booking, /samsejlads/opret, /samsejlads/[id]/bekraeftelse, Stripe Checkout, webhook
 
 Ingen kendte bugs.
 
 ## Næste session starter med
 
-**Samsejlads bookingflow** — se CLAUDE.md "Næste i rækkefølge".
+**Mapbox sejlruter** — se CLAUDE.md "Næste i rækkefølge".
 
 ## Vigtige beslutninger (gældende)
 
@@ -53,13 +54,14 @@ Ingen kendte bugs.
 | `20260428190000_transport_chat` | trip_type, stripe_session_id, messages RLS, get_transport_offer_stripe_info RPC |
 | `20260428200000_fix_reviews_rls` | transport_offer_id på reviews, reviews_insert RLS med alle 3 booking-typer |
 | `20260428210000_reviews_system` | published_at, expires_at, reviewer_role, reviews_select_public RLS, dobbelt-blind trigger, pg_cron |
+| `20260428220000_ride_share_bookings_stripe` | stripe_session_id på ride_share_bookings, get_skipper_stripe_info RPC |
 
 ## Næste trin (i rækkefølge)
 
 1. ~~Hyttekort mangler billede~~ ✅
 2. ~~Transportanmodninger~~ ✅
 3. ~~Anmeldelsessystem~~ ✅
-4. Samsejlads bookingflow
+4. ~~Samsejlads bookingflow~~ ✅
 5. Mapbox sejlruter
 6. Footer
 7. /admin

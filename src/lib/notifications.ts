@@ -18,3 +18,7 @@ export async function notifyTransportBookingConfirmed(requestId: string): Promis
 export async function notifyNewReview(reviewId: string): Promise<void> {
   console.log("[NOTIFY] Ny anmeldelse:", reviewId)
 }
+
+export async function notifyRideShareBookingConfirmed(bookingId: string): Promise<void> {
+  console.log("[NOTIFY] Samsejlads booking bekræftet:", bookingId)
+}

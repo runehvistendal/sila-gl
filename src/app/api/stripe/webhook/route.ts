@@ -3,7 +3,7 @@ import { headers } from "next/headers"
 import { createServiceClient } from "@/lib/supabase-service"
 import { stripe } from "@/lib/stripe"
 import { revalidatePath } from "next/cache"
-import { notifyTransportBookingConfirmed } from "@/lib/notifications"
+import { notifyTransportBookingConfirmed, notifyRideShareBookingConfirmed } from "@/lib/notifications"
 
 export const dynamic = "force-dynamic"
 
@@ -95,6 +95,58 @@ export async function POST(request: Request) {
       await notifyTransportBookingConfirmed(requestId)
       revalidatePath("/dashboard")
       revalidatePath(`/transport/anmodninger/${requestId}`)
+      return new Response("ok", { status: 200 })
+    }
+
+    // ── Samsejlads booking ───────────────────────────────────────────────────
+    if (meta.type === "ride_share") {
+      const bookingId   = meta.booking_id
+      const rideShareId = meta.ride_share_id
+      const seatsBooked = parseInt(meta.seats_booked ?? "0", 10)
+
+      if (!bookingId || !rideShareId || seatsBooked < 1) {
+        return new Response("ok", { status: 200 })
+      }
+
+      const pi2 = session.payment_intent
+      const paymentIntentId2 =
+        typeof pi2 === "string" ? pi2 : pi2 && "id" in pi2 ? (pi2 as { id: string }).id : null
+
+      // Confirm the booking
+      await service
+        .from("ride_share_bookings")
+        .update({
+          status: "confirmed",
+          stripe_payment_intent_id: paymentIntentId2 ?? undefined,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", bookingId)
+        .eq("status", "pending")
+
+      // Atomically decrement seats; if 0 remaining, mark as full
+      const { data: rsRow } = await service
+        .from("ride_shares")
+        .select("seats_available")
+        .eq("id", rideShareId)
+        .maybeSingle()
+
+      if (rsRow) {
+        const r = rsRow as { seats_available: number }
+        const newSeats = Math.max(0, r.seats_available - seatsBooked)
+        await service
+          .from("ride_shares")
+          .update({
+            seats_available: newSeats,
+            status: newSeats === 0 ? "full" : "active",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", rideShareId)
+      }
+
+      await notifyRideShareBookingConfirmed(bookingId)
+      revalidatePath("/samsejlads")
+      revalidatePath(`/samsejlads/${rideShareId}`)
+      revalidatePath("/dashboard")
       return new Response("ok", { status: 200 })
     }
 

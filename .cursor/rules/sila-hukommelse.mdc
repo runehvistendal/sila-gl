@@ -9,12 +9,12 @@ Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort 
 
 ## Status (28.4.2026)
 
-- Seneste: transportanmodninger (chat, tilbud, Stripe), anmeldelsessystem (dobbelt-blind, trigger, pg_cron), /profil/[id] offentlig.
+- Seneste: samsejlads bookingflow (/samsejlads, /opret, /[id], bekraeftelse, Stripe, webhook).
 - Ingen kendte bugs.
 
 ## Næste fokus
 
-- **Samsejlads bookingflow** — se CLAUDE.md, sektionen «Næste i rækkefølge».
+- **Mapbox sejlruter** — se CLAUDE.md, sektionen «Næste i rækkefølge».
 
 ## Vigtige beslutninger (gældende)
 
