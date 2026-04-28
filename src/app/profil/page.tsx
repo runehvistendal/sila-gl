@@ -60,6 +60,7 @@ export default async function ProfilPage() {
       "id, rating, comment, created_at, reviewer:profiles!reviewer_id(full_name)",
     )
     .eq("reviewee_id", user.id)
+    .not("published_at", "is", null)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(10)

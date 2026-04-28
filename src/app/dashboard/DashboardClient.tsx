@@ -71,6 +71,7 @@ interface Props {
   homeCity: string | null
   myBookings: CabinBookingData[]
   hostBookings: CabinBookingData[]
+  myReviewedCabinBookingIds?: string[]
   myCabins: CabinData[]
   myRideShares: RideShareData[]
   myBoats: BoatData[]
@@ -89,6 +90,7 @@ export default function DashboardClient({
   homeCity,
   myBookings,
   hostBookings,
+  myReviewedCabinBookingIds = [],
   myCabins,
   myRideShares,
   myBoats,
@@ -319,7 +321,7 @@ export default function DashboardClient({
                     activeMyBookings.length > 0 ? (
                       <div className="space-y-3">
                         {activeMyBookings.map((b) => (
-                          <BookingRow key={b.id} booking={b} isHost={false} />
+                          <BookingRow key={b.id} booking={b} isHost={false} alreadyReviewed={myReviewedCabinBookingIds.includes(b.id)} />
                         ))}
                       </div>
                     ) : (
@@ -328,7 +330,7 @@ export default function DashboardClient({
                   ) : historyMyBookings.length > 0 ? (
                     <div className="space-y-3">
                       {historyMyBookings.map((b) => (
-                        <BookingRow key={b.id} booking={b} isHost={false} />
+                        <BookingRow key={b.id} booking={b} isHost={false} alreadyReviewed={myReviewedCabinBookingIds.includes(b.id)} />
                       ))}
                     </div>
                   ) : (
@@ -354,7 +356,7 @@ export default function DashboardClient({
                             : ["completed", "cancelled"].includes(b.status)
                         )
                         .map((b) => (
-                          <BookingRow key={b.id} booking={b} isHost={true} />
+                          <BookingRow key={b.id} booking={b} isHost={true} alreadyReviewed={myReviewedCabinBookingIds.includes(b.id)} />
                         ))}
                     </div>
                   )}

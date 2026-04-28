@@ -2,12 +2,13 @@
 
 import { useState, useTransition } from "react"
 import Link from "next/link"
-import { Home, Anchor, Calendar, Users, ChevronRight, Check, X } from "lucide-react"
+import { Home, Calendar, Users, ChevronRight, Check, X } from "lucide-react"
 import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatKr } from "@/lib/money"
 import { confirmBooking, declineBooking } from "../actions"
+import ReviewDialog from "@/components/reviews/ReviewDialog"
 
 export const STATUS_COLORS: Record<string, string> = {
   pending:   "bg-amber-100 text-amber-700",
@@ -36,14 +37,17 @@ export interface CabinBookingData {
   // joined data
   cabin_title?: string | null
   guest_name?: string | null
+  /** reviewee_id — cabin owner (guest view) or guest (host view) */
+  reviewee_id?: string | null
 }
 
 interface Props {
   booking: CabinBookingData
   isHost: boolean
+  alreadyReviewed?: boolean
 }
 
-export default function BookingRow({ booking, isHost }: Props) {
+export default function BookingRow({ booking, isHost, alreadyReviewed = false }: Props) {
   const [expanded, setExpanded] = useState(false)
   const [isPending, startTransition] = useTransition()
 
@@ -147,6 +151,19 @@ export default function BookingRow({ booking, isHost }: Props) {
                 <X className="w-3.5 h-3.5" /> Afvis
               </Button>
             </div>
+          )}
+
+          {booking.status === "completed" && booking.reviewee_id && (
+            alreadyReviewed ? (
+              <p className="text-xs text-muted-foreground italic">Allerede anmeldt</p>
+            ) : (
+              <ReviewDialog
+                bookingId={booking.id}
+                bookingType="cabin"
+                revieweeId={booking.reviewee_id}
+                reviewerRole={isHost ? "provider" : "guest"}
+              />
+            )
           )}
         </div>
       )}

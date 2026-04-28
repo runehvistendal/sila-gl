@@ -175,7 +175,7 @@ export default async function CabinDetailPage({
               </div>
             )}
 
-            <CabinReviews cabinId={cabin.id} currentUserId={user?.id ?? null} />
+            <CabinReviews cabinId={cabin.id} ownerId={cabin.owner_id} currentUserId={user?.id ?? null} />
           </div>
 
           <div className="order-1 lg:order-2 lg:col-span-1">

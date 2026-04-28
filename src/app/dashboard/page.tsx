@@ -193,23 +193,24 @@ export default async function DashboardPage() {
     { data: openTransportRaw },
     { data: myTransportReqRaw },
     { data: reviewsRaw },
+    { data: myReviewedRaw },
     { count: unreadCount },
   ] = await Promise.all([
-    // My bookings as guest
+    // My bookings as guest — include cabin owner_id for reviews
     supabase
       .from("cabin_bookings")
-      .select("id, cabin_id, status, check_in, check_out, num_guests, total_price_ore, guest_message, created_at, cabins!cabin_id(title)")
+      .select("id, cabin_id, status, check_in, check_out, num_guests, total_price_ore, guest_message, created_at, cabins!cabin_id(title, owner_id)")
       .eq("guest_id", user.id)
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(30),
 
-    // Host bookings — bookings on cabins I own
+    // Host bookings — include guest_id for reviews
     cabinIds.length > 0
       ? supabase
           .from("cabin_bookings")
           .select(`
-        id, cabin_id, status, check_in, check_out, num_guests, total_price_ore, guest_message, created_at,
+        id, cabin_id, guest_id, status, check_in, check_out, num_guests, total_price_ore, guest_message, created_at,
         cabins!cabin_id(title),
         profiles!guest_id(full_name)
       `)
@@ -245,7 +246,7 @@ export default async function DashboardPage() {
       .order("created_at", { ascending: false })
       .limit(30),
 
-    // Reviews about me
+    // Reviews about me (reviewee)
     supabase
       .from("reviews")
       .select("id, rating, comment, created_at, profiles!reviewer_id(full_name)")
@@ -254,6 +255,13 @@ export default async function DashboardPage() {
       .order("created_at", { ascending: false })
       .limit(20),
 
+    // Reviews I have written (to know which bookings are already reviewed)
+    supabase
+      .from("reviews")
+      .select("cabin_booking_id, ride_share_booking_id, transport_offer_id")
+      .eq("reviewer_id", user.id)
+      .is("deleted_at", null),
+
     // Unread messages count
     supabase
       .from("messages")
@@ -261,6 +269,13 @@ export default async function DashboardPage() {
       .eq("recipient_id", user.id)
       .is("read_at", null),
   ])
+
+  /* ── Already-reviewed booking IDs ── */
+  const myReviewedCabinBookingIds = new Set(
+    (myReviewedRaw ?? [])
+      .map((r: Record<string, unknown>) => r.cabin_booking_id as string | null)
+      .filter(Boolean) as string[]
+  )
 
   /* ── Shape data ── */
   const myBookings: CabinBookingData[] = (myBookingsRaw ?? []).map((b: Record<string, unknown>) => ({
@@ -273,8 +288,9 @@ export default async function DashboardPage() {
     total_price_ore: b.total_price_ore as number,
     guest_message:   b.guest_message as string | null,
     created_at:      b.created_at as string,
-    cabin_title:     (b.cabins as { title?: string } | null)?.title ?? null,
+    cabin_title:     (b.cabins as { title?: string; owner_id?: string } | null)?.title ?? null,
     guest_name:      null,
+    reviewee_id:     (b.cabins as { title?: string; owner_id?: string } | null)?.owner_id ?? null,
   }))
 
   const hostBookings: CabinBookingData[] = (hostBookingsRaw ?? []).map((b: Record<string, unknown>) => ({
@@ -289,6 +305,7 @@ export default async function DashboardPage() {
     created_at:      b.created_at as string,
     cabin_title:     (b.cabins as { title?: string } | null)?.title ?? null,
     guest_name:      (b.profiles as { full_name?: string } | null)?.full_name ?? null,
+    reviewee_id:     (b.guest_id as string | null) ?? null,
   }))
 
   const openTransportRequests: TransportRequestData[] = (openTransportRaw ?? []).map((r: Record<string, unknown>) => ({
@@ -316,6 +333,7 @@ export default async function DashboardPage() {
         homeCity={homeCity}
         myBookings={myBookings}
         hostBookings={hostBookings}
+        myReviewedCabinBookingIds={[...myReviewedCabinBookingIds]}
         myCabins={(myCabinsRaw ?? []) as Parameters<typeof DashboardClient>[0]["myCabins"]}
         myRideShares={(myRideSharesRaw ?? []) as Parameters<typeof DashboardClient>[0]["myRideShares"]}
         myBoats={(myBoatsRaw ?? []) as BoatData[]}

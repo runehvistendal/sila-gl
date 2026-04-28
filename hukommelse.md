@@ -18,12 +18,13 @@ Komplet og fungerende:
 - Rate limiting: 5 forsøg / 10 min pr. bruger (`rate_limits` tabel + RPC)
 - Sikkerhedsaudit: RLS på alle 12 tabeller, ownership checks, immutable felter beskyttet
 - **Transportanmodninger** (ny): /transport/anmod, /transport/anmodninger/[id], chat, tilbud, Stripe betaling, webhook
+- **Anmeldelsessystem** (ny): dobbelt-blind, 30-dages vindue, trigger, pg_cron, ReviewForm, dashboard review-knap, /profil/[id] offentlig
 
 Ingen kendte bugs.
 
 ## Næste session starter med
 
-**Anmeldelsessystem** — se CLAUDE.md "Næste i rækkefølge".
+**Samsejlads bookingflow** — se CLAUDE.md "Næste i rækkefølge".
 
 ## Vigtige beslutninger (gældende)
 
@@ -49,12 +50,15 @@ Ingen kendte bugs.
 | `20260427020000_security_audit` | RLS kolonneniveau, SECURITY DEFINER funktioner, indexes |
 | `20260427030000_booking_cleanup` | pg_cron: auto-cancel efter 15 min |
 | `20260428180000_rate_limits` | rate_limits tabel + consume_rate_limit RPC |
+| `20260428190000_transport_chat` | trip_type, stripe_session_id, messages RLS, get_transport_offer_stripe_info RPC |
+| `20260428200000_fix_reviews_rls` | transport_offer_id på reviews, reviews_insert RLS med alle 3 booking-typer |
+| `20260428210000_reviews_system` | published_at, expires_at, reviewer_role, reviews_select_public RLS, dobbelt-blind trigger, pg_cron |
 
 ## Næste trin (i rækkefølge)
 
 1. ~~Hyttekort mangler billede~~ ✅
 2. ~~Transportanmodninger~~ ✅
-3. Anmeldelsessystem
+3. ~~Anmeldelsessystem~~ ✅
 4. Samsejlads bookingflow
 5. Mapbox sejlruter
 6. Footer

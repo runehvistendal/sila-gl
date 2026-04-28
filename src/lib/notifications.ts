@@ -14,3 +14,7 @@ export async function notifyTransportOfferAccepted(offerId: string): Promise<voi
 export async function notifyTransportBookingConfirmed(requestId: string): Promise<void> {
   console.log("[NOTIFY] Transport booking bekræftet:", requestId)
 }
+
+export async function notifyNewReview(reviewId: string): Promise<void> {
+  console.log("[NOTIFY] Ny anmeldelse:", reviewId)
+}
