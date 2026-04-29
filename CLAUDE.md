@@ -62,6 +62,7 @@ Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Ver
 - **src/lib/notifications.ts** — placeholder funktioner (notify*) ✅
 - **/profil/[id]** — offentlig profilside med anmeldelser og gennemsnitsscore ✅
 - **DB: cabin_requests tabel** — guest_id, cabin_id (nullable), location, desired_check_in, desired_check_out, num_guests, max_price_ore, description, status (open|matched|cancelled|expired), RLS ✅
+- **Footer** — `src/components/layout/Footer.tsx`, root layout, vises på alle sider ✅
 
 ## Nye filer (29.4.2026)
 - `src/lib/amenityMeta.ts` — AMENITY_META + AMENITY_FILTER_KEYS
