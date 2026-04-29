@@ -192,28 +192,37 @@ export default async function DashboardPage() {
     { data: myRideSharesRaw },
     { data: openTransportRaw },
     { data: myTransportReqRaw },
+    { data: myCabinReqRaw },
+    { data: guestCabinReqRaw },
     { data: reviewsRaw },
     { data: myReviewedRaw },
     { count: unreadCount },
   ] = await Promise.all([
-    // My bookings as guest — include cabin owner_id for reviews
+    // My bookings as guest — include cabin owner info + price for details
     supabase
       .from("cabin_bookings")
-      .select("id, cabin_id, status, check_in, check_out, num_guests, total_price_ore, guest_message, created_at, cabins!cabin_id(title, owner_id)")
+      .select(`
+        id, cabin_id, status, check_in, check_out, num_guests,
+        total_price_ore, platform_fee_ore, stripe_payment_intent_id,
+        guest_message, created_at,
+        cabins!cabin_id(title, owner_id, price_per_night_ore, profiles!owner_id(full_name))
+      `)
       .eq("guest_id", user.id)
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(30),
 
-    // Host bookings — include guest_id for reviews
+    // Host bookings — include guest profile for reviews + price breakdown
     cabinIds.length > 0
       ? supabase
           .from("cabin_bookings")
           .select(`
-        id, cabin_id, guest_id, status, check_in, check_out, num_guests, total_price_ore, guest_message, created_at,
-        cabins!cabin_id(title),
-        profiles!guest_id(full_name)
-      `)
+            id, cabin_id, guest_id, status, check_in, check_out, num_guests,
+            total_price_ore, platform_fee_ore, stripe_payment_intent_id,
+            guest_message, created_at,
+            cabins!cabin_id(title, price_per_night_ore),
+            profiles!guest_id(id, full_name, avatar_url)
+          `)
           .in("cabin_id", cabinIds)
           .is("deleted_at", null)
           .order("created_at", { ascending: false })
@@ -245,6 +254,27 @@ export default async function DashboardPage() {
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(30),
+
+    // My cabin requests (as guest)
+    supabase
+      .from("cabin_requests")
+      .select("id, location, desired_check_in, desired_check_out, num_guests, max_price_ore, description, status, created_at")
+      .eq("guest_id", user.id)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(30),
+
+    // Cabin requests to my cabins (as provider)
+    cabinIds.length > 0
+      ? supabase
+          .from("cabin_requests")
+          .select("id, cabin_id, location, desired_check_in, desired_check_out, num_guests, max_price_ore, description, status, created_at, profiles!guest_id(id, full_name, avatar_url)")
+          .or(`cabin_id.in.(${cabinIds.join(",")}),cabin_id.is.null`)
+          .eq("status", "open")
+          .is("deleted_at", null)
+          .order("created_at", { ascending: false })
+          .limit(50)
+      : Promise.resolve({ data: [] }),
 
     // Reviews about me (reviewee)
     supabase
@@ -278,35 +308,59 @@ export default async function DashboardPage() {
   )
 
   /* ── Shape data ── */
-  const myBookings: CabinBookingData[] = (myBookingsRaw ?? []).map((b: Record<string, unknown>) => ({
-    id:              b.id as string,
-    cabin_id:        b.cabin_id as string,
-    status:          b.status as string,
-    check_in:        b.check_in as string,
-    check_out:       b.check_out as string,
-    num_guests:      b.num_guests as number,
-    total_price_ore: b.total_price_ore as number,
-    guest_message:   b.guest_message as string | null,
-    created_at:      b.created_at as string,
-    cabin_title:     (b.cabins as { title?: string; owner_id?: string } | null)?.title ?? null,
-    guest_name:      null,
-    reviewee_id:     (b.cabins as { title?: string; owner_id?: string } | null)?.owner_id ?? null,
-  }))
+  type CabinJoinGuest = { title?: string; owner_id?: string; price_per_night_ore?: number; profiles?: { full_name?: string } | null } | null
+  type CabinJoinHost  = { title?: string; price_per_night_ore?: number } | null
+  type GuestProfile   = { id?: string; full_name?: string; avatar_url?: string | null } | null
 
-  const hostBookings: CabinBookingData[] = (hostBookingsRaw ?? []).map((b: Record<string, unknown>) => ({
-    id:              b.id as string,
-    cabin_id:        b.cabin_id as string,
-    status:          b.status as string,
-    check_in:        b.check_in as string,
-    check_out:       b.check_out as string,
-    num_guests:      b.num_guests as number,
-    total_price_ore: b.total_price_ore as number,
-    guest_message:   b.guest_message as string | null,
-    created_at:      b.created_at as string,
-    cabin_title:     (b.cabins as { title?: string } | null)?.title ?? null,
-    guest_name:      (b.profiles as { full_name?: string } | null)?.full_name ?? null,
-    reviewee_id:     (b.guest_id as string | null) ?? null,
-  }))
+  const myBookings: CabinBookingData[] = (myBookingsRaw ?? []).map((b: Record<string, unknown>) => {
+    const cabin = b.cabins as CabinJoinGuest
+    return {
+      id:                       b.id as string,
+      cabin_id:                 b.cabin_id as string,
+      status:                   b.status as string,
+      check_in:                 b.check_in as string,
+      check_out:                b.check_out as string,
+      num_guests:               b.num_guests as number,
+      total_price_ore:          b.total_price_ore as number,
+      platform_fee_ore:         (b.platform_fee_ore as number | null) ?? null,
+      stripe_payment_intent_id: (b.stripe_payment_intent_id as string | null) ?? null,
+      guest_message:            b.guest_message as string | null,
+      created_at:               b.created_at as string,
+      cabin_title:              cabin?.title ?? null,
+      cabin_price_per_night_ore: cabin?.price_per_night_ore ?? null,
+      guest_name:               null,
+      guest_id:                 null,
+      host_name:                cabin?.profiles?.full_name ?? null,
+      host_id:                  cabin?.owner_id ?? null,
+      reviewee_id:              cabin?.owner_id ?? null,
+    }
+  })
+
+  const hostBookings: CabinBookingData[] = (hostBookingsRaw ?? []).map((b: Record<string, unknown>) => {
+    const cabin   = b.cabins as CabinJoinHost
+    const guestPr = b.profiles as GuestProfile
+    return {
+      id:                       b.id as string,
+      cabin_id:                 b.cabin_id as string,
+      status:                   b.status as string,
+      check_in:                 b.check_in as string,
+      check_out:                b.check_out as string,
+      num_guests:               b.num_guests as number,
+      total_price_ore:          b.total_price_ore as number,
+      platform_fee_ore:         (b.platform_fee_ore as number | null) ?? null,
+      stripe_payment_intent_id: (b.stripe_payment_intent_id as string | null) ?? null,
+      guest_message:            b.guest_message as string | null,
+      created_at:               b.created_at as string,
+      cabin_title:              cabin?.title ?? null,
+      cabin_price_per_night_ore: cabin?.price_per_night_ore ?? null,
+      guest_name:               guestPr?.full_name ?? null,
+      guest_id:                 (b.guest_id as string | null) ?? null,
+      guest_avatar_url:         guestPr?.avatar_url ?? null,
+      host_name:                null,
+      host_id:                  null,
+      reviewee_id:              (b.guest_id as string | null) ?? null,
+    }
+  })
 
   const openTransportRequests: TransportRequestData[] = (openTransportRaw ?? []).map((r: Record<string, unknown>) => ({
     id:              r.id as string,
@@ -319,8 +373,41 @@ export default async function DashboardPage() {
     profiles:        r.profiles as { full_name: string | null } | null,
   }))
 
-  const homeCity =
-    (profileRow?.location as string | null | undefined) ?? null
+  const homeCity = (profileRow?.location as string | null | undefined) ?? null
+
+  /* ── Shape cabin requests ── */
+  type CabinReqGuestProfile = { id?: string; full_name?: string; avatar_url?: string | null } | null
+
+  const myCabinRequests = (myCabinReqRaw ?? []).map((r: Record<string, unknown>) => ({
+    id:               r.id as string,
+    location:         r.location as string,
+    desired_check_in: r.desired_check_in as string,
+    desired_check_out: r.desired_check_out as string,
+    num_guests:       r.num_guests as number,
+    max_price_ore:    (r.max_price_ore as number | null) ?? null,
+    description:      (r.description as string | null) ?? null,
+    status:           r.status as string,
+    created_at:       r.created_at as string,
+  }))
+
+  const guestCabinRequests = (guestCabinReqRaw ?? []).map((r: Record<string, unknown>) => {
+    const pr = r.profiles as CabinReqGuestProfile
+    return {
+      id:               r.id as string,
+      cabin_id:         (r.cabin_id as string | null) ?? null,
+      location:         r.location as string,
+      desired_check_in: r.desired_check_in as string,
+      desired_check_out: r.desired_check_out as string,
+      num_guests:       r.num_guests as number,
+      max_price_ore:    (r.max_price_ore as number | null) ?? null,
+      description:      (r.description as string | null) ?? null,
+      status:           r.status as string,
+      created_at:       r.created_at as string,
+      guest_id:         pr?.id ?? null,
+      guest_name:       pr?.full_name ?? null,
+      guest_avatar_url: pr?.avatar_url ?? null,
+    }
+  })
 
   return (
     <main>
@@ -347,6 +434,8 @@ export default async function DashboardPage() {
           status:         r.status as string,
           offer_count:    (r.transport_offers as Array<{ count: number }> | null)?.[0]?.count ?? 0,
         }))}
+        myCabinRequests={myCabinRequests}
+        guestCabinRequests={guestCabinRequests}
         reviews={(reviewsRaw ?? []).map((r: Record<string, unknown>) => ({
           id:         r.id as string,
           rating:     r.rating as number,

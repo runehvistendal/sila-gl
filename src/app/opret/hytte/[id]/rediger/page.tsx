@@ -1,100 +1,97 @@
 import { notFound, redirect } from "next/navigation"
+import Link from "next/link"
+import { ChevronLeft } from "lucide-react"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
-import HytteForm, { type InitialCabin } from "../../HytteForm"
-import CabinOwnerCalendar from "@/components/cabins/CabinOwnerCalendar"
+import HytteForm from "@/app/opret/hytte/HytteForm"
 
-export const metadata = { title: "Rediger hytte — Sila.gl" }
+export const metadata = {
+  title: "Rediger hytte — Sila.gl",
+}
 
-export default async function RedigerHyttePage({
-  params,
-}: {
+interface PageProps {
   params: Promise<{ id: string }>
-}) {
-  const { id } = await params
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  searchParams: Promise<{ toast?: string }>
+}
 
-  if (!user) redirect("/")
+export default async function RedigerHyttePage({ params, searchParams }: PageProps) {
+  const { id } = await params
+  const { toast: toastParam } = await searchParams
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect("/login")
+
+  const navUser = await getNavUserForPage(supabase, user)
 
   const { data: cabin, error } = await supabase
     .from("cabins")
-    .select(
-      "id, title, description, location_hub, max_guests, bedrooms, facilities, addon_services, offers_transport, transport_from, transport_price_roundtrip_ore, owner_id, images",
-    )
+    .select(`
+      id, title, description, location_hub,
+      max_guests, bedrooms,
+      facilities, amenities,
+      addon_services,
+      offers_transport, transport_from,
+      transport_price_roundtrip_ore,
+      images
+    `)
     .eq("id", id)
+    .eq("owner_id", user.id)
     .is("deleted_at", null)
     .single()
 
   if (error || !cabin) notFound()
-  if (cabin.owner_id !== user.id) notFound()
 
-  const [{ data: calBookings }, { data: calBlocks }] = await Promise.all([
-    supabase
-      .from("cabin_bookings")
-      .select("check_in, check_out, status")
-      .eq("cabin_id", id)
-      .in("status", ["pending", "confirmed", "completed"])
-      .is("deleted_at", null),
-    supabase
-      .from("cabin_availability")
-      .select("date")
-      .eq("cabin_id", id)
-      .eq("is_available", false)
-      .is("deleted_at", null),
-  ])
-
-  const manualBlockedYmd = (calBlocks ?? [])
-    .map((r) => (r as { date: string }).date?.slice(0, 10))
-    .filter(Boolean) as string[]
-
-  const initialCabin: InitialCabin = {
-    id: cabin.id,
-    title: cabin.title,
-    description: cabin.description,
-    location_hub: cabin.location_hub,
-    max_guests: cabin.max_guests,
-    bedrooms: cabin.bedrooms,
-    facilities: (cabin.facilities as string[] | null) ?? null,
-    addon_services: cabin.addon_services,
-    offers_transport: cabin.offers_transport,
-    transport_from: cabin.transport_from,
-    transport_price_roundtrip_ore: cabin.transport_price_roundtrip_ore,
-    images: (cabin as { images?: string[] | null }).images ?? [],
-  }
-
-  const navUser = await getNavUserForPage(supabase, user)
+  const isNewlySaved = toastParam === "hytte-saved"
 
   return (
     <main className="min-h-screen bg-background">
       <Navbar user={navUser} />
 
       <div className="mx-auto max-w-xl px-4 pt-16 pb-20">
+        <Link
+          href="/dashboard?tab=mine-opslag"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          Mine opslag
+        </Link>
+
+        {isNewlySaved && (
+          <div className="mb-6 rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
+            Hytten er gemt. Upload billeder herunder, og gå derefter til{" "}
+            <Link href={`/opret/opslag/hytte/${id}`} className="font-semibold underline">
+              Udlej nu
+            </Link>{" "}
+            for at publicere opslaget.
+          </div>
+        )}
+
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-foreground mb-2">Rediger hytte</h1>
           <p className="text-sm text-muted-foreground">
-            Opdatér oplysningerne — billeder og publicering sker i andre trin.
+            Opdater oplysninger og billeder.
           </p>
         </div>
 
-        <HytteForm mode="edit" initialCabin={initialCabin} key={cabin.id} />
-
-        <div className="mt-10 max-w-2xl mx-auto">
-          <CabinOwnerCalendar
-            cabinId={cabin.id}
-            bookings={
-              (calBookings ?? []) as {
-                check_in: string
-                check_out: string
-                status: string
-              }[]
-            }
-            manualBlockedYmd={manualBlockedYmd}
-          />
-        </div>
+        <HytteForm
+          mode="edit"
+          initialCabin={{
+            id: cabin.id,
+            title: cabin.title ?? "",
+            description: cabin.description ?? "",
+            location_hub: cabin.location_hub ?? "",
+            max_guests: cabin.max_guests ?? 4,
+            bedrooms: cabin.bedrooms ?? 1,
+            facilities: (cabin.facilities ?? cabin.amenities ?? []) as string[],
+            addon_services: cabin.addon_services,
+            offers_transport: cabin.offers_transport ?? false,
+            transport_from: cabin.transport_from ?? null,
+            transport_price_roundtrip_ore: cabin.transport_price_roundtrip_ore ?? null,
+            images: (cabin.images ?? []) as string[],
+          }}
+        />
       </div>
     </main>
   )

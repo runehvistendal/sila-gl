@@ -7,9 +7,15 @@ alwaysApply: true
 
 Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort status til sessioner.
 
-## Status (28.4.2026)
+## Status (29.4.2026)
 
-- Seneste: Mapbox kortvisning (SejlruteMap + SamsejladsOversigt, dark-v11, dynamic import).
+- `/hytter`: facilitetsfiltre i Filtrer-popover (AMENITY_FILTER_KEYS), HytterClient.tsx
+- `/hytter/[id]`: to-kolonne layout, sticky booking, CabinDetailLayout.tsx. Rækkefølge: Om hytten → Inkluderet → Din vært → Kom dertil → Anmeldelser
+- `/transport`: Filtrer-knap med popover (bådtype, kabine, ledige pladser)
+- `/transport/[id]` + `/hytter/[id]`: TransportDrawer.tsx (returture via shadcn Sheet)
+- `/dashboard`: BookingRow accordion, Mine ønsker + Gæsteønsker med cabin_requests
+- `/anmod`: hytteanmodnings-formular (ny side + server action)
+- DB: cabin_requests tabel + RLS oprettet
 - Ingen kendte bugs.
 
 ## Næste fokus
@@ -24,6 +30,8 @@ Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort 
 - **Email-skift:** `supabase.auth.updateUser` med bekræftelse til ny adresse.
 - **Navbar sprog + avatar:** `NavUser` + `revalidatePath("/")` (ingen særskilt client-fetch til sprog).
 - **Cloudinary:** signed uploads, `sila/avatars` og `sila/cabins/[id]`.
+- **amenityMeta.ts:** AMENITY_META (display) + AMENITY_FILTER_KEYS (18 DB-nøgler til filterpanel).
+- **TransportDrawer props:** `id` (ride_share_id), `seats`, `onClose`.
 
 ## Ikke nu (backlog / Fase 3)
 

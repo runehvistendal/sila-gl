@@ -15,6 +15,7 @@ export interface CabinCardData {
   offers_transport: boolean
   images: string[]
   host_name: string | null
+  amenities?: string[] | null
 }
 
 function isValidUrl(url: string): boolean {

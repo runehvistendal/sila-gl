@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Search, SlidersHorizontal, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
+import { AMENITY_META, AMENITY_FILTER_KEYS } from "@/lib/amenityMeta"
 
 const CITIES = [...new Set(GREENLAND_LOCATIONS.map((l) => l.name_dk))].sort()
 
@@ -31,11 +32,17 @@ const DEFAULT: FilterValues = {
   search: "",
 }
 
+interface CabinFiltersProps {
+  initialFilters: FilterValues
+  selectedAmenities?: string[]
+  onAmenityChange?: (keys: string[]) => void
+}
+
 export default function CabinFilters({
   initialFilters,
-}: {
-  initialFilters: FilterValues
-}) {
+  selectedAmenities = [],
+  onAmenityChange,
+}: CabinFiltersProps) {
   const router = useRouter()
   const [filters, setFilters] = useState<FilterValues>(initialFilters)
   const [showAdvanced, setShowAdvanced] = useState(
@@ -46,14 +53,17 @@ export default function CabinFilters({
     )
   )
 
-  const hasActive =
-    !!filters.hub ||
-    !!filters.guests ||
-    filters.transport ||
-    !!filters.minPrice ||
-    !!filters.maxPrice ||
-    filters.sort !== "newest" ||
-    !!filters.search
+  const urlActiveCount =
+    (!!filters.hub ? 1 : 0) +
+    (!!filters.guests ? 1 : 0) +
+    (filters.transport ? 1 : 0) +
+    (!!filters.minPrice ? 1 : 0) +
+    (!!filters.maxPrice ? 1 : 0) +
+    (filters.sort !== "newest" ? 1 : 0)
+
+  const totalActiveCount = urlActiveCount + selectedAmenities.length
+
+  const hasActive = urlActiveCount > 0 || !!filters.search
 
   const push = useCallback(
     (next: FilterValues) => {
@@ -136,16 +146,22 @@ export default function CabinFilters({
           <option value="price_desc">Pris: høj → lav</option>
         </select>
 
-        {/* Advanced toggle */}
+        {/* Filtre-toggle */}
         <button
           type="button"
-          className="rounded-xl h-10 px-3 text-sm font-medium border border-input bg-transparent shadow-sm hover:bg-muted flex items-center gap-1.5 whitespace-nowrap"
+          className={`rounded-xl h-10 px-3 text-sm font-medium border shadow-sm flex items-center gap-1.5 whitespace-nowrap transition-colors ${
+            showAdvanced
+              ? "border-primary bg-primary/5 text-primary"
+              : "border-input bg-transparent hover:bg-muted text-foreground"
+          }`}
           onClick={() => setShowAdvanced((v) => !v)}
         >
           <SlidersHorizontal size={14} />
           Filtre
-          {hasActive && (
-            <span className="w-2 h-2 rounded-full bg-primary inline-block" />
+          {totalActiveCount > 0 && (
+            <span className="bg-primary text-primary-foreground text-xs rounded-full px-1.5 py-0.5 leading-none font-semibold">
+              {totalActiveCount}
+            </span>
           )}
         </button>
       </div>
@@ -207,10 +223,53 @@ export default function CabinFilters({
             </span>
           </label>
 
-          {hasActive && (
+          {/* ── Faciliteter ── */}
+          {onAmenityChange && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                Faciliteter
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {AMENITY_FILTER_KEYS.map((key) => {
+                  const meta = AMENITY_META[key]
+                  const Icon = meta.icon
+                  const checked = selectedAmenities.includes(key)
+                  return (
+                    <label
+                      key={key}
+                      className={`flex items-center gap-2 text-sm cursor-pointer rounded-xl px-3 py-2 border transition-colors ${
+                        checked
+                          ? "border-primary bg-primary/5 text-primary font-medium"
+                          : "border-border hover:bg-muted text-foreground"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          const next = checked
+                            ? selectedAmenities.filter((a) => a !== key)
+                            : [...selectedAmenities, key]
+                          onAmenityChange(next)
+                        }}
+                        className="sr-only"
+                      />
+                      <Icon size={14} className="shrink-0" />
+                      {meta.label}
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {(hasActive || selectedAmenities.length > 0) && (
             <button
               type="button"
-              onClick={reset}
+              onClick={() => {
+                reset()
+                onAmenityChange?.([])
+              }}
               className="text-muted-foreground text-sm flex items-center gap-1 h-8 px-2 rounded-lg hover:bg-muted"
             >
               <X size={14} /> Nulstil filtre

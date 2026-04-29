@@ -7,7 +7,6 @@ import { Anchor, Grid, Map, ArrowRight, MessageSquare } from "lucide-react"
 import { format } from "date-fns"
 import { da } from "date-fns/locale"
 import { Button } from "@/components/ui/button"
-import { krToOre } from "@/lib/money"
 import TransportCard, { type RideShareCardData } from "./components/TransportCard"
 import TransportFilters, { type TransportFilterValues } from "./components/TransportFilters"
 import type { TransportMapRoute } from "@/components/map/TransportMap"
@@ -35,13 +34,14 @@ export interface OpenTransportRequest {
 }
 
 const DEFAULT_FILTERS: TransportFilterValues = {
-  search:   "",
-  fromLoc:  "all",
-  toLoc:    "all",
-  sort:     "date_asc",
-  minDate:  "",
-  maxPrice: "",
-  minSeats: "",
+  search:        "",
+  fromLoc:       "all",
+  toLoc:         "all",
+  sort:          "date_asc",
+  boatTypes:     [],
+  cabin:         "",
+  onlyAvailable: true,
+  showPanel:     false,
 }
 
 const TRIP_TYPE_SHORT: Record<string, string> = {
@@ -74,12 +74,21 @@ export default function TransportClient({ rideShares, openRequests }: Props) {
       const matchFrom = filters.fromLoc === "all" || rs.from_location === filters.fromLoc
       const matchTo   = filters.toLoc   === "all" || rs.to_location   === filters.toLoc
 
-      const depDate = rs.departure_at.slice(0, 10) // ISO date part
-      const matchDate  = !filters.minDate  || depDate >= filters.minDate
-      const matchPrice = !filters.maxPrice || rs.price_per_seat_ore <= krToOre(Number(filters.maxPrice))
-      const matchSeats = !filters.minSeats || rs.seats_available >= Number(filters.minSeats)
+      const boatDesc = (rs.boat_description ?? "").toLowerCase()
+      const matchBoat = filters.boatTypes.length === 0 || filters.boatTypes.some((bt) => {
+        if (bt === "fiskerbåd") return boatDesc.includes("fiskerbåd") || boatDesc.includes("fiskekutter")
+        return boatDesc.includes(bt)
+      })
 
-      return matchSearch && matchFrom && matchTo && matchDate && matchPrice && matchSeats
+      const hasCabin = boatDesc.includes("kabine")
+      const matchCabin =
+        filters.cabin === "" ||
+        (filters.cabin === "with" && hasCabin) ||
+        (filters.cabin === "without" && !hasCabin)
+
+      const matchAvailable = !filters.onlyAvailable || rs.seats_available > 0
+
+      return matchSearch && matchFrom && matchTo && matchBoat && matchCabin && matchAvailable
     })
 
     if (filters.sort === "price_asc") {

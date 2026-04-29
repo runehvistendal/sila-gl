@@ -1,18 +1,19 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import { Anchor, MessageSquare, X, Check, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { createClient } from "@/lib/supabase"
-import { formatKr, oreToKr } from "@/lib/money"
+import { formatKr } from "@/lib/money"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 import { format } from "date-fns"
+import TransportDrawer from "@/components/transport/TransportDrawer"
 
 const LOCATIONS = [...new Set(GREENLAND_LOCATIONS.map((l) => l.name_dk))].sort()
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
 export interface RideShareData {
   id: string
@@ -51,6 +52,7 @@ export default function CabinTransportSection({ cabin, transports, guests, onTra
   const hostName     = cabin.profiles?.full_name ?? "Udbyderen"
 
   const [selectedType, setSelectedType] = useState<TripType | null>(null)
+  const [drawerRideShareId, setDrawerRideShareId] = useState<string | null>(null)
 
   const costMap: Record<TripType, number> = {
     round_trip: pricePerSeat * guests * 2,
@@ -178,9 +180,9 @@ export default function CabinTransportSection({ cabin, transports, guests, onTra
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 text-sm font-medium text-foreground flex-wrap">
-                    <span>{tr.from_location}</span>
+                    <span>{capitalize(tr.from_location)}</span>
                     <ArrowRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    <span>{tr.to_location}</span>
+                    <span>{capitalize(tr.to_location)}</span>
                   </div>
                   <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                     <span>{format(new Date(tr.departure_at), "d. MMM yyyy")}</span>
@@ -191,12 +193,12 @@ export default function CabinTransportSection({ cabin, transports, guests, onTra
                     <p className="text-xs text-muted-foreground/60 mt-0.5">{tr.profiles.full_name}</p>
                   )}
                 </div>
-                <Link
-                  href={`/transport/${tr.id}`}
+                <button
+                  onClick={() => setDrawerRideShareId(tr.id)}
                   className="shrink-0 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
                 >
                   Se &amp; Book
-                </Link>
+                </button>
               </div>
             ))}
           </div>
@@ -327,6 +329,12 @@ export default function CabinTransportSection({ cabin, transports, guests, onTra
           </div>
         </div>
       )}
+
+      <TransportDrawer
+        id={drawerRideShareId}
+        seats={guests}
+        onClose={() => setDrawerRideShareId(null)}
+      />
     </div>
   )
 }

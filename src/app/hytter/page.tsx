@@ -3,8 +3,8 @@ import { ArrowRight } from "lucide-react"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
-import CabinFilters, { type FilterValues } from "@/components/cabins/CabinFilters"
-import CabinGrid from "@/components/cabins/CabinGrid"
+import HytterClient from "./HytterClient"
+import type { FilterValues } from "@/components/cabins/CabinFilters"
 import type { CabinCardData } from "@/components/cabins/CabinCard"
 
 export const metadata = {
@@ -52,6 +52,7 @@ export default async function HytterPage({
       instant_book,
       offers_transport,
       images,
+      amenities,
       owner_id,
       profiles!owner_id ( full_name )
     `
@@ -100,6 +101,7 @@ export default async function HytterPage({
     instant_book: row.instant_book as boolean,
     offers_transport: row.offers_transport as boolean,
     images: (row.images as string[]) ?? [],
+    amenities: (row.amenities as string[] | null) ?? null,
     host_name:
       (row.profiles as { full_name?: string } | null)?.full_name ?? null,
   }))
@@ -118,22 +120,7 @@ export default async function HytterPage({
     <main className="min-h-screen bg-background">
       <Navbar user={navUser} />
 
-      {/* ── Filter header ── */}
-      <div className="bg-card border-b border-border pt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-              Hytter i Grønland
-            </h1>
-          </div>
-          <CabinFilters initialFilters={initialFilters} />
-        </div>
-      </div>
-
-      {/* ── Grid ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <CabinGrid cabins={cabins} total={cabins.length} />
-      </div>
+      <HytterClient cabins={cabins} initialFilters={initialFilters} />
 
       {/* ── CTA ── */}
       <section className="py-16 bg-primary/5 border-t border-border">

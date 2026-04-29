@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react"
 import dynamic from "next/dynamic"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   ArrowRight, ChevronLeft, Calendar, Clock, Users, Anchor,
@@ -18,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { formatKr, oreToKr } from "@/lib/money"
 import { createTransportRequest } from "./actions"
+import TransportDrawer from "@/components/transport/TransportDrawer"
 
 const getLocationName = (id: string) =>
   GREENLAND_LOCATIONS.find((l) => l.name_dk.toLowerCase() === id.toLowerCase())?.name_dk ??
@@ -109,6 +109,7 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
   const outboundTotal = seats * priceOre
 
   const [bookPending, setBookPending] = useState(false)
+  const [returnDrawerId, setReturnDrawerId] = useState<string | null>(null)
 
   async function handleBook() {
     if (bookPending) return
@@ -343,6 +344,7 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
               >
                 <div className="mb-5">
                   {/* Return trip cards */}
+                  {/* Returture fra samme sejler */}
                   {returnTrips.length > 0 ? (
                     <div className="space-y-2 mb-3">
                       {returnTrips.map((rt) => {
@@ -450,6 +452,60 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
                   ) : (
                     <div className="bg-muted rounded-xl p-4 text-sm text-muted-foreground text-center mb-3">
                       Ingen returture fra samme sejler
+                    </div>
+                  )}
+
+                  {/* Andre sejlere på samme rute — altid synlig når return-fanen er åben */}
+                  {!rideShare.return_ride_share_id && (
+                    <div className="mb-3">
+                      {alternativeReturnTrips.length > 0 && (
+                        <>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                            Andre sejlere på samme rute
+                          </p>
+                          <div className="space-y-2">
+                            {alternativeReturnTrips.map((alt) => (
+                              <div key={alt.id} className="border border-border rounded-xl overflow-hidden">
+                                <div className="p-3">
+                                  <div className="flex items-start justify-between gap-3 mb-2.5">
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-semibold text-foreground">
+                                        {getLocationName(alt.from_location)} → {getLocationName(alt.to_location)}
+                                      </p>
+                                      {alt.profiles && (
+                                        <p className="text-xs text-primary font-medium mt-0.5">
+                                          {alt.profiles.full_name ?? "Sila-sejler"}
+                                        </p>
+                                      )}
+                                      <p className="text-xs text-muted-foreground mt-0.5">
+                                        {formatNuukDate(alt.departure_at)}
+                                        {formatNuukTime(alt.departure_at) ? ` kl. ${formatNuukTime(alt.departure_at)}` : ""}
+                                        {" · "}{alt.seats_available} plads{alt.seats_available !== 1 ? "er" : ""} ledige
+                                      </p>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                      <p className="text-sm font-bold text-primary">{formatKr(alt.price_per_seat_ore)}</p>
+                                      <p className="text-xs text-muted-foreground">pr. plads</p>
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={() => setReturnDrawerId(alt.id)}
+                                    className="w-full py-2 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+                                  >
+                                    Book denne returtur →
+                                  </button>
+                                </div>
+                                <div className="flex items-start gap-2 bg-amber-50 border-t border-amber-200 px-3 py-2.5">
+                                  <span className="text-amber-500 text-xs leading-none mt-0.5">⚠️</span>
+                                  <p className="text-xs text-amber-800">
+                                    Anden sejler — du modtager to separate betalingskvitteringer.
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
 
@@ -644,64 +700,6 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
           </p>
         </div>
 
-        {/* ── Alternative transportmuligheder fra andre sejlere ── */}
-        {ticketType === "return" && !rideShare.return_ride_share_id && (() => {
-          console.log("alternativeReturnTrips:", alternativeReturnTrips)
-          return (
-            <div className="bg-white rounded-2xl border border-border shadow-sm p-6 mb-6">
-              <h2 className="text-base font-bold text-foreground mb-4">
-                Andre tilgængelige transportmuligheder til {getLocationName(rideShare.to_location)}
-              </h2>
-              {alternativeReturnTrips.length > 0 ? (
-                <div className="space-y-4">
-                  {alternativeReturnTrips.map((alt) => (
-                    <div key={alt.id} className="border border-border rounded-2xl overflow-hidden">
-                      <div className="p-4">
-                        <div className="flex items-start justify-between gap-3 mb-3">
-                          <div className="min-w-0">
-                            <p className="font-bold text-foreground">
-                              {getLocationName(alt.from_location)} → {getLocationName(alt.to_location)}
-                            </p>
-                            {alt.profiles && (
-                              <p className="text-sm font-semibold text-primary mt-0.5">
-                                Sejler: {alt.profiles.full_name ?? "Sila-sejler"}
-                              </p>
-                            )}
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {formatNuukDate(alt.departure_at)}
-                              {formatNuukTime(alt.departure_at) ? ` kl. ${formatNuukTime(alt.departure_at)}` : ""}
-                              {" · "}{alt.seats_available} plads{alt.seats_available !== 1 ? "er" : ""} ledige
-                            </p>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="font-bold text-primary">{formatKr(alt.price_per_seat_ore)}</p>
-                            <p className="text-xs text-muted-foreground">pr. plads</p>
-                          </div>
-                        </div>
-                        <Link
-                          href={`/transport/${alt.id}?from=${rideShare.id}`}
-                          className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
-                        >
-                          Book denne returtur →
-                        </Link>
-                      </div>
-                      <div className="flex items-start gap-2 bg-amber-50 border-t border-amber-200 px-4 py-3">
-                        <span className="text-amber-500 text-sm leading-none mt-0.5">⚠️</span>
-                        <p className="text-xs text-amber-800">
-                          Denne tur udbydes af en anden sejler. Du modtager to separate betalingskvitteringer.
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground bg-muted rounded-xl p-4 text-center">
-                  Ingen tilgængelige transportmuligheder til {getLocationName(rideShare.to_location)} endnu.
-                </p>
-              )}
-            </div>
-          )
-        })()}
 
         {/* ── Om sejleren ── */}
         {rideShare.profiles && (
@@ -774,6 +772,12 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
         </div>
 
       </div>
+
+      <TransportDrawer
+        id={returnDrawerId}
+        seats={seats}
+        onClose={() => setReturnDrawerId(null)}
+      />
     </div>
   )
 }

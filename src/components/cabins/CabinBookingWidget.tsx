@@ -47,6 +47,8 @@ type Props = {
   loginNextPath: string
   /** Optagne/blokerede nætter (YYYY-MM-DD) */
   disabledYmd: string[]
+  /** Kaldes når gæsteantal ændres — bruges til at synkronisere med CabinTransportSection */
+  onGuestsChange?: (guests: number) => void
 }
 
 const TRIP_OPTIONS: { value: TransportTrip; label: string }[] = [
@@ -64,6 +66,7 @@ export default function CabinBookingWidget({
   isLoggedIn,
   loginNextPath,
   disabledYmd,
+  onGuestsChange,
 }: Props) {
   const router = useRouter()
   const [pending, start] = useTransition()
@@ -82,6 +85,10 @@ export default function CabinBookingWidget({
 
   const guests = Math.floor(Number(guestsInput)) || 0
   const guestInvalid = guests < 1 || guests > cabin.max_guests
+
+  useEffect(() => {
+    if (guests >= 1) onGuestsChange?.(guests)
+  }, [guests, onGuestsChange])
   const guestError =
     guestInvalid && guestsInput !== ""
       ? guests > cabin.max_guests

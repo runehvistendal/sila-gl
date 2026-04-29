@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   Calendar, Clock, Inbox, Home, Briefcase,
   MapPin, Anchor, PlusCircle, Star, Ship, Eye,
-  Check, X,
+  Check, X, User, ArrowRight,
 } from "lucide-react"
 import { format } from "date-fns"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -63,6 +63,23 @@ interface TransportRequestMine {
   offer_count?: number
 }
 
+export interface CabinRequestData {
+  id: string
+  cabin_id?: string | null
+  location: string
+  desired_check_in: string
+  desired_check_out: string
+  num_guests: number
+  max_price_ore?: number | null
+  description?: string | null
+  status: string
+  created_at: string
+  // udbyder-visning
+  guest_id?: string | null
+  guest_name?: string | null
+  guest_avatar_url?: string | null
+}
+
 interface Props {
   displayName: string | null
   roleType: string
@@ -77,6 +94,8 @@ interface Props {
   myBoats: BoatData[]
   openTransportRequests: TransportRequestData[]
   myTransportRequests: TransportRequestMine[]
+  myCabinRequests?: CabinRequestData[]
+  guestCabinRequests?: CabinRequestData[]
   reviews: ReviewData[]
   unreadMessages: number
 }
@@ -96,6 +115,8 @@ export default function DashboardClient({
   myBoats,
   openTransportRequests,
   myTransportRequests,
+  myCabinRequests = [],
+  guestCabinRequests = [],
   reviews,
   unreadMessages,
 }: Props) {
@@ -126,7 +147,8 @@ export default function DashboardClient({
         description: "Vælg 'Tilbyd transport' for at poste en tur.",
       },
       "boat-updated":                  { title: "Ændringer gemt" },
-      "transport-request-created":      { title: "Transportanmodning sendt", description: "Sejlere vil svare med tilbud." },
+      "transport-request-created":  { title: "Transportanmodning sendt", description: "Sejlere vil svare med tilbud." },
+      "cabin-request-created":      { title: "Hytteanmodning sendt", description: "Udlejere i området vil kontakte dig." },
     }
 
     const msg = map[t]
@@ -142,8 +164,6 @@ export default function DashboardClient({
 
   const [activeTab,     setActiveTab]     = useState(urlTab)
   const [bookingFilter, setBookingFilter] = useState<"active" | "history">("active")
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [requestType,   setRequestType]   = useState<"transport">("transport")
   const [isDuplicating, startDuplicate]   = useTransition()
 
   // Booking splits
@@ -367,12 +387,13 @@ export default function DashboardClient({
 
           {/* ── TAB 2: MINE ØNSKER ── */}
           <TabsContent value="requests">
-            <div className="space-y-8">
+            <div className="space-y-10">
+              {/* Transportanmodninger */}
               <div>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Ønsker du har sendt som gæst
-                </p>
-                <h3 className="font-semibold text-foreground mb-3">Mine transportanmodninger</h3>
+                <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Anchor className="w-4 h-4 text-primary" />
+                  Transportanmodninger
+                </h3>
                 {myTransportRequests.length === 0 ? (
                   <EmptyState icon={Anchor} message="Ingen transportanmodninger endnu" cta="Anmod om transport" ctaHref="/transport/anmod" />
                 ) : (
@@ -383,38 +404,78 @@ export default function DashboardClient({
                   </div>
                 )}
               </div>
+
+              {/* Hytteanmodninger */}
+              <div className="pt-6 border-t border-border">
+                <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Home className="w-4 h-4 text-primary" />
+                  Hytteanmodninger
+                </h3>
+                {myCabinRequests.length === 0 ? (
+                  <EmptyState icon={Home} message="Ingen hytteanmodninger endnu" cta="Anmod om hytte" ctaHref="/anmod" />
+                ) : (
+                  <div className="space-y-3">
+                    {myCabinRequests.map((r) => (
+                      <CabinRequestRow key={r.id} r={r} isHost={false} />
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </TabsContent>
 
           {/* ── TAB 3: Gæsteønsker ── */}
           {isProvider && (
             <TabsContent value="open-requests">
-              <div className="space-y-6">
-                <p className="text-sm text-muted-foreground">
-                  Ønsker fra gæster i dit område — byd ind med dit tilbud
-                </p>
-                {/* Toggle — transport only for now (cabin requests table not built yet) */}
-                <div className="flex gap-2 bg-muted rounded-xl p-1 w-fit">
-                  <button
-                    onClick={() => setRequestType("transport")}
-                    className="px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-white text-foreground shadow-sm"
-                  >
-                    <Anchor className="w-4 h-4 inline mr-2" />
-                    Transport
+              <div className="space-y-10">
+                {/* Transportanmodninger */}
+                <div>
+                  <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <Anchor className="w-4 h-4 text-primary" />
+                    Transportanmodninger
                     {openTransportRequests.length > 0 && (
-                      <span className="ml-1.5 bg-amber-100 text-amber-700 text-xs rounded-full px-1.5">
+                      <span className="bg-amber-100 text-amber-700 text-xs rounded-full px-2 py-0.5 font-semibold">
                         {openTransportRequests.length}
                       </span>
                     )}
-                  </button>
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Gæster der søger transport — byd ind med et tilbud
+                  </p>
+                  <OpenRequestsList
+                    nearby={nearbyTransport}
+                    others={otherTransport}
+                    userHomeCity={homeCity}
+                    type="transport"
+                  />
                 </div>
 
-                <OpenRequestsList
-                  nearby={nearbyTransport}
-                  others={otherTransport}
-                  userHomeCity={homeCity}
-                  type="transport"
-                />
+                {/* Hytteanmodninger */}
+                <div className="pt-6 border-t border-border">
+                  <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <Home className="w-4 h-4 text-primary" />
+                    Hytteanmodninger
+                    {guestCabinRequests.length > 0 && (
+                      <span className="bg-amber-100 text-amber-700 text-xs rounded-full px-2 py-0.5 font-semibold">
+                        {guestCabinRequests.length}
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Gæster der søger hytteleje i dit område
+                  </p>
+                  {guestCabinRequests.length === 0 ? (
+                    <p className="text-sm text-muted-foreground bg-muted/50 rounded-xl p-4">
+                      Ingen åbne hytteanmodninger endnu.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {guestCabinRequests.map((r) => (
+                        <CabinRequestRow key={r.id} r={r} isHost={true} />
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </TabsContent>
           )}
@@ -462,6 +523,9 @@ export default function DashboardClient({
                             </Badge>
                             <Button size="sm" variant="outline" asChild className="text-primary border-primary/30 hover:bg-primary/5 rounded-lg">
                               <Link href={`/opret/opslag/hytte/${c.id}`}>Udlej nu</Link>
+                            </Button>
+                            <Button size="sm" variant="outline" asChild className="rounded-lg">
+                              <Link href={`/opret/hytte/${c.id}/rediger`}>Rediger</Link>
                             </Button>
                             <Button size="sm" variant="ghost" asChild className="rounded-lg">
                               <Link href={`/hytter/${c.id}`}><Eye className="w-4 h-4" /></Link>
@@ -600,6 +664,95 @@ export default function DashboardClient({
           </TabsContent>
         </Tabs>
       </div>
+    </div>
+  )
+}
+
+/* ── Cabin request row ── */
+const CABIN_REQ_STATUS: Record<string, string> = {
+  open:      "Åben",
+  matched:   "Matchet",
+  cancelled: "Annulleret",
+  expired:   "Udløbet",
+}
+const CABIN_REQ_COLORS: Record<string, string> = {
+  open:      "bg-amber-100 text-amber-700",
+  matched:   "bg-green-100 text-green-700",
+  cancelled: "bg-gray-100 text-gray-500",
+  expired:   "bg-gray-100 text-gray-400",
+}
+
+function CabinRequestRow({ r, isHost }: { r: CabinRequestData; isHost: boolean }) {
+  const nights = r.desired_check_in && r.desired_check_out
+    ? Math.round((new Date(r.desired_check_out).getTime() - new Date(r.desired_check_in).getTime()) / (1000 * 60 * 60 * 24))
+    : null
+
+  return (
+    <div className="bg-white rounded-xl border border-border p-4 space-y-3">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          {isHost && r.guest_id ? (
+            <Link href={`/profil/${r.guest_id}`} className="shrink-0">
+              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+                {r.guest_avatar_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={r.guest_avatar_url} alt={r.guest_name ?? "Gæst"} className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-4 h-4 text-primary" />
+                )}
+              </div>
+            </Link>
+          ) : (
+            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Home className="w-4 h-4 text-primary" />
+            </div>
+          )}
+          <div>
+            {isHost && r.guest_id && (
+              <Link href={`/profil/${r.guest_id}`} className="text-xs text-primary hover:underline font-medium block">
+                {r.guest_name ?? "Gæst"}
+              </Link>
+            )}
+            <p className="font-semibold text-sm text-foreground flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+              {r.location}
+            </p>
+          </div>
+        </div>
+        <Badge className={`${CABIN_REQ_COLORS[r.status] ?? "bg-gray-100 text-gray-500"} border-0 text-xs`}>
+          {CABIN_REQ_STATUS[r.status] ?? r.status}
+        </Badge>
+      </div>
+
+      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <Calendar className="w-3.5 h-3.5" />
+          {r.desired_check_in ? format(new Date(r.desired_check_in), "d. MMM") : "—"}
+          {" – "}
+          {r.desired_check_out ? format(new Date(r.desired_check_out), "d. MMM yyyy") : "—"}
+          {nights != null && nights > 0 && ` (${nights} nætter)`}
+        </span>
+        <span className="flex items-center gap-1">
+          <User className="w-3.5 h-3.5" />
+          {r.num_guests} gæst{r.num_guests !== 1 ? "er" : ""}
+        </span>
+      </div>
+
+      {r.description && (
+        <p className="text-xs text-muted-foreground italic bg-muted/50 rounded-lg px-3 py-2">
+          &ldquo;{r.description}&rdquo;
+        </p>
+      )}
+
+      {isHost && r.guest_id && r.status === "open" && (
+        <div className="pt-2 border-t border-border">
+          <Button size="sm" asChild variant="outline" className="rounded-lg gap-1.5 text-primary border-primary/30 hover:bg-primary/5">
+            <Link href={`/profil/${r.guest_id}`}>
+              <ArrowRight className="w-3.5 h-3.5" /> Kontakt gæst
+            </Link>
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

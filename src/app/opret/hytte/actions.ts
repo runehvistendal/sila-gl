@@ -96,7 +96,7 @@ export async function createHytte(
 
   const price_per_night_ore = krToOre(PLACEHOLDER_NIGHT_KR)
 
-  const { error } = await supabase.from("cabins").insert({
+  const { data: inserted, error } = await supabase.from("cabins").insert({
     owner_id: user.id,
     title: data.title,
     description: data.description,
@@ -118,12 +118,14 @@ export async function createHytte(
     access_type: "boat",
     addon_services: addonServices,
     published: false,
-  })
+  }).select("id").single()
 
-  if (error) {
+  if (error || !inserted) {
     console.error("[createHytte]", error)
     return { errors: { _form: ["Der opstod en fejl. Prøv igen."] } }
   }
+
+  const cabinId = inserted.id
 
   const { data: prof, error: profErr } = await supabase
     .from("profiles")
@@ -150,7 +152,7 @@ export async function createHytte(
     }
   }
 
-  redirect("/dashboard?tab=mine-opslag&toast=hytte-saved")
+  redirect(`/opret/hytte/${cabinId}/rediger?toast=hytte-saved`)
 }
 
 const updateSchema = baseSchema.extend({

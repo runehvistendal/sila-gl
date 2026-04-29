@@ -1,13 +1,17 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { ChevronLeft, MapPin, Users, Anchor, Check, User } from "lucide-react"
+import {
+  ChevronLeft, MapPin, Users, Anchor, User,
+  AlertTriangle,
+} from "lucide-react"
+import { AMENITY_META } from "@/lib/amenityMeta"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import { nightsFromBookings } from "@/lib/cabinBookingDates"
 import Navbar from "@/components/layout/Navbar"
 import ListingImageGallery from "@/components/cabins/ListingImageGallery"
 import CabinReviews from "@/components/cabins/CabinReviews"
-import CabinBookingWidget from "@/components/cabins/CabinBookingWidget"
+import CabinDetailLayout from "@/components/cabins/CabinDetailLayout"
 
 export type CabinDetailData = {
   id: string
@@ -28,14 +32,6 @@ export type CabinDetailData = {
   profiles: { full_name: string | null; avatar_url: string | null } | null
 }
 
-const AMENITY_LABELS: Record<string, string> = {
-  electricity:    "El",
-  water:          "Rindende vand",
-  wood_stove:     "Brændeovn",
-  toilet:         "Toilet",
-  sauna:          "Sauna",
-  boat_included:  "Båd inkluderet",
-}
 
 export default async function CabinDetailPage({
   params,
@@ -70,15 +66,28 @@ export default async function CabinDetailPage({
 
   const cabin = cabinRaw as unknown as CabinDetailData
 
-  const [{ data: occRows }, { data: blockRows }] = await Promise.all([
-    supabase.rpc("get_cabin_occupancy", { p_cabin_id: id }),
-    supabase
-      .from("cabin_availability")
-      .select("date")
-      .eq("cabin_id", id)
-      .eq("is_available", false)
-      .is("deleted_at", null),
-  ])
+  const [{ data: occRows }, { data: blockRows }, { data: transportRows }] =
+    await Promise.all([
+      supabase.rpc("get_cabin_occupancy", { p_cabin_id: id }),
+      supabase
+        .from("cabin_availability")
+        .select("date")
+        .eq("cabin_id", id)
+        .eq("is_available", false)
+        .is("deleted_at", null),
+      supabase
+        .from("ride_shares")
+        .select(
+          `id, from_location, to_location, departure_at,
+           seats_available, total_seats, price_per_seat_ore,
+           profiles!skipper_id ( full_name )`,
+        )
+        .eq("to_location", cabin.location_hub.toLowerCase())
+        .in("status", ["active", "full"])
+        .gt("departure_at", new Date().toISOString())
+        .order("departure_at", { ascending: true })
+        .limit(5),
+    ])
 
   const occupied = nightsFromBookings(
     (occRows ?? []) as { check_in: string; check_out: string }[],
@@ -132,63 +141,88 @@ export default async function CabinDetailPage({
 
         <ListingImageGallery images={cabin.images} title={cabin.title} />
 
-        <div className="max-w-5xl space-y-8 mt-6 lg:mt-10">
-          <div>
-            <h2 className="text-xl font-bold text-foreground mb-3">Om hytten</h2>
-            <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
-              {cabin.description || "Ingen beskrivelse endnu."}
-            </p>
-          </div>
-
-          {cabin.amenities?.length > 0 && (
-            <div>
-              <h2 className="text-xl font-bold text-foreground mb-4">Faciliteter</h2>
-              <div className="grid grid-cols-2 gap-3">
-                {cabin.amenities.map((a, i) => (
-                  <div key={i} className="flex items-center gap-2 text-sm text-foreground">
-                    <Check className="w-4 h-4 text-primary shrink-0" />
-                    {AMENITY_LABELS[a] ?? a}
-                  </div>
-                ))}
+        <CabinDetailLayout
+          bookingCabin={{
+            id: cabin.id,
+            max_guests: cabin.max_guests,
+            price_per_night_ore: cabin.price_per_night_ore,
+            offers_transport: cabin.offers_transport,
+            transport_price_per_person_ore: cabin.transport_price_per_person_ore,
+          }}
+          transportCabin={{
+            id: cabin.id,
+            location_hub: cabin.location_hub,
+            offers_transport: cabin.offers_transport,
+            transport_price_per_person_ore: cabin.transport_price_per_person_ore,
+            profiles: cabin.profiles,
+          }}
+          transports={(transportRows ?? []) as import("@/components/cabins/CabinTransportSection").RideShareData[]}
+          isLoggedIn={!!user}
+          loginNextPath={`/hytter/${cabin.id}`}
+          disabledYmd={disabledYmd}
+          leftContent={
+            <>
+              {/* Om hytten */}
+              <div>
+                <h2 className="text-xl font-bold text-foreground mb-3">Om hytten</h2>
+                <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
+                  {cabin.description || "Ingen beskrivelse endnu."}
+                </p>
               </div>
-            </div>
-          )}
 
-          {hostName && (
-            <div>
-              <h2 className="text-xl font-bold text-foreground mb-3">Din vært</h2>
-              <div className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-border hover:border-primary/30 hover:shadow-card transition-all w-full text-left">
-                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
-                  {hostAvatar ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={hostAvatar} alt={hostName} className="w-full h-full object-cover" />
-                  ) : (
-                    <User className="w-6 h-6 text-primary" />
-                  )}
-                </div>
+              {/* Inkluderet */}
+              {cabin.amenities?.length > 0 && (
                 <div>
-                  <p className="font-semibold text-foreground">{hostName}</p>
-                  <p className="text-sm text-primary">Se profil →</p>
+                  <h2 className="text-xl font-bold text-foreground mb-4">Inkluderet</h2>
+                  <div className="grid grid-cols-2 gap-3">
+                    {cabin.amenities.map((a, i) => {
+                      const meta = AMENITY_META[a]
+                      const Icon = meta?.icon ?? AlertTriangle
+                      const label = meta?.label ?? a
+                      return (
+                        <div key={i} className="flex items-center gap-2.5 text-sm text-foreground">
+                          <Icon className="w-4 h-4 text-primary shrink-0" />
+                          {label}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
+              )}
 
-          <CabinBookingWidget
-            cabin={{
-              id: cabin.id,
-              max_guests: cabin.max_guests,
-              price_per_night_ore: cabin.price_per_night_ore,
-              offers_transport: cabin.offers_transport,
-              transport_price_per_person_ore: cabin.transport_price_per_person_ore,
-            }}
-            isLoggedIn={!!user}
-            loginNextPath={`/hytter/${cabin.id}`}
-            disabledYmd={disabledYmd}
-          />
-
-          <CabinReviews cabinId={cabin.id} ownerId={cabin.owner_id} currentUserId={user?.id ?? null} />
-        </div>
+              {/* Din vært */}
+              {hostName && (
+                <div>
+                  <h2 className="text-xl font-bold text-foreground mb-3">Din vært</h2>
+                  <Link
+                    href={`/profil/${cabin.owner_id}`}
+                    className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-border hover:border-primary/30 hover:shadow-card transition-all"
+                  >
+                    <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
+                      {hostAvatar ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={hostAvatar} alt={hostName} className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-6 h-6 text-primary" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-foreground">{hostName}</p>
+                      <p className="text-sm text-primary">Se profil →</p>
+                    </div>
+                  </Link>
+                </div>
+              )}
+            </>
+          }
+          reviewsContent={
+            <CabinReviews
+              cabinId={cabin.id}
+              ownerId={cabin.owner_id}
+              currentUserId={user?.id ?? null}
+            />
+          }
+        />
       </div>
     </main>
   )

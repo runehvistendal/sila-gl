@@ -1,4 +1,4 @@
-# Sila.gl — Hukommelse
+﻿# Sila.gl — Hukommelse
 
 > På tværs af sessioner: læs **[CLAUDE.md](./CLAUDE.md)** for fuld projektkontekst; denne fil er kort status og beslutninger.
 
@@ -20,6 +20,18 @@ alternative transportmuligheder fra andre sejlere på /transport/[id].
 Timezone: src/lib/nuukTime.ts — America/Godthab, alle tider vises i Nuuk-tid.
 Testdata: 4 profiler (Malik, Sara, Hans, Aviaja), 3 hytter, 8 transportture.
 DB: alle from_location/to_location er lowercase i ride_shares.
+
+## Status (29.4.2026)
+
+- `/hytter`: facilitetsfiltre i Filtrer-popover (AMENITY_FILTER_KEYS fra amenityMeta.ts), `HytterClient.tsx` klientkomponent
+- `/hytter/[id]`: to-kolonne layout (`lg:grid-cols-[1fr_384px]`), sticky booking-widget, `CabinDetailLayout.tsx` + `CabinPageClient.tsx`. Sektionsrækkefølge: Om hytten → Inkluderet → Din vært → Kom dertil → Anmeldelser
+- `/transport`: Filtrer-knap med popover (bådtype, kabine, ledige pladser). `TransportFilters.tsx` omskrevet
+- `/transport/[id]`: `TransportDrawer.tsx` — shadcn Sheet-sidepanel for returture fra andre sejlere. Bruges også på `/hytter/[id]` via `CabinTransportSection.tsx`
+- `/dashboard`: `BookingRow.tsx` accordion med profil-links. Mine ønsker: transportanmodninger + hytteanmodninger (`CabinRequestRow`). Gæsteønsker: begge typer
+- `/anmod`: ny side til hytteanmodninger (server action + rate limit)
+- **DB**: `cabin_requests` tabel oprettet (migration `20260429130000_cabin_requests` + RLS)
+- `amenityMeta.ts`: `AMENITY_META` + `AMENITY_FILTER_KEYS` (18 DB-nøgler)
+- `DashboardClient`: null-guards på `myCabinRequests`/`guestCabinRequests` (default `[]`)
 
 Ingen kendte bugs.
 
@@ -56,6 +68,7 @@ Ingen kendte bugs.
 | `20260428210000_reviews_system` | published_at, expires_at, reviewer_role, reviews_select_public RLS, dobbelt-blind trigger, pg_cron |
 | `20260428220000_ride_share_bookings_stripe` | stripe_session_id på ride_share_bookings, get_skipper_stripe_info RPC |
 | `20260428_return_trip` | return_ride_share_id kolonne på ride_shares |
+| `20260429130000_cabin_requests` | cabin_requests tabel + RLS (gæst/ejer/åbne anmodninger) |
 
 ## Næste trin (i rækkefølge)
 

@@ -3,7 +3,7 @@
 > **Claude Code & udviklerkontekst** — dette dokument er autoritativt for agent og mennesker. Kort agent-hukommelse: se `hukommelse.md` i roden.
 
 ## Projekt
-Grønlands marketplace for hytteudlejning og samsejlads.  
+Grønlands marketplace for hytteudlejning og samsejlads. 
 "Grønland på lokale vilkår"
 
 - Repo: github.com/runehvistendal/sila-gl
@@ -12,36 +12,38 @@ Grønlands marketplace for hytteudlejning og samsejlads.
 - Supabase: pngpelcaodbwwggaeyue (West EU Ireland)
 
 ## Stack
-Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Vercel  
+Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Vercel 
 **Font:** Plus Jakarta Sans
 
 ## Udvikler- og testkonti (DB)
-- **Primær (brug altid denne i udvikling):** rune.runesen@gmail.com  
-  `id: 313713bd-614d-46f7-b64e-16f525f98309`  
-- **Test (kun reference, ikke primær adfærd):** rune.runesen.test@gmail.com  
-  `id: 8c29ab7f-fe44-43ef-a1af-64eda151b2f7`
+- **Primær (brug altid denne i udvikling):** rune.runesen@gmail.com 
+ `id: 313713bd-614d-46f7-b64e-16f525f98309` 
+- **Test (kun reference, ikke primær adfærd):** rune.runesen.test@gmail.com 
+ `id: 8c29ab7f-fe44-43ef-a1af-64eda151b2f7`
 
-## Bygget og komplet (28.4.2026)
+## Bygget og komplet (29.4.2026)
 - Landingpage (/)
 - Auth (email + Google, httpOnly cookies via @supabase/ssr)
 - Datamodel (12 tabeller inkl. boats + rate_limits, RLS, triggers)
-- /opret — **2 kort:** «Udlej en hytte» / «Tilbyd transport» (ikke tre separate valg på samme måde som tidlig «hytte/båd/opslag»-skitse; se **/opret flow** nedenfor)
+- /opret — **2 kort:** «Udlej en hytte» / «Tilbyd transport»
 - /opret/hytte (registrér hytte-aktiv, chip-UI faciliteter, transport-switch)
 - /opret/baad (registrér båd-aktiv, sikkerhedsbekræftelse, chips)
 - /opret/opslag/hytte/[cabinId] (publicér udlejningsopslag fra hytte)
 - /opret/opslag/sejlads/[boatId] (post samsejladstur fra båd)
 - /opret/hytte/[id]/rediger, /opret/baad/[id]/rediger
 - /mine-hytter → redirect /dashboard?tab=mine-opslag
-- /hytter (søgeside, server-side filtrering)
-- /hytter/[id] (galleri, CabinTransportSection, reviews, bookingkort)
-- /dashboard (rollebaserede tabs — se **Rollemodel**)
-- /transport (søgeside, TransportCard, TransportFilters)
-- /transport/[id] (info-kort, bookingkort, t/r-toggle, anmodningsformular, reviews)
+- /hytter (søgeside, server-side filtrering, HytterClient.tsx, facilitetsfiltre i Filtrer-popover via AMENITY_FILTER_KEYS)
+- /hytter/[id] (to-kolonne layout lg:grid-cols-[1fr_384px], sticky booking-widget, galleri, CabinDetailLayout.tsx, CabinTransportSection, reviews, bookingkort. Sektionsrækkefølge: Om hytten → Inkluderet → Din vært → Kom dertil → Anmeldelser)
+- /dashboard (rollebaserede tabs — se **Rollemodel**. BookingRow accordion med profil-links. Mine ønsker: transportanmodninger + hytteanmodninger. Gæsteønsker: begge typer)
+- /transport (søgeside, TransportCard, Filtrer-knap med popover: bådtype, kabine, ledige pladser. TransportFilters.tsx omskrevet)
+- /transport/[id] (info-kort, bookingkort, t/r-toggle, anmodningsformular, reviews, TransportDrawer for returture fra andre sejlere)
+- /anmod (ny side til hytteanmodninger — server action + rate limit)
 - /profil (avatar, roller, anmeldelser, telefon med landekode, email-skift via Supabase Auth, bio, sprog synkroniseret med navbar)
 - Cloudinary (avatar + hyttebilleder)
 - Navbar (transparent/scroll, plus-dropdown → /opret)
 - NavUser: { id, fullName, avatarUrl, language } — navbar viser profilbillede og sprog dynamisk fra DB via revalidatePath
 - src/lib/cabinFacilities.ts (CABIN_FACILITIES)
+- src/lib/amenityMeta.ts (AMENITY_META + AMENITY_FILTER_KEYS — 18 DB-nøgler)
 - src/components/shared/AddOnServicesEditor.tsx (DEL G)
 - **Stripe Connect** onboarding (15 % kommission, server-side) ✅
 - **Hyttebooking** med Stripe Checkout + webhook (status: confirmed verificeret) ✅
@@ -59,6 +61,16 @@ Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Ver
 - **Testdata:** 4 profiler (Malik, Sara, Hans, Aviaja), 3 hytter, 8 transportture ✅
 - **src/lib/notifications.ts** — placeholder funktioner (notify*) ✅
 - **/profil/[id]** — offentlig profilside med anmeldelser og gennemsnitsscore ✅
+- **DB: cabin_requests tabel** — guest_id, cabin_id (nullable), location, desired_check_in, desired_check_out, num_guests, max_price_ore, description, status (open|matched|cancelled|expired), RLS ✅
+
+## Nye filer (29.4.2026)
+- `src/lib/amenityMeta.ts` — AMENITY_META + AMENITY_FILTER_KEYS
+- `src/app/hytter/HytterClient.tsx` — klientkomponent med facilitetsfiltreringstate
+- `src/components/cabins/CabinDetailLayout.tsx` — klientside layout for /hytter/[id], deler `guests`-state
+- `src/components/cabins/CabinPageClient.tsx` — wrapper-komponent
+- `src/components/transport/TransportDrawer.tsx` — sidepanel (shadcn Sheet) til returture; props: `id` (ride_share_id), `seats`, `onClose`
+- `src/app/anmod/page.tsx` + `src/app/anmod/actions.ts` — hytteanmodnings-formular
+- `src/app/dashboard/components/CabinRequestRow.tsx` (inline i DashboardClient)
 
 ## /opret flow (præcist)
 - **/opret:** 2 kort (Udlej en hytte / Tilbyd transport)
@@ -85,7 +97,7 @@ Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Ver
 - skipper_id alias: brug `sejler_id:skipper_id` i SQL-select — sejler_id i TypeScript
 
 ## Designregel
-Kopiér design 1:1 fra sila-2-ref inden en ny side bygges.  
+Kopiér design 1:1 fra sila-2-ref inden en ny side bygges. 
 Læs altid den tilsvarende Base44-fil **FØR** du skriver kode.
 
 ## Rollemodel (`profiles.role_type`)
@@ -94,9 +106,9 @@ Værdier: `'traveler' | 'provider' | 'both'`
 - Default: **traveler**
 - Opretter hytte/båd og var **traveler** → **both**
 - **Dashboard tabs**
-  - **traveler:** Bookinger, Mine ønsker, Indbakke  
-  - **provider:** Bookinger, Gæsteønsker, Mine opslag, Indbakke  
-  - **both:** alle tabs
+ - **traveler:** Bookinger, Mine ønsker, Indbakke 
+ - **provider:** Bookinger, Gæsteønsker, Mine opslag, Indbakke 
+ - **both:** alle tabs
 - **Fast sektion (traveler):** «Har du en hytte eller båd?» / «Udlej din hytte eller tilbyd transport.»
 
 Rolle-**UPDATE** (reconcile, server): `src/lib/supabase-service.ts` med **`SUPABASE_SERVICE_ROLE_KEY`** (`.env.local` + Vercel) — se **Sikkerhed** nedenfor.
@@ -116,8 +128,8 @@ Rolle-**UPDATE** (reconcile, server): `src/lib/supabase-service.ts` med **`SUPAB
 - Admin-ruter: middleware + RLS
 - Filtrering **ALTID** i Supabase query — aldrig «hemmelig» forretningslogik kun client-side
 - **profiles følsomme felter** (`stripe_account_id`, `phone`, `stripe_onboarding_complete`): læses **ALDRIG** direkte via `.from("profiles").select(...)` fra klientkode eller server actions — brug udelukkende:
-  - `get_my_sensitive_profile()` — egne data
-  - `get_owner_stripe_info(cabin_id)` — ejerens Stripe-info i bookingflow
+ - `get_my_sensitive_profile()` — egne data
+ - `get_owner_stripe_info(cabin_id)` — ejerens Stripe-info i bookingflow
 - **cabin_bookings immutable felter** (`total_price_ore`, `platform_fee_ore`, `stripe_session_id`, `stripe_payment_intent_id`, `guest_id`, `cabin_id`, `check_in`, `check_out`, `num_guests`): beskyttet af BEFORE UPDATE trigger `cabin_bookings_guard_update` — service_role passerer (auth.uid() IS NULL)
 - **handle_new_user trigger**: fallback `full_name = 'Sila-bruger'` — aldrig email som fallback
 - **Ingen console.log** af service role key eller andre secrets — ikke engang prefix
@@ -141,16 +153,16 @@ Rolle-**UPDATE** (reconcile, server): `src/lib/supabase-service.ts` med **`SUPAB
 - **Stripe:** forventer typisk heltals-øre i flows — hold server-side, send direkte i øre hvor det er defineret sådan
 
 ## ride_shares — korrekte kolonner
-| Kolonne          | Type        | Bemærkning                                 |
+| Kolonne | Type | Bemærkning |
 |------------------|-------------|---------------------------------------------|
-| departure_at     | timestamptz | IKKE departure_date + departure_time separat |
-| status           | enum        | IKKE `active` boolean. Aktive: f.eks. `active` |
-| boat_description | text        | IKKE `boat_type`                            |
-| description      | text        | IKKE `notes`                                |
-| from_latitude    | numeric     | NOT NULL                                    |
-| from_longitude   | numeric     | NOT NULL                                    |
-| to_latitude      | numeric     | NOT NULL                                    |
-| to_longitude     | numeric     | NOT NULL                                    |
+| departure_at | timestamptz | IKKE departure_date + departure_time separat |
+| status | enum | IKKE `active` boolean. Aktive: f.eks. `active` |
+| boat_description | text | IKKE `boat_type` |
+| description | text | IKKE `notes` |
+| from_latitude | numeric | NOT NULL |
+| from_longitude | numeric | NOT NULL |
+| to_latitude | numeric | NOT NULL |
+| to_longitude | numeric | NOT NULL |
 
 Findes **IKKE:** `images`, `boat_type`, `departure_date`, `active` (semantisk fejl hvis forvekslet)
 
@@ -158,20 +170,42 @@ Findes **IKKE:** `images`, `boat_type`, `departure_date`, `active` (semantisk fe
 - `owner_id` (IKKE `host_id`)
 - `transport_price_per_person_ore` (IKKE `transport_price_ore`)
 
+## cabin_requests — kolonner
+| Kolonne | Type | Bemærkning |
+|----------------------|-------------|-------------------------------|
+| id | uuid | PK |
+| guest_id | uuid | NOT NULL, FK → profiles |
+| cabin_id | uuid | nullable — NULL = generelt ønske |
+| location | text | ønsket destination |
+| desired_check_in | date | NOT NULL |
+| desired_check_out | date | NOT NULL |
+| num_guests | integer | NOT NULL, min 1 |
+| max_price_ore | integer | nullable budget |
+| description | text | nullable |
+| status | text | open \| matched \| cancelled \| expired |
+| created_at | timestamptz | |
+| deleted_at | timestamptz | nullable (soft delete) |
+
 ## profiles
 - `role_type`: 'traveler' | 'provider' | 'both'
 
 ## Faciliteter — hytte
-Basis: Sengelinned, Håndklæder, Toilet indendørs, Udendørs toilet, Rindende vand, Varmt vand, Opvarmning, Elektricitet, Køkken, Køleskab  
-Udendørs: Terrasse, Grill, Bålplads, Kajak, Fiskegrej  
-Komfort: Wifi, TV, Vaskemaskine, Opvaskemaskine, Kaffemaskine, Fryseboks  
-Sikkerhed: Røgalarm, Brandslukning, Førstehjælpskasse, Låsbar dør  
+Basis: Sengelinned, Håndklæder, Toilet indendørs, Udendørs toilet, Rindende vand, Varmt vand, Opvarmning, Elektricitet, Køkken, Køleskab 
+Udendørs: Terrasse, Grill, Bålplads, Kajak, Fiskegrej 
+Komfort: Wifi, TV, Vaskemaskine, Opvaskemaskine, Kaffemaskine, Fryseboks 
+Sikkerhed: Røgalarm, Brandslukning, Førstehjælpskasse, Låsbar dør 
 + fri tekst «Andet»-sektion
 
 ## Faciliteter — båd
-Sikkerhed (bekræftelse, obligatorisk): Redningsveste, Flare-sæt, VHF-radio, Førstehjælpskasse, GPS  
-Komfort: Kabine, Toilet, Køkken, Varmeapparat, Gummibåd  
+Sikkerhed (bekræftelse, obligatorisk): Redningsveste, Flare-sæt, VHF-radio, Førstehjælpskasse, GPS 
+Komfort: Kabine, Toilet, Køkken, Varmeapparat, Gummibåd 
 Ekstraudstyr: Fiskegrej, Kikkert + fri tekst
+
+## amenityMeta.ts — nøgler
+`AMENITY_FILTER_KEYS` (18 DB-nøgler brugt i filterpanel på /hytter):
+`running_water, hot_water, indoor_toilet, outdoor_toilet, electricity, heating, kitchen, refrigerator, wifi, tv, terrace, campfire, grill, sauna, kayak, fishing_gear, bed_linen, towels`
+
+`AMENITY_META` indeholder derudover compat-nøgler fra HytteForm (fridge, fireplace m.fl.) til visning i /hytter/[id] Inkluderet-sektion.
 
 ## Terminologi — aldrig fravige
 - **sejler** (ikke «skipper» i UI) — `skipper_id` OK i DB
