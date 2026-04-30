@@ -45,3 +45,4 @@ supabase/.branches
 supabase/.temp
 .agents/
 skills-lock.json
+.env.local
