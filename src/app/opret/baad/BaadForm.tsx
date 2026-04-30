@@ -48,6 +48,7 @@ interface Props {
 export default function BaadForm({ mode, initialBoat }: Props) {
   const action = mode === "edit" ? updateBaad : createBaad
   const [state, formAction, isPending] = useActionState<BaadFormState, FormData>(action, null)
+  const [actionType, setActionType] = useState<"save" | "create_trip">("save")
 
   const { fixed: initFixed, custom: initCustom } = initialBoat
     ? splitEquipment(initialBoat.equipment)
@@ -114,6 +115,7 @@ export default function BaadForm({ mode, initialBoat }: Props) {
         name="safety_confirmed"
         value={safetyConfirmed ? "on" : ""}
       />
+      <input type="hidden" name="action_type" value={actionType} />
       {allEquipment.map((eq) => (
         <input key={eq} type="hidden" name="equipment" value={eq} />
       ))}
@@ -347,17 +349,36 @@ export default function BaadForm({ mode, initialBoat }: Props) {
         <p className="text-sm text-destructive">{state.errors._form[0]}</p>
       )}
 
-      <Button
-        type="submit"
-        disabled={!safetyConfirmed || isPending}
-        className="w-full rounded-xl h-12 text-base font-semibold"
-      >
-        {isPending
-          ? "Gemmer…"
-          : mode === "edit"
-            ? "Gem ændringer"
-            : "Gem båd"}
-      </Button>
+      {mode === "edit" ? (
+        <Button
+          type="submit"
+          disabled={!safetyConfirmed || isPending}
+          className="w-full rounded-xl h-12 text-base font-semibold"
+        >
+          {isPending ? "Gemmer…" : "Gem ændringer"}
+        </Button>
+      ) : (
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Button
+            type="submit"
+            variant="outline"
+            disabled={!safetyConfirmed || isPending}
+            onClick={() => setActionType("save")}
+            className="flex-1 rounded-xl h-12 text-base"
+          >
+            {isPending && actionType === "save" ? "Gemmer…" : "Gem båd"}
+          </Button>
+          <Button
+            type="submit"
+            disabled={!safetyConfirmed || isPending}
+            onClick={() => setActionType("create_trip")}
+            className="flex-1 rounded-xl h-12 text-base font-semibold"
+            style={{ backgroundColor: "#4A9CC7" }}
+          >
+            {isPending && actionType === "create_trip" ? "Gemmer…" : "Gem og opret tur →"}
+          </Button>
+        </div>
+      )}
     </form>
   )
 }

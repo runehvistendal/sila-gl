@@ -13,6 +13,7 @@ export type CloudinarySignResponse = {
 export type SignBody =
   | { kind: "avatar" }
   | { kind: "cabin"; cabinId: string }
+  | { kind: "cabin-pending" }
 
 export async function fetchCloudinarySignature(
   body: SignBody,

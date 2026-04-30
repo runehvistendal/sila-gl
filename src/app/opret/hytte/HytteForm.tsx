@@ -7,6 +7,7 @@ import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 import AddOnServicesEditor, { type AddOnService } from "@/components/shared/AddOnServicesEditor"
 import { oreToKr } from "@/lib/money"
 import CabinImageUpload from "@/components/cabins/CabinImageUpload"
+import PendingCabinImageUpload from "@/components/cabins/PendingCabinImageUpload"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -77,6 +78,8 @@ export default function HytteForm({ mode, initialCabin }: Props) {
   const [offersTransport, setOffersTransport] = useState(
     initialCabin?.offers_transport ?? false,
   )
+  const [pendingImageUrls, setPendingImageUrls] = useState<string[]>([])
+
   const [transportFrom, setTransportFrom] = useState(
     initialCabin?.transport_from ?? "",
   )
@@ -428,7 +431,7 @@ export default function HytteForm({ mode, initialCabin }: Props) {
         )}
       </div>
 
-      {/* 8. Billeder — lige over gem (kun redigering) */}
+      {/* 8. Billeder */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
           Billeder
@@ -439,9 +442,12 @@ export default function HytteForm({ mode, initialCabin }: Props) {
             initialImages={initialCabin.images ?? []}
           />
         ) : (
-          <div className="rounded-xl border-2 border-dashed border-border bg-muted/30 py-10 flex flex-col items-center justify-center gap-2 text-muted-foreground">
-            <p className="text-sm">Gem hytten først — derefter kan du uploade billeder under Rediger</p>
-          </div>
+          <>
+            {pendingImageUrls.map((url) => (
+              <input key={url} type="hidden" name="image_urls" value={url} />
+            ))}
+            <PendingCabinImageUpload onImagesChange={setPendingImageUrls} />
+          </>
         )}
       </div>
 
@@ -453,12 +459,13 @@ export default function HytteForm({ mode, initialCabin }: Props) {
         type="submit"
         disabled={isPending}
         className="w-full rounded-xl h-12 text-base font-semibold"
+        style={mode === "create" ? { backgroundColor: "#4A9CC7" } : undefined}
       >
         {isPending
           ? "Gemmer…"
           : mode === "edit"
             ? "Gem ændringer"
-            : "Gem hytte"}
+            : "Gem og fortsæt →"}
       </Button>
     </form>
   )

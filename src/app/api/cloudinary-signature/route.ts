@@ -8,6 +8,7 @@ const CABIN_EAGER = "c_fill,w_800,h_600,q_auto,f_auto"
 type Body = {
   kind?: string
   cabinId?: string
+  // "cabin-pending" uploads to sila/cabins/pending (no cabinId required)
 }
 
 export async function POST(request: Request) {
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
   }
 
   const kind = body.kind
-  if (kind !== "avatar" && kind !== "cabin") {
+  if (kind !== "avatar" && kind !== "cabin" && kind !== "cabin-pending") {
     return NextResponse.json({ error: "Ugyldig kind" }, { status: 400 })
   }
 
@@ -49,6 +50,10 @@ export async function POST(request: Request) {
   if (kind === "avatar") {
     folder = "sila/avatars"
     transformation = AVATAR_EAGER
+  } else if (kind === "cabin-pending") {
+    // Upload til pending-mappe mens hytten endnu ikke er oprettet i DB
+    folder = "sila/cabins/pending"
+    transformation = CABIN_EAGER
   } else {
     const cabinId = body.cabinId?.trim()
     if (!cabinId) {

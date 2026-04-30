@@ -7,9 +7,24 @@ import { createClient } from "@/lib/supabase-server"
 import { requireCabinOwner } from "@/lib/requireCabinOwner"
 import { requireSession } from "@/lib/requireSession"
 import { isCloudinaryImageUrl } from "@/lib/cloudinaryUrl"
+
+const MAX_CABIN_IMAGES = 8
 import { krToOre } from "@/lib/money"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 const PLACEHOLDER_NIGHT_KR = 100
+
+// Validates that an image_url is a trusted Cloudinary URL (cabin or pending folder)
+function isTrustedCabinImageUrl(url: string): boolean {
+  try {
+    const u = new URL(url)
+    return (
+      (u.hostname === "res.cloudinary.com" || u.hostname.endsWith(".cloudinary.com")) &&
+      u.pathname.includes("/sila/cabins/")
+    )
+  } catch {
+    return false
+  }
+}
 
 const baseSchema = z.object({
   title: z.string().min(1, "Titel er påkrævet").max(80, "Titel må maks. være 80 tegn"),
@@ -40,6 +55,10 @@ export async function createHytte(
     return { errors: { _form: ["Du skal være logget ind"] } }
   }
   const user = session.user
+
+  const rawImageUrls = (formData.getAll("image_urls") as string[])
+    .filter((u) => isTrustedCabinImageUrl(u))
+    .slice(0, MAX_CABIN_IMAGES)
 
   const raw = {
     title: formData.get("title"),
@@ -109,7 +128,7 @@ export async function createHytte(
     cleaning_fee_ore: 0,
     amenities: allFacilities,
     facilities: allFacilities,
-    images: [],
+    images: rawImageUrls,
     instant_book: false,
     offers_transport: data.offers_transport,
     transport_from: data.offers_transport ? (data.transport_from?.trim() ?? null) : null,
@@ -152,7 +171,7 @@ export async function createHytte(
     }
   }
 
-  redirect(`/opret/hytte/${cabinId}/rediger?toast=hytte-saved`)
+  redirect(`/opret/hytte/${cabinId}/tilgængelighed`)
 }
 
 const updateSchema = baseSchema.extend({
@@ -277,8 +296,6 @@ export async function updateHytte(
 export type UpdateCabinImagesResult =
   | { success: true }
   | { error: string }
-
-const MAX_CABIN_IMAGES = 8
 
 export async function updateCabinImages(
   cabinId: string,

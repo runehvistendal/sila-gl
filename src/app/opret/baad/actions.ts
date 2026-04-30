@@ -41,6 +41,8 @@ export async function createBaad(
   }
   const user = session.user
 
+  const actionType = (formData.get("action_type") as string) ?? "save"
+
   const raw = {
     name: formData.get("name"),
     boat_type: formData.get("boat_type") ?? undefined,
@@ -73,7 +75,7 @@ export async function createBaad(
     }
   }
 
-  const { error } = await supabase.from("boats").insert({
+  const { data: inserted, error } = await supabase.from("boats").insert({
     owner_id: user.id,
     name: data.name,
     boat_type: data.boat_type ?? null,
@@ -83,12 +85,14 @@ export async function createBaad(
     addon_services: addonServices,
     safety_confirmed: true,
     images: [],
-  })
+  }).select("id").single()
 
-  if (error) {
+  if (error || !inserted) {
     console.error("[createBaad]", error)
     return { errors: { _form: ["Der opstod en fejl. Prøv igen."] } }
   }
+
+  const boatId = inserted.id
 
   const { data: prof, error: profErr } = await supabase
     .from("profiles")
@@ -115,7 +119,10 @@ export async function createBaad(
     }
   }
 
-  redirect("/dashboard?tab=mine-opslag&toast=baad-saved")
+  if (actionType === "create_trip") {
+    redirect(`/opret/samsejlads?baadId=${boatId}`)
+  }
+  redirect("/opret")
 }
 
 export async function updateBaad(
