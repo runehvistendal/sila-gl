@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Plus_Jakarta_Sans } from "next/font/google"
 import { Toaster } from "sonner"
 import Footer from "@/components/layout/Footer"
+import PosthogProvider from "@/components/PosthogProvider"
 import "./globals.css"
 
 const jakarta = Plus_Jakarta_Sans({
@@ -25,9 +26,11 @@ export default function RootLayout({
   return (
     <html lang="da" className={`${jakarta.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-background font-sans">
-        {children}
-        <Footer />
-        <Toaster position="top-center" richColors />
+        <PosthogProvider>
+          {children}
+          <Footer />
+          <Toaster position="top-center" richColors />
+        </PosthogProvider>
       </body>
     </html>
   )
