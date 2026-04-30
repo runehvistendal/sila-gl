@@ -1,5 +1,12 @@
 import { createServerClient } from "@supabase/ssr"
+import { createClient } from "@supabase/supabase-js"
 import { NextResponse, type NextRequest } from "next/server"
+
+const adminSupabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { persistSession: false, autoRefreshToken: false } }
+)
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -49,8 +56,9 @@ export async function middleware(request: NextRequest) {
   }
 
   // Admin-ruter: kræver is_admin = true på profiles-rækken
+  // Bruger service_role client da RLS blokerer anon-key for dette opslag
   if (pathname.startsWith("/admin") && user) {
-    const { data: profile } = await supabase
+    const { data: profile } = await adminSupabase
       .from("profiles")
       .select("is_admin")
       .eq("id", user.id)
