@@ -156,7 +156,7 @@ export default async function CabinDetailPage({
             transport_price_per_person_ore: cabin.transport_price_per_person_ore,
             profiles: cabin.profiles,
           }}
-          transports={(transportRows ?? []) as import("@/components/cabins/CabinTransportSection").RideShareData[]}
+          transports={(transportRows ?? []) as unknown as import("@/components/cabins/CabinTransportSection").RideShareData[]}
           isLoggedIn={!!user}
           loginNextPath={`/hytter/${cabin.id}`}
           disabledYmd={disabledYmd}

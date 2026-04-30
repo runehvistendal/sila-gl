@@ -71,7 +71,7 @@ export default function TransportDrawer({ id, seats, onClose }: Props) {
           toast.error("Kunne ikke hente turinfo. Prøv igen.")
           onClose()
         } else {
-          setData(row as RideShareDetail)
+          setData(row as unknown as RideShareDetail)
         }
         setLoading(false)
       })
