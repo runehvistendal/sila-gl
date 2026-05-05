@@ -527,8 +527,16 @@ export default function DashboardClient({
                             <Button size="sm" variant="outline" asChild className="rounded-lg">
                               <Link href={`/opret/hytte/${c.id}/rediger`}>Rediger</Link>
                             </Button>
-                            <Button size="sm" variant="ghost" asChild className="rounded-lg">
-                              <Link href={`/hytter/${c.id}`}><Eye className="w-4 h-4" /></Link>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              asChild
+                              className="rounded-lg"
+                              title={c.published ? "Se offentlig side" : "Hytten er ikke publiceret — rediger"}
+                            >
+                              <Link href={c.published ? `/hytter/${c.id}` : `/opret/hytte/${c.id}/rediger`}>
+                                <Eye className="w-4 h-4" />
+                              </Link>
                             </Button>
                             <Button
                               size="sm"
