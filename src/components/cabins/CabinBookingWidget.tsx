@@ -39,6 +39,7 @@ type CabinProps = {
   price_per_night_ore: number
   offers_transport: boolean
   transport_price_per_person_ore: number | null
+  min_nights?: number
 }
 
 type Props = {
@@ -180,6 +181,8 @@ export default function CabinBookingWidget({
     sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
   }
 
+  const minNights = cabin.min_nights ?? 1
+
   function onBook() {
     if (guestInvalid || !checkIn || !checkOut) {
       if (guestInvalid) {
@@ -199,6 +202,12 @@ export default function CabinBookingWidget({
     }
     if (nights < 1) {
       toast.error("Mindst én overnatning")
+      return
+    }
+    if (nights < minNights) {
+      toast.error(
+        `Minimum ${minNights} ${minNights === 1 ? "nat" : "nætter"} kræves for denne hytte`,
+      )
       return
     }
     if (!isLoggedIn) {
@@ -230,6 +239,7 @@ export default function CabinBookingWidget({
     pending ||
     guestInvalid ||
     nights < 1 ||
+    nights < minNights ||
     !checkIn ||
     !checkOut ||
     (cabin.offers_transport && perPerson <= 0)
@@ -273,6 +283,14 @@ export default function CabinBookingWidget({
               Datoer med eksisterende booking eller værtens blokering er
               utilgængelige.
             </p>
+            {minNights > 1 && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
+                Minimum {minNights} nætter kræves for denne hytte
+                {nights > 0 && nights < minNights
+                  ? ` — du har valgt ${nights}`
+                  : ""}
+              </p>
+            )}
           </div>
 
           <div>

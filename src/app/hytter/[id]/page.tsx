@@ -4,6 +4,7 @@ import {
   ChevronLeft, MapPin, Users, Anchor, User,
   AlertTriangle,
 } from "lucide-react"
+import { addDays, format, parseISO } from "date-fns"
 import { AMENITY_META } from "@/lib/amenityMeta"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
@@ -29,6 +30,8 @@ export type CabinDetailData = {
   transport_price_per_person_ore: number | null
   access_type: string
   owner_id: string
+  min_nights: number
+  preparation_days: number
   profiles: { full_name: string | null; avatar_url: string | null } | null
 }
 
@@ -53,7 +56,7 @@ export default async function CabinDetailPage({
       price_per_night_ore, cleaning_fee_ore,
       amenities, images,
       instant_book, offers_transport, transport_price_per_person_ore,
-      access_type, owner_id,
+      access_type, owner_id, min_nights, preparation_days,
       profiles!owner_id ( full_name, avatar_url )
     `,
     )
@@ -89,9 +92,21 @@ export default async function CabinDetailPage({
         .limit(5),
     ])
 
-  const occupied = nightsFromBookings(
-    (occRows ?? []) as { check_in: string; check_out: string }[],
-  )
+  const bookingRows = (occRows ?? []) as { check_in: string; check_out: string }[]
+  const occupied = nightsFromBookings(bookingRows)
+
+  // Forberedelsestid: blokér preparation_days dage efter hvert booking check_out
+  const prepDays = cabin.preparation_days ?? 0
+  if (prepDays > 0) {
+    for (const b of bookingRows) {
+      let cur = parseISO(b.check_out)
+      for (let i = 0; i < prepDays; i++) {
+        occupied.add(format(cur, "yyyy-MM-dd"))
+        cur = addDays(cur, 1)
+      }
+    }
+  }
+
   for (const r of blockRows ?? []) {
     const d = (r as { date: string }).date
     if (d) occupied.add(d.slice(0, 10))
@@ -148,6 +163,7 @@ export default async function CabinDetailPage({
             price_per_night_ore: cabin.price_per_night_ore,
             offers_transport: cabin.offers_transport,
             transport_price_per_person_ore: cabin.transport_price_per_person_ore,
+            min_nights: cabin.min_nights ?? 1,
           }}
           transportCabin={{
             id: cabin.id,

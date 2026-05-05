@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
 import HytteForm from "@/app/opret/hytte/HytteForm"
-import AvailabilityCalendar from "@/app/opret/hytte/[id]/tilgængelighed/AvailabilityCalendar"
+import AvailabilityCalendar from "@/app/opret/hytte/[id]/tilgaengelighed/AvailabilityCalendar"
+import CabinSettingsCard from "@/app/opret/hytte/[id]/tilgaengelighed/CabinSettingsCard"
 
 export const metadata = {
   title: "Rediger hytte — Sila.gl",
@@ -35,7 +36,7 @@ export default async function RedigerHyttePage({ params, searchParams }: PagePro
       addon_services,
       offers_transport, transport_from,
       transport_price_roundtrip_ore,
-      images
+      images, min_nights, preparation_days
     `)
     .eq("id", id)
     .eq("owner_id", user.id)
@@ -125,6 +126,11 @@ export default async function RedigerHyttePage({ params, searchParams }: PagePro
 
         <section className="mt-10 pt-8 border-t border-border">
           <h2 className="text-lg font-semibold mb-4">Tilgængelighed</h2>
+          <CabinSettingsCard
+            cabinId={id}
+            initialMinNights={(cabin as { min_nights?: number }).min_nights ?? 1}
+            initialPreparationDays={(cabin as { preparation_days?: number }).preparation_days ?? 0}
+          />
           <div className="bg-white rounded-2xl border border-border shadow-sm p-6">
             <AvailabilityCalendar
               cabinId={id}

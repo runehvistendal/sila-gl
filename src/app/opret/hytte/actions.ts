@@ -171,7 +171,7 @@ export async function createHytte(
     }
   }
 
-  redirect(`/opret/hytte/${cabinId}/tilgængelighed`)
+  redirect(`/opret/hytte/${cabinId}/tilgaengelighed`)
 }
 
 const updateSchema = baseSchema.extend({

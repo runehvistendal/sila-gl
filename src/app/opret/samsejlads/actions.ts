@@ -13,7 +13,8 @@ const schema = z.object({
   afgang_dato: z.string().min(1, "Vælg afgangsdato"),
   afgang_tid: z.string().min(1, "Vælg afgangstidspunkt"),
   total_pladser: z.coerce.number().int().min(1, "Min. 1 plads").max(20, "Maks. 20 pladser"),
-  pris_roundtrip_kr: z.coerce.number().min(0, "Angiv pris"),
+  pris_roundtrip_kr: z.coerce.number().min(0, "Angiv tur/retur-pris"),
+  pris_oneway_kr: z.coerce.number().min(0).optional(),
   beskrivelse: z.string().optional(),
   returtur: z.boolean().default(false),
   retur_dato: z.string().optional(),
@@ -42,6 +43,7 @@ export async function createSamsejlads(
     afgang_tid: formData.get("afgang_tid"),
     total_pladser: formData.get("total_pladser"),
     pris_roundtrip_kr: formData.get("pris_roundtrip_kr"),
+    pris_oneway_kr: (formData.get("pris_oneway_kr") as string) || undefined,
     beskrivelse: (formData.get("beskrivelse") as string) || undefined,
     returtur: formData.get("returtur") === "on",
     retur_dato: (formData.get("retur_dato") as string) || undefined,
@@ -84,6 +86,11 @@ export async function createSamsejlads(
 
   if (!boat) return { errors: { boat_id: ["Båd ikke fundet"] } }
 
+  // Validate enkelttur-pris ≤ tur/retur-pris
+  if (d.pris_oneway_kr != null && d.pris_oneway_kr > d.pris_roundtrip_kr) {
+    return { errors: { pris_oneway_kr: ["Enkeltturpris må ikke overstige tur/retur-prisen"] } }
+  }
+
   // Resolve coordinates
   const fromLoc = GREENLAND_LOCATIONS.find(
     (l) => l.name_dk.toLowerCase() === d.from_location.toLowerCase(),
@@ -95,11 +102,14 @@ export async function createSamsejlads(
   if (!fromLoc) return { errors: { from_location: ["Ukendt by"] } }
   if (!toLoc) return { errors: { to_location: ["Ukendt by"] } }
 
-  // Convert prices: roundtrip → one-way = 60%
+  // Convert prices to øre; one-way falls back to 60% of roundtrip if not set
   const priceRoundtripOre = krToOre(d.pris_roundtrip_kr)
-  const priceOneWayOre = Math.round(priceRoundtripOre * 0.6)
+  const priceOneWayOre =
+    d.pris_oneway_kr != null
+      ? krToOre(d.pris_oneway_kr)
+      : Math.round(priceRoundtripOre * 0.6)
 
-  // Build departure_at in UTC (user picks in Nuuk time = UTC-3)
+  // Build departure_at — stored as UTC
   const departureAt = new Date(
     `${d.afgang_dato}T${d.afgang_tid}:00-03:00`,
   ).toISOString()

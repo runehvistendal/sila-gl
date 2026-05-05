@@ -116,7 +116,7 @@ export async function createCabinBooking(
   const { data: cabin, error: cabinErr } = await supabase
     .from("cabins")
     .select(
-      "id, title, price_per_night_ore, owner_id, max_guests, published, deleted_at, offers_transport, transport_price_per_person_ore",
+      "id, title, price_per_night_ore, owner_id, max_guests, published, deleted_at, offers_transport, transport_price_per_person_ore, min_nights, preparation_days",
     )
     .eq("id", input.cabin_id)
     .maybeSingle()
@@ -135,6 +135,8 @@ export async function createCabinBooking(
     deleted_at: string | null
     offers_transport: boolean
     transport_price_per_person_ore: number | null
+    min_nights: number
+    preparation_days: number
   }
   if (!c.published || c.deleted_at) {
     return { error: "Hytte er ikke tilgængelig" }
@@ -179,6 +181,12 @@ export async function createCabinBooking(
   if (nights < 1) {
     return { error: "Mindst én overnatning" }
   }
+  const minNights = c.min_nights ?? 1
+  if (nights < minNights) {
+    return {
+      error: `Minimum ${minNights} ${minNights === 1 ? "nat" : "nætter"} kræves for denne hytte`,
+    }
+  }
 
   const cabinStayOre = c.price_per_night_ore * nights
   if (cabinStayOre < 1) {
@@ -215,6 +223,52 @@ export async function createCabinBooking(
 
   if (overlap) {
     return { error: "Hytte er allerede reserveret i denne periode" }
+  }
+
+  // Forberedelsestid: tjek at check_in ikke falder inden for preparation_days dage efter en eksisterende bookings check_out
+  const prepDays = c.preparation_days ?? 0
+  if (prepDays > 0) {
+    // Find bookings where check_out + preparation_days overlaps with requested check_in
+    const { data: prepRows } = await supabase
+      .from("cabin_bookings")
+      .select("check_out")
+      .eq("cabin_id", c.id)
+      .in("status", ["pending", "confirmed", "completed"])
+      .is("deleted_at", null)
+      .lte("check_out", cIn.d) // booking ends before or on requested check_in
+      .gt("check_out", (() => {
+        const d = new Date(cIn.d + "T12:00:00.000Z")
+        d.setUTCDate(d.getUTCDate() - prepDays)
+        return d.toISOString().slice(0, 10)
+      })()) // but ends within prepDays before requested check_in
+
+    if (prepRows && prepRows.length > 0) {
+      return {
+        error: `Hytten kræver ${prepDays} dages forberedelsestid efter en booking`,
+      }
+    }
+
+    // Also check that our check_out + prepDays doesn't overlap with next booking's check_in
+    const prepCheckOutDate = (() => {
+      const d = new Date(cOut.d + "T12:00:00.000Z")
+      d.setUTCDate(d.getUTCDate() + prepDays)
+      return d.toISOString().slice(0, 10)
+    })()
+    const { data: nextRows } = await supabase
+      .from("cabin_bookings")
+      .select("check_in")
+      .eq("cabin_id", c.id)
+      .in("status", ["pending", "confirmed", "completed"])
+      .is("deleted_at", null)
+      .gte("check_in", cOut.d)
+      .lt("check_in", prepCheckOutDate)
+      .limit(1)
+
+    if (nextRows && nextRows.length > 0) {
+      return {
+        error: `Hytten kræver ${prepDays} dages forberedelsestid efter en booking`,
+      }
+    }
   }
 
   const { data: booking, error: insErr } = await supabase

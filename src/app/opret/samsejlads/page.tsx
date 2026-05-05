@@ -46,7 +46,7 @@ export default async function OpretSamsejladsPage({
             Opret samsejladstur
           </h1>
           <p className="text-sm text-muted-foreground">
-            Vælg din båd, rute og dato. Tidspunkter vises i Nuuk-tid (UTC-3).
+            Vælg din båd, rute og dato. Tidspunkter angives i lokal tid.
           </p>
         </div>
 
