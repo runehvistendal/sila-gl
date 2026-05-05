@@ -30,10 +30,12 @@ const LANG_LABEL: Record<"da" | "en" | "kl", string> = {
 function NavAvatarCircle({
   user,
   solid,
+  avatarAltFallback,
   className = "w-8 h-8",
 }: {
   user: NavUser
   solid: boolean
+  avatarAltFallback: string
   className?: string
 }) {
   const displayName = user.fullName ?? null
@@ -42,7 +44,7 @@ function NavAvatarCircle({
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={user.avatarUrl}
-      alt={displayName ?? "Profil"}
+      alt={displayName ?? avatarAltFallback}
       className={`${className} rounded-full object-cover shrink-0`}
       style={{ border: "1px solid rgba(74,156,199,0.4)" }}
     />
@@ -148,7 +150,7 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
           {/* ── Logo ── */}
           <Link href="/" className={`flex items-center gap-2 ${textMain}`}>
             <Anchor size={20} className="text-primary" />
-            <span className="text-xl font-semibold">Sila</span>
+            <span className="text-xl font-semibold">{t("logoText")}</span>
           </Link>
 
           {/* ── Nav links — desktop ── */}
@@ -231,13 +233,13 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                   onClick={() => handleLocaleSwitch("da")}
                   className={`rounded-xl px-3 py-2.5 cursor-pointer ${locale === "da" ? "font-semibold text-primary" : ""}`}
                 >
-                  🇩🇰 Dansk
+                  {t("localeRowDa")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => handleLocaleSwitch("en")}
                   className={`rounded-xl px-3 py-2.5 cursor-pointer ${locale === "en" ? "font-semibold text-primary" : ""}`}
                 >
-                  🇬🇧 English
+                  {t("localeRowEn")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -248,7 +250,7 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                   className={`flex items-center gap-2 transition-colors ${solid ? "hover:text-foreground" : "hover:text-white"}`}
                 >
-                  <NavAvatarCircle user={user} solid={solid} />
+                  <NavAvatarCircle user={user} solid={solid} avatarAltFallback={t("profileAvatarAlt")} />
                   <span className={`max-w-[120px] truncate text-sm ${solid ? "text-foreground" : "text-white/90"}`}>
                     {displayName}
                   </span>
@@ -308,7 +310,7 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
           <button
             className={`md:hidden p-1 ${textMain}`}
             onClick={() => setMobileOpen(true)}
-            aria-label="Åbn menu"
+            aria-label={t("ariaOpenMenu")}
           >
             <Menu size={22} />
           </button>
@@ -332,12 +334,12 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
               onClick={() => setMobileOpen(false)}
             >
               <Anchor size={20} className="text-primary" />
-              <span className="text-xl font-semibold">Sila</span>
+              <span className="text-xl font-semibold">{t("logoText")}</span>
             </Link>
             <button
               onClick={() => setMobileOpen(false)}
               className="text-white p-1"
-              aria-label="Luk menu"
+              aria-label={t("ariaCloseMenu")}
             >
               <X size={22} />
             </button>
@@ -345,7 +347,7 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
 
           {user && (
             <div className="flex items-center justify-center gap-3 px-4 py-3 border-b border-white/10 shrink-0">
-              <NavAvatarCircle user={user} solid={false} />
+              <NavAvatarCircle user={user} solid={false} avatarAltFallback={t("profileAvatarAlt")} />
               {displayName ? (
                 <span className="text-sm font-medium text-white/90 truncate max-w-[200px]">
                   {displayName}

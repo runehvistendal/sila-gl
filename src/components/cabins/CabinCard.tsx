@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
+import { Link } from "@/i18n/navigation"
+import { useTranslations } from "next-intl"
 import { MapPin, Anchor, ChevronLeft, ChevronRight, Zap, Users, MountainSnow } from "lucide-react"
 import { formatKr } from "@/lib/money"
 
@@ -27,7 +28,9 @@ function isValidUrl(url: string): boolean {
 }
 
 export default function CabinCard({ cabin }: { cabin: CabinCardData }) {
-  // Only use images that look like real URLs (Cloudinary secure_url etc.)
+  const t = useTranslations("cabins")
+  const tDetail = useTranslations("cabinDetail")
+
   const images = (cabin.images ?? []).filter(isValidUrl)
   const hasImages = images.length > 0
 
@@ -47,7 +50,6 @@ export default function CabinCard({ cabin }: { cabin: CabinCardData }) {
 
   return (
     <Link href={`/hytter/${cabin.id}`} className="group block">
-      {/* Image */}
       <div className="relative overflow-hidden rounded-2xl aspect-[4/3] mb-3 bg-gradient-to-br from-primary/20 to-accent/20">
         {hasImages && !imgError ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -63,20 +65,21 @@ export default function CabinCard({ cabin }: { cabin: CabinCardData }) {
           </div>
         )}
 
-        {/* Carousel arrows */}
         {images.length > 1 && (
           <>
             <button
+              type="button"
               onClick={prev}
               className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1 rounded-full transition-colors z-10"
-              aria-label="Forrige billede"
+              aria-label={t("carousel_prev_image")}
             >
               <ChevronLeft size={16} />
             </button>
             <button
+              type="button"
               onClick={next}
               className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1 rounded-full transition-colors z-10"
-              aria-label="Næste billede"
+              aria-label={t("carousel_next_image")}
             >
               <ChevronRight size={16} />
             </button>
@@ -93,34 +96,31 @@ export default function CabinCard({ cabin }: { cabin: CabinCardData }) {
           </>
         )}
 
-        {/* Transport badge — top left */}
         {cabin.offers_transport && (
           <div className="absolute top-3 left-3 z-10">
             <span className="inline-flex items-center gap-1 bg-card text-primary shadow-sm text-xs font-semibold px-2.5 py-0.5 rounded-md">
-              <Anchor size={11} /> Transport tilbydes
+              <Anchor size={11} /> {t("offers_transport_badge")}
             </span>
           </div>
         )}
 
-        {/* Instant Book badge — top right */}
         {cabin.instant_book && (
           <div className="absolute top-3 right-3 z-10">
             <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 text-xs font-semibold px-2.5 py-0.5 rounded-md">
-              <Zap size={11} /> Instant Book
+              <Zap size={11} /> {t("instant_book_short")}
             </span>
           </div>
         )}
       </div>
 
-      {/* Info */}
       <div>
         <div className="flex items-start justify-between gap-2 mb-1">
           <h3 className="font-semibold text-foreground text-sm leading-snug group-hover:text-primary transition-colors line-clamp-1">
             {cabin.title}
           </h3>
           <span className="text-sm font-semibold text-foreground whitespace-nowrap shrink-0">
-            {formatKr(cabin.price_per_night_ore)}{" "}
-            <span className="font-normal text-muted-foreground text-xs">/ nat</span>
+            {formatKr(cabin.price_per_night_ore)}
+            <span className="font-normal text-muted-foreground text-xs">{tDetail("perNight")}</span>
           </span>
         </div>
 
@@ -131,14 +131,12 @@ export default function CabinCard({ cabin }: { cabin: CabinCardData }) {
           </span>
           <span className="flex items-center gap-1">
             <Users size={11} />
-            op til {cabin.max_guests}
+            {t("card_guests_up_to", { count: cabin.max_guests })}
           </span>
         </div>
 
         {cabin.host_name && (
-          <p className="mt-1.5 text-xs text-muted-foreground">
-            Udbyder: {cabin.host_name}
-          </p>
+          <p className="mt-1.5 text-xs text-muted-foreground">{t("card_provider", { name: cabin.host_name })}</p>
         )}
       </div>
     </Link>

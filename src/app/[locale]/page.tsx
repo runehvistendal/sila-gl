@@ -1,11 +1,12 @@
 import type { Metadata } from "next"
 import Image from "next/image"
-import { Search, Anchor, Star, Heart, Users, Home as HomeIcon, ArrowRight } from "lucide-react"
+import { Search, Anchor, Users, Home as HomeIcon, ArrowRight } from "lucide-react"
 import { getTranslations, setRequestLocale } from "next-intl/server"
 import { Link } from "@/i18n/navigation"
 import Navbar from "@/components/layout/Navbar"
 import HeroContent from "./components/HeroContent"
 import MapWrapper from "./components/MapWrapper"
+import CabinCard, { type CabinCardData } from "@/components/cabins/CabinCard"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import { buildMetadata } from "@/lib/metadata"
@@ -25,15 +26,6 @@ const FALLBACK_OG_IMAGE =
 const STEP_ICONS = [Search, Anchor, HomeIcon] as const
 const FEATURE_ICONS = [Users, Anchor] as const
 const STAT_ICONS = [HomeIcon, Anchor, Users, Search] as const
-
-const CABINS = [
-  { id: 1, titleKey: "cabinsSection.demo.cabin1", location: "Ilulissat", region: "Qeqertalik", price: 1200, rating: 4.9, host: "Niels A.",  badgeKey: "cabinBadges.superhytte" },
-  { id: 2, titleKey: "cabinsSection.demo.cabin2", location: "Nuuk",      region: "Sermersooq", price: 950,  rating: 4.7, host: "Sara M." },
-  { id: 3, titleKey: "cabinsSection.demo.cabin3", location: "Sisimiut",  region: "Qeqertalik", price: 1450, rating: 5.0, host: "Malik P.", badgeKey: "cabinBadges.topvurderet" },
-  { id: 4, titleKey: "cabinsSection.demo.cabin4", location: "Qaqortoq",  region: "Kujalleq",   price: 800,  rating: 4.8, host: "Ane K." },
-  { id: 5, titleKey: "cabinsSection.demo.cabin5", location: "Tasiilaq",  region: "Sermersooq", price: 1100, rating: 4.6, host: "Peter T." },
-  { id: 6, titleKey: "cabinsSection.demo.cabin6", location: "Aasiaat",   region: "Qeqertalik", price: 750,  rating: 4.9, host: "Nuka Q." },
-]
 
 type Props = {
   params: Promise<{ locale: string }>
@@ -61,35 +53,65 @@ export default async function Home({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
 
-  const [t, sanityHome, globalSettings] = await Promise.all([
-    getTranslations("home"),
-    getHomePage(locale),
-    getGlobalSettings().catch(() => null),
-  ])
-
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
+  const [t, tCabins, sanityHome, globalSettings, cabinsResult] = await Promise.all([
+    getTranslations({ locale, namespace: "home" }),
+    getTranslations({ locale, namespace: "cabins" }),
+    getHomePage(locale),
+    getGlobalSettings().catch(() => null),
+    supabase
+      .from("cabins")
+      .select(
+        `
+      id,
+      title,
+      location_hub,
+      price_per_night_ore,
+      max_guests,
+      instant_book,
+      offers_transport,
+      images,
+      amenities,
+      owner_id,
+      profiles!owner_id ( full_name )
+    `,
+      )
+      .eq("published", true)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(3),
+  ])
+
   const navUser = user ? await getNavUserForPage(supabase, user) : null
 
-  // Sanity overstyrer hvis tilgængeligt — ellers fald tilbage til messages
-  const headline = sanityHome?.[`headline_${locale}`] ?? sanityHome?.headline_da ?? t("headline")
-  const subheadline = sanityHome?.[`subheadline_${locale}`] ?? sanityHome?.subheadline_da ?? t("subheadline")
-  const badge = sanityHome?.badge ?? t("badge")
+  const featuredCabins: CabinCardData[] = (cabinsResult.data ?? []).map((row: Record<string, unknown>) => ({
+    id: row.id as string,
+    title: row.title as string,
+    location_hub: row.location_hub as string,
+    price_per_night_ore: row.price_per_night_ore as number,
+    max_guests: row.max_guests as number,
+    instant_book: row.instant_book as boolean,
+    offers_transport: row.offers_transport as boolean,
+    images: (row.images as string[]) ?? [],
+    amenities: (row.amenities as string[] | null) ?? null,
+    host_name: (row.profiles as { full_name?: string } | null)?.full_name ?? null,
+  }))
 
   const steps = ([0, 1, 2] as const).map((i) => ({
     title: t(`howItWorks.steps.${i}.title`),
-    desc:  t(`howItWorks.steps.${i}.desc`),
+    desc: t(`howItWorks.steps.${i}.desc`),
   }))
   const features = ([0, 1] as const).map((i) => ({
     label: t(`sailSection.features.${i}.label`),
-    desc:  t(`sailSection.features.${i}.desc`),
+    desc: t(`sailSection.features.${i}.desc`),
   }))
   const stats = ([0, 1, 2, 3] as const).map((i) => ({
     value: t(`cta.stats.${i}.value`),
-    sub:   t(`cta.stats.${i}.sub`),
+    sub: t(`cta.stats.${i}.sub`),
   }))
 
   const tFooter = await getTranslations({ locale, namespace: "footer" })
@@ -116,12 +138,12 @@ export default async function Home({ params }: Props) {
       <JsonLd data={websiteSchema} />
       <Navbar user={navUser} />
 
-      {/* ── Hero ── */}
       <section className="relative min-h-[90vh] flex items-center overflow-hidden">
         <Image
           src={heroBgSrc}
           alt={t("heroImageAlt")}
-          fill priority
+          fill
+          priority
           style={{ objectFit: "cover" }}
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/35 to-transparent" />
@@ -131,20 +153,15 @@ export default async function Home({ params }: Props) {
           <div className="aurora-band aurora-3" />
         </div>
         <div className="relative z-10 w-full">
-          <HeroContent badge={badge} headline={headline} subheadline={subheadline} />
+          <HeroContent />
         </div>
       </section>
 
-      {/* ── Sådan virker Sila ── */}
       <section className="bg-card py-20">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
-              {t("howItWorks.title")}
-            </h2>
-            <p className="text-muted-foreground text-lg max-w-md mx-auto">
-              {t("howItWorks.subtitle")}
-            </p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">{t("howItWorks.title")}</h2>
+            <p className="text-muted-foreground text-lg max-w-md mx-auto">{t("howItWorks.subtitle")}</p>
           </div>
           <div className="grid md:grid-cols-3 gap-10">
             {steps.map((step, i) => {
@@ -167,61 +184,32 @@ export default async function Home({ params }: Props) {
         </div>
       </section>
 
-      {/* ── Hytter i naturen ── */}
       <section className="py-20 bg-background">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="flex items-end justify-between mb-2">
             <div>
-              <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">
-                {t("cabinsSection.title")}
-              </h2>
-              <p className="text-muted-foreground text-sm">
-                {t("cabinsSection.subtitle")}
-              </p>
+              <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">{t("cabinsSection.title")}</h2>
+              <p className="text-muted-foreground text-sm">{t("cabinsSection.subtitle")}</p>
             </div>
             <Link
               href="/hytter"
               className="hidden sm:flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary/80 group"
             >
-              {t("cabinsSection.seeAll")} <ArrowRight size={15} className="group-hover:translate-x-0.5 transition-transform" />
+              {t("cabinsSection.seeAll")}{" "}
+              <ArrowRight size={15} className="group-hover:translate-x-0.5 transition-transform" />
             </Link>
           </div>
 
           <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {CABINS.map((c) => (
-              <div
-                key={c.id}
-                className="bg-card rounded-2xl overflow-hidden shadow-card hover:shadow-card-hover transition-shadow cursor-pointer border border-border"
-              >
-                <div className="relative h-48 bg-secondary">
-                  {c.badgeKey && (
-                    <span className="absolute top-3 left-3 text-xs font-semibold px-2.5 py-1 rounded-full bg-card/90 text-foreground">
-                      {t(c.badgeKey as Parameters<typeof t>[0])}
-                    </span>
-                  )}
-                  <button className="absolute top-3 right-3 w-7 h-7 bg-card/80 rounded-full flex items-center justify-center hover:bg-card transition-colors">
-                    <Heart size={13} className="text-muted-foreground" />
-                  </button>
+            {featuredCabins.length === 0 ? (
+              <div className="col-span-full text-center py-16 text-muted-foreground text-sm">{tCabins("no_results")}</div>
+            ) : (
+              featuredCabins.map((cabin) => (
+                <div key={cabin.id} className="min-w-0">
+                  <CabinCard cabin={cabin} />
                 </div>
-                <div className="p-4">
-                  <div className="flex items-start justify-between gap-2 mb-0.5">
-                    <p className="text-sm font-semibold text-foreground leading-snug">{t(c.titleKey as Parameters<typeof t>[0])}</p>
-                    <div className="flex items-center gap-0.5 shrink-0">
-                      <Star size={11} fill="#FBBF24" className="text-amber-400" />
-                      <span className="text-xs text-muted-foreground">{c.rating}</span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-3">{c.location}, {c.region}</p>
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-foreground">
-                      {c.price.toLocaleString(locale === "en" ? "en-GB" : "da-DK")} kr
-                      <span className="font-normal text-muted-foreground text-xs"> {t("cabinsSection.perNight")}</span>
-                    </p>
-                    <p className="text-xs text-muted-foreground">{c.host}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
 
           <div className="mt-8 text-center sm:hidden">
@@ -235,7 +223,6 @@ export default async function Home({ params }: Props) {
         </div>
       </section>
 
-      {/* ── Lokale sejlture ── */}
       <section className="py-20 bg-background">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="grid md:grid-cols-2 gap-12 items-center">
@@ -244,12 +231,9 @@ export default async function Home({ params }: Props) {
                 <Anchor size={14} /> {t("sailSection.uniqueLabel")}
               </div>
               <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4 leading-tight">
-                {t("sailSection.title")}{" "}
-                <em className="font-normal text-primary">{t("sailSection.titleHighlight")}</em>
+                {t("sailSection.title")} <em className="font-normal text-primary">{t("sailSection.titleHighlight")}</em>
               </h2>
-              <p className="text-muted-foreground text-lg leading-relaxed mb-8">
-                {t("sailSection.desc")}
-              </p>
+              <p className="text-muted-foreground text-lg leading-relaxed mb-8">{t("sailSection.desc")}</p>
 
               <div className="flex flex-col gap-3 mb-8">
                 {features.map((f, i) => {
@@ -283,17 +267,12 @@ export default async function Home({ params }: Props) {
         </div>
       </section>
 
-      {/* ── CTA + Stats ── */}
       <section className="py-20 bg-primary">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="grid md:grid-cols-2 gap-16 items-center">
             <div>
-              <h2 className="text-3xl sm:text-4xl font-bold text-primary-foreground mb-4">
-                {t("cta.title")}
-              </h2>
-              <p className="mb-8 text-primary-foreground/70 text-lg leading-relaxed">
-                {t("cta.subtitle")}
-              </p>
+              <h2 className="text-3xl sm:text-4xl font-bold text-primary-foreground mb-4">{t("cta.title")}</h2>
+              <p className="mb-8 text-primary-foreground/70 text-lg leading-relaxed">{t("cta.subtitle")}</p>
               <div className="flex flex-wrap gap-3">
                 <Link
                   href="/opret-konto"

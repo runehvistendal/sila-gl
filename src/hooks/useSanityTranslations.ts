@@ -1,1 +1,1 @@
-export { tField as t } from "@/lib/sanityTranslations"
+export { tField as t, tWithFallback } from "@/lib/sanityTranslations"

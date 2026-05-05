@@ -35,6 +35,10 @@ export default defineConfig({
           },
           {
             route: "/:locale",
+            filter: `_type == "globalSettings"`,
+          },
+          {
+            route: "/:locale",
             filter: `_type == "homePage"`,
           },
           {
@@ -43,6 +47,15 @@ export default defineConfig({
           },
         ]),
         locations: {
+          globalSettings: defineLocations({
+            select: { _id: "_id" },
+            resolve: () => ({
+              locations: [
+                { title: "Forside (DA)", href: "/da" },
+                { title: "Homepage (EN)", href: "/en" },
+              ],
+            }),
+          }),
           homePage: defineLocations({
             select: { _id: "_id" },
             resolve: () => ({

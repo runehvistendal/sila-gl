@@ -1,4 +1,5 @@
 import { defineType, defineField } from "sanity"
+import { globalHomeCopyFields } from "./partials/globalHomeCopyFields"
 
 /** Standard _da/_en-par + valgfrit billede / link til hero. stringOverrides styr øvrige nøgler (fx fra bundled messages/*). */
 
@@ -73,6 +74,8 @@ export default defineType({
       type: "image",
       options: { hotspot: true },
     }),
+
+    ...globalHomeCopyFields,
 
     defineField({
       name: "stringOverrides",
