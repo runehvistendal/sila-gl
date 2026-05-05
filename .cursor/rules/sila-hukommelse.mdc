@@ -11,8 +11,13 @@ Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort 
 
 - `/admin`: dashboard, brugere, hytter, bookinger, anmodninger — `is_admin` + `proxy.ts` + service_role
 - **`/studio`:** Sanity Studio (`is_admin`; håndteres i `proxy.ts` før next-intl — intet `/da`-prefix)
-- **Sanity CMS:** `lu0y9jmk` / `production`, schemas med `_da`/`_en`/`_kl`, queries + PortableText — se [hukommelse.md](hukommelse.md)
-- **SEO grundlag:** metadata, sitemap, robots, `/destination/[slug]`, JsonLd
+- **Sanity — Visual Editing + Page Builder:** 5 sektionstyper (`heroSection`, `textImageSection`, `faqSection`, `ctaSection`, `imageGallerySection`) · `SectionRenderer.tsx` + blokke under `src/components/sanity/sections/`
+- **CMS:** Dynamisk **`[slug]/page.tsx`** · **Stega** + Presentation → click-to-edit blyant · `getSanityPublicClient()` + `getSanityDraftStegaClient()` i `src/lib/sanity.ts`
+- **`globalSettings`:** redaktør- og UI-tekster (63 navngivne felter + mange **`stringOverrides`**, fx ~707 efter seed fra bundlet JSON) · `mergeSanityIntoMessages` + **`scripts/seed-sanity-content.ts`** (`npm run seed:sanity`; **`SANITY_API_TOKEN` med Editor**, ikke read-only)
+- **`sanityHref.tsx`:** interne links via `@/i18n/navigation`, eksterne via `<a>`
+- **Presentation:** `defineDocuments` + `defineLocations` for forside (**`globalSettings` + `homePage`**), destination, page, blog post
+- **Forsiden:** **3 nyeste publicerede hytter** fra Supabase (ikke mock)
+- SEO grundlag: metadata, sitemap, robots, `/destination/[slug]`, JsonLd
 - `/opret/baad`: to knapper — "Gem båd" + "Gem og opret tur →"
 - `/opret/samsejlads`: ny side, tur/retur-pris (primær) + enkelttur 60% auto-forslag
 - `/opret/hytte`: billeder + alle felter på én side (PendingCabinImageUpload)
@@ -30,10 +35,13 @@ Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort 
 - AlertDialog (shadcn/ui) installeret
 - Mappenavne: æ/ø/å forbudt i routes — brug ae/oe/aa (fx tilgaengelighed)
 
+## i18n + tekst
+
+- **Bundlet fallback:** `src/i18n/bundled/da.json` · `src/i18n/bundled/en.json` · `mergeSanityIntoMessages` henter overlays fra Sanity `globalSettings`
+
 ## Næste fokus
 
-- **Sanity:** Visual Editing + Page Builder
-- Stripe live-test → PostHog → se **Påmindelser inden lancering** i `hukommelse.md`
+- **Stripe live-test end-to-end** · derefter PostHog → se **Påmindelser inden lancering** i `hukommelse.md`
 
 ## Vigtige beslutninger (gældende)
 
@@ -50,6 +58,7 @@ Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort 
 - **Samsejlads pris:** tur/retur primær → enkelttur = 60% auto-forslag (kan overskrives).
 - **AvailabilityCalendar settings:** min_nights (1-30) + preparation_days (0/1/2/3) gemmes via saveCabinSettings (hurtig-gem) eller saveAll (kombineret med tilgængelighed).
 - **Publish/unpublish:** `publishCabin` + `unpublishCabin` i `src/app/dashboard/actions.ts`.
+- **`SANITY_API_TOKEN`:** skal have skrive-/Editor‑ret til seed og mutationer (ikke read-only Viewer alene til seed).
 
 ## Ikke nu (backlog / Fase 3)
 
