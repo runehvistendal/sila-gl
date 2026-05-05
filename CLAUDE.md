@@ -67,16 +67,27 @@ Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Ver
 - **/opret/baad** — to knapper: "Gem båd" (→ /opret) + "Gem og opret tur →" (→ /opret/samsejlads?baadId=X) ✅
 - **/opret/samsejlads** — ny side: bådvælger, fra/til (GREENLAND_LOCATIONS), dato/tid (lokal tid → UTC server-side), pladser, tur/retur-pris (primær) + enkelttur (60% auto-forslag, kan overskrives), returtur checkbox med linked ride_shares ✅
 - **/opret/hytte** — billeder + alle felter på én side (PendingCabinImageUpload, Cloudinary `sila/cabins/pending`), redirect → /opret/hytte/[id]/tilgaengelighed ✅
-- **/opret/hytte/[id]/tilgaengelighed** — kalender (to måneder, klik+drag), blokér datoer (grøn=ledig standard, grå=blokeret, blå=booket), infobox til udlejer, legende, "Gem tilgængelighed" + "Gem og publicér hytte →" ✅
+- **/opret/hytte/[id]/tilgaengelighed** — kalender (to måneder, klik-baseret periodevalg), blokér datoer (grøn=ledig standard, grå=blokeret, blå=booket), hover-preview, infobox, legende, "Gem tilgængelighed" + "Gem indstillinger" + "Gem og publicér hytte →" ✅
 - **cabin_availability semantik vendt** — gemmer nu BLOKEREDE datoer (is_available=false). Alle fremtidige datoer er ledige som standard ✅
 - **Æ-fix i mappenavn** — `tilgaengelighed` (ASCII-safe, undgår Windows-fejl) ✅
 - **Duplicate location keys** — 7 dubletter slettet fra `greenlandLocations.ts` (Qeqertarsuaq ×3, Tasiilaq ×2, Uummannaq ×4, Sisimiut ×2 → én by pr. navn). React-keys opdateret til `postal_code-name_dk` i alle 4 dropdown-filer ✅
 - **middleware.ts beholdt** — proxy.ts-rename reverteret; Next.js kræver præcist dette filnavn for auth-middleware ✅
-- **AvailabilityCalendar** — simpelt klik-toggle + periodevalg (klik startdato → klik slutdato → hele perioden blokeres/afblokeres). Farver via inline style (ingen Tailwind-override). `select-none` fjernet fra forælde-div ✅
-- **saveAvailability** — returnerer `{ redirectTo }` / `{ error }` i stedet for `redirect()` — undgår at NEXT_REDIRECT-exception fanges af catch-blok ✅
-- **Tilgængelighed på rediger-siden** — `AvailabilityCalendar` tilføjet på `/opret/hytte/[id]/rediger` med hentning af blokerede + bookede datoer ✅
-- **Slet hytte + båd** — soft delete (`deleted_at`) via `deleteCabin` / `deleteBoat` server actions. Slet-knap på dashboard (Mine opslag) og /opret ✅
-- **Øje-symbol på dashboard** — linker til `/hytter/[id]` for publicerede hytter, `/opret/hytte/[id]/rediger` for kladder (undgår 404 på upublicerede) ✅
+- **AvailabilityCalendar** — rent klik-baseret (ingen drag): klik 1 = periodestart (mørk markering), klik 2 = fuldfør periode. Hover-preview viser påvirkede datoer. Annuller-banner. Farver via inline style ✅
+- **saveAvailability / saveAll** — returnerer `{ redirectTo }` / `{ error }`, aldrig `redirect()` direkte. `saveAll` gemmer settings + tilgængelighed + publicering i ét kald ✅
+- **min_nights + preparation_days** — migration `20260505120000_min_nights_preparation.sql` pushet. UI i AvailabilityCalendar (settings-sektion øverst med separat "Gem indstillinger"). Server-side validering i bookings.ts. CabinBookingWidget viser amber-advarsel ved for få nætter ✅
+- **preparation_days** — datoer efter booking check_out blokeres automatisk i bookingkalender på /hytter/[id] ✅
+- **Slet hytte + båd** — soft delete (`deleted_at`) via `deleteCabin` / `deleteBoat` server actions ✅
+- **Publish/unpublish** — `publishCabin` + `unpublishCabin` server actions i `dashboard/actions.ts` ✅
+- **Knaplogik Mine hytter** (dashboard + /opret) — Kladde: Rediger · Tilgængelighed · Publicér (grøn) · Slet. Aktiv: Rediger · Tilgængelighed · Afpublicér (amber, AlertDialog) · Dupliker · Slet ✅
+- **AlertDialog** (shadcn/ui) — installeret (`src/components/ui/alert-dialog.tsx`), bruges til Afpublicér-bekræftelse ✅
+- **Udlej nu/denne fjernet** fra dashboard + /opret ✅
+- **Klikbar billede + navn** på hytte-rækker — aktiv → /hytter/[id], kladde → /opret/hytte/[id]/rediger. Hover: opacity på billede, underline på navn ✅
+- **Øje-symbol fjernet** — navigation via klikbart billede/navn ✅
+- **Rediger-siden renset** — kun HytteForm (inkl. AddOnServicesEditor) + "Administrer tilgængelighed →" link. Ingen kalender-queries ✅
+
+## Nye filer (5.5.2026)
+- `supabase/migrations/20260505120000_min_nights_preparation.sql` — min_nights (default 1) + preparation_days (default 0, IN 0-3) på cabins
+- `src/components/ui/alert-dialog.tsx` — shadcn/ui AlertDialog (installeret via npx shadcn)
 
 ## Nye filer (30.4.2026)
 - `src/app/admin/` — layout.tsx, page.tsx, actions.ts, AdminSidebar.tsx, brugere/, hytter/, bookinger/, anmodninger/
@@ -97,16 +108,19 @@ Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Ver
 
 ## /opret flow (præcist)
 - **/opret:** 2 kort (Udlej en hytte / Tilbyd transport)
-- Ingen hytter → typisk /opret/hytte (direkte / som i nuværende implementering)
-- Har hytter → inline liste med [Rediger] + [Udlej / Post tur] efter kontekst
-- /opret/hytte → aktiv registreret med typisk `published: false` indtil opslag
+- Ingen hytter → typisk /opret/hytte (direkte)
+- Har hytter → inline liste med knaplogik pr. status:
+  - **Kladde:** Rediger · Tilgængelighed · Publicér (grøn outline) · Slet
+  - **Aktiv:** Rediger · Tilgængelighed · Afpublicér (amber, AlertDialog) · Dupliker · Slet
+  - Billede/navn klikbart: aktiv → /hytter/[id], kladde → /opret/hytte/[id]/rediger
+- /opret/hytte → cabin registreres med `published: false`
+- /opret/hytte/[id]/tilgaengelighed → kalender + settings (min_nights, preparation_days) + publicér
 - /opret/baad → aktiv registreret
-- /opret/opslag/hytte/[id] → udlejningsperiode / publicering
 - /opret/opslag/sejlads/[id] → samsejladstur
+- **OBS:** "Udlej nu/denne" findes ikke længere — publicering sker via Publicér-knappen direkte
 
 ## Næste i rækkefølge
-1. Minimum nætter + forberedelsestid på tilgængeligheds-siden
-2. i18n dansk + engelsk (next-intl)
+1. i18n dansk + engelsk (next-intl)
 3. SEO — metadata, sitemap, landingssider pr. destination
 4. Stripe live-test end-to-end — kritisk inden lancering
 5. PostHog analytics — installer inden lancering

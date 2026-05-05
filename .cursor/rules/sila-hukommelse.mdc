@@ -13,20 +13,24 @@ Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort 
 - `/opret/baad`: to knapper — "Gem båd" + "Gem og opret tur →"
 - `/opret/samsejlads`: ny side, tur/retur-pris (primær) + enkelttur 60% auto-forslag
 - `/opret/hytte`: billeder + alle felter på én side (PendingCabinImageUpload)
-- `/opret/hytte/[id]/tilgængelighed`: kalender, simpelt klik-toggle + periodevalg, blokér datoer (grøn=ledig standard)
+- `/opret/hytte/[id]/tilgaengelighed`: kalender (klik-baseret periodevalg, ingen drag), hover-preview, settings-sektion (min_nights + preparation_days), tre gem-knapper
 - `cabin_availability`: gemmer BLOKEREDE datoer (is_available=false) — ledige er default
-- `saveAvailability`: returnerer `{ redirectTo }` / `{ error }` — ingen redirect() i action
-- Tilgængelighed tilføjet på `/opret/hytte/[id]/rediger`
-- Slet hytte + båd: soft delete via `deleted_at`, Slet-knap på dashboard + /opret
-- Øje-symbol: kladder → rediger-side, publicerede → /hytter/[id]
-- Duplicate location keys fjernet fra greenlandLocations.ts (7 dubletter)
+- `saveAvailability` / `saveAll`: returnerer `{ redirectTo }` / `{ error }` — aldrig `redirect()` direkte
+- `saveAll`: gemmer settings + tilgængelighed + publicering i ét kald (bag "Gem og publicér →")
+- `min_nights` + `preparation_days` på cabins — migration pushet, validering i bookings.ts + CabinBookingWidget
+- `preparation_days`: datoer blokeres i /hytter/[id] bookingkalender efter booking check_out
+- Knaplogik Mine hytter (dashboard + /opret): Kladde → Publicér (grøn). Aktiv → Afpublicér (amber, AlertDialog) + Dupliker
+- "Udlej nu/denne" fjernet — publicering via Publicér-knap
+- Billede + navn klikbart på hytte-rækker: aktiv → /hytter/[id], kladde → /opret/hytte/[id]/rediger
+- Øje-symbol fjernet fra hytte-rækker
+- Rediger-siden: kun HytteForm + "Administrer tilgængelighed →" link (kalender fjernet)
+- AlertDialog (shadcn/ui) installeret
 - Mappenavne: æ/ø/å forbudt i routes — brug ae/oe/aa (fx tilgaengelighed)
-- pt-20 navbar-fix på alle opret-sider
 
 ## Næste fokus
 
-- **Minimum nætter + forberedelsestid** på tilgængeligheds-siden
-- Derefter: i18n → SEO → Stripe live-test → PostHog → lancering
+- **i18n** — dansk + engelsk med next-intl
+- Derefter: SEO → Stripe live-test → PostHog → lancering
 
 ## Vigtige beslutninger (gældende)
 
@@ -41,6 +45,8 @@ Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort 
 - **cabin_availability:** gemmer BLOKEREDE datoer (is_available=false) — ledige er default.
 - **Admin-middleware:** service_role key til is_admin-tjek (anon-key blokeres af RLS).
 - **Samsejlads pris:** tur/retur primær → enkelttur = 60% auto-forslag (kan overskrives).
+- **AvailabilityCalendar settings:** min_nights (1-30) + preparation_days (0/1/2/3) gemmes via saveCabinSettings (hurtig-gem) eller saveAll (kombineret med tilgængelighed).
+- **Publish/unpublish:** `publishCabin` + `unpublishCabin` i `src/app/dashboard/actions.ts`.
 
 ## Ikke nu (backlog / Fase 3)
 
