@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
 import AvailabilityCalendar from "./AvailabilityCalendar"
-import CabinSettingsCard from "./CabinSettingsCard"
 
 export const dynamic = "force-dynamic"
 
@@ -26,7 +25,6 @@ export default async function TilgaengelighedPage({
 
   const navUser = await getNavUserForPage(supabase, user)
 
-  // Fetch cabin (owner check) including booking settings
   const { data: cabin } = await supabase
     .from("cabins")
     .select("id, title, published, min_nights, preparation_days")
@@ -37,14 +35,12 @@ export default async function TilgaengelighedPage({
 
   if (!cabin) notFound()
 
-  // Already-blocked dates (is_available: false = blokeret af udlejeren)
   const { data: availabilityRows } = await supabase
     .from("cabin_availability")
     .select("date")
     .eq("cabin_id", cabinId)
     .eq("is_available", false)
 
-  // Booked dates (confirmed + pending bookings in the future)
   const today = new Date().toISOString().split("T")[0]
   const { data: bookingRows } = await supabase
     .from("cabin_bookings")
@@ -54,7 +50,6 @@ export default async function TilgaengelighedPage({
     .gte("check_out", today)
     .is("deleted_at", null)
 
-  // Expand booking ranges to individual dates
   const bookedDates: string[] = []
   for (const b of bookingRows ?? []) {
     const cur = new Date(b.check_in)
@@ -86,7 +81,6 @@ export default async function TilgaengelighedPage({
           </h1>
           <p className="text-sm font-medium text-foreground mb-6">{cabin.title}</p>
 
-          {/* Infobox */}
           <div className="rounded-xl border border-[#4A9CC7]/30 bg-[#4A9CC7]/8 px-4 py-4 text-sm text-[#1a5f7a]">
             <p className="font-semibold mb-1">Din hytte er som standard ledig alle dage.</p>
             <p>
@@ -96,19 +90,14 @@ export default async function TilgaengelighedPage({
           </div>
         </div>
 
-        {/* Booking settings */}
-        <CabinSettingsCard
-          cabinId={cabinId}
-          initialMinNights={minNights}
-          initialPreparationDays={preparationDays}
-        />
-
-        {/* Calendar */}
         <div className="bg-white rounded-2xl border border-border shadow-sm p-6">
           <AvailabilityCalendar
             cabinId={cabinId}
             initialBlocked={initialBlocked}
             bookedDates={bookedDates}
+            initialMinNights={minNights}
+            initialPreparationDays={preparationDays}
+            showPublishButton={!isPublished}
           />
         </div>
       </div>

@@ -1,6 +1,5 @@
 "use server"
 
-import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase-server"
 import { requireCabinOwner } from "@/lib/requireCabinOwner"
 
@@ -13,22 +12,16 @@ export async function saveAvailability(
   const {
     data: { session },
   } = await supabase.auth.getSession()
-  if (!session?.user) redirect("/")
+  if (!session?.user) return { error: "Ikke logget ind" }
 
-  // Verify ownership
   try {
     await requireCabinOwner(supabase, cabinId, session.user.id)
   } catch {
-    redirect("/")
+    return { error: "Ingen adgang" }
   }
 
-  // Delete all existing availability rows for this cabin
-  await supabase
-    .from("cabin_availability")
-    .delete()
-    .eq("cabin_id", cabinId)
+  await supabase.from("cabin_availability").delete().eq("cabin_id", cabinId)
 
-  // Insert blocked dates (is_available: false = blokeret)
   if (blockedDates.length > 0) {
     const rows = blockedDates.map((date) => ({
       cabin_id: cabinId,
@@ -39,7 +32,6 @@ export async function saveAvailability(
     if (error) return { error: error.message }
   }
 
-  // Optionally publish
   if (publish) {
     const { error } = await supabase
       .from("cabins")
@@ -61,20 +53,16 @@ export async function saveCabinSettings(
   const {
     data: { session },
   } = await supabase.auth.getSession()
-  if (!session?.user) redirect("/")
+  if (!session?.user) return { error: "Ikke logget ind" }
 
-  // Server-side validation
   const mn = Math.floor(Number(minNights))
   const pd = Math.floor(Number(preparationDays))
 
-  if (!Number.isFinite(mn) || mn < 1 || mn > 30) {
+  if (!Number.isFinite(mn) || mn < 1 || mn > 30)
     return { error: "Minimum nætter skal være mellem 1 og 30" }
-  }
-  if (![0, 1, 2, 3].includes(pd)) {
+  if (![0, 1, 2, 3].includes(pd))
     return { error: "Forberedelsestid skal være 0, 1, 2 eller 3 dage" }
-  }
 
-  // Verify ownership
   try {
     await requireCabinOwner(supabase, cabinId, session.user.id)
   } catch {
@@ -89,4 +77,65 @@ export async function saveCabinSettings(
 
   if (error) return { error: error.message }
   return { ok: true }
+}
+
+/** Gemmer indstillinger + tilgængelighed i ét kald. Bruges af "Gem og publicér →". */
+export async function saveAll(
+  cabinId: string,
+  blockedDates: string[],
+  minNights: number,
+  preparationDays: number,
+  publish: boolean,
+): Promise<{ redirectTo: string } | { error: string }> {
+  const supabase = await createClient()
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.user) return { error: "Ikke logget ind" }
+
+  const mn = Math.floor(Number(minNights))
+  const pd = Math.floor(Number(preparationDays))
+
+  if (!Number.isFinite(mn) || mn < 1 || mn > 30)
+    return { error: "Minimum nætter skal være mellem 1 og 30" }
+  if (![0, 1, 2, 3].includes(pd))
+    return { error: "Forberedelsestid skal være 0, 1, 2 eller 3 dage" }
+
+  try {
+    await requireCabinOwner(supabase, cabinId, session.user.id)
+  } catch {
+    return { error: "Ingen adgang" }
+  }
+
+  // 1. Gem indstillinger
+  const { error: settingsErr } = await supabase
+    .from("cabins")
+    .update({ min_nights: mn, preparation_days: pd })
+    .eq("id", cabinId)
+    .eq("owner_id", session.user.id)
+  if (settingsErr) return { error: settingsErr.message }
+
+  // 2. Gem tilgængelighed
+  await supabase.from("cabin_availability").delete().eq("cabin_id", cabinId)
+  if (blockedDates.length > 0) {
+    const rows = blockedDates.map((date) => ({
+      cabin_id: cabinId,
+      date,
+      is_available: false,
+    }))
+    const { error } = await supabase.from("cabin_availability").insert(rows)
+    if (error) return { error: error.message }
+  }
+
+  // 3. Publicér hvis ønsket
+  if (publish) {
+    const { error } = await supabase
+      .from("cabins")
+      .update({ published: true })
+      .eq("id", cabinId)
+      .eq("owner_id", session.user.id)
+    if (error) return { error: error.message }
+  }
+
+  return { redirectTo: "/opret" }
 }
