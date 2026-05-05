@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Image from "next/image"
 import { Search, Anchor, Star, Heart, Users, Home as HomeIcon, ArrowRight } from "lucide-react"
 import { getTranslations, setRequestLocale } from "next-intl/server"
@@ -7,6 +8,8 @@ import HeroContent from "./components/HeroContent"
 import MapWrapper from "./components/MapWrapper"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
+import { buildMetadata } from "@/lib/metadata"
+import { JsonLd } from "@/components/seo/JsonLd"
 
 const STEP_ICONS = [Search, Anchor, HomeIcon] as const
 const FEATURE_ICONS = [Users, Anchor] as const
@@ -23,6 +26,18 @@ const CABINS = [
 
 type Props = {
   params: Promise<{ locale: string }>
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params
+  const t = await getTranslations({ locale, namespace: "home" })
+  return buildMetadata({
+    locale,
+    title: "Sila.gl",
+    description: t("subheadline"),
+    path: "",
+    image: "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=1200&h=630&fit=crop&q=85",
+  })
 }
 
 export default async function Home({ params }: Props) {
@@ -51,8 +66,24 @@ export default async function Home({ params }: Props) {
     sub:   t(`cta.stats.${i}.sub`),
   }))
 
+  const websiteSchema = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Sila.gl",
+    url: "https://sila.gl",
+    description: locale === "da"
+      ? "Grønlands marketplace for hytteudlejning og samsejlads"
+      : "Greenland's marketplace for cabin rentals and sailing",
+    potentialAction: {
+      "@type": "SearchAction",
+      target: `https://sila.gl/${locale}/hytter?q={search_term_string}`,
+      "query-input": "required name=search_term_string",
+    },
+  }
+
   return (
     <main>
+      <JsonLd data={websiteSchema} />
       <Navbar user={navUser} />
 
       {/* ── Hero ── */}

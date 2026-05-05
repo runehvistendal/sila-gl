@@ -100,3 +100,11 @@ export function getAllLocationsSorted(): GreenlandLocation[] {
     a.name_dk.localeCompare(b.name_dk, "da"),
   )
 }
+
+/** Returnerer visningsnavn (name_dk) for en lowercase location-nøgle fra DB. */
+export function getLocationName(key: string): string {
+  const found = GREENLAND_LOCATIONS.find(
+    (l) => l.name_dk.toLowerCase() === key.toLowerCase(),
+  )
+  return found?.name_dk ?? key
+}

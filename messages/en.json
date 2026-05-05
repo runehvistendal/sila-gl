@@ -438,7 +438,9 @@
     "email_change_sent_inbox": "Confirmation email sent. Check your inbox.",
     "select_location_error": "Please select a city or place",
     "invalid_phone": "Please enter a valid phone number",
-    "stars_aria": "{rating} out of 5 stars"
+    "stars_aria": "{rating} out of 5 stars",
+    "anonym": "Sila sailor",
+    "publicProfileDescription": "View {name}'s profile on Sila.gl"
   },
   "create": {
     "title": "What would you like to create?",
@@ -764,5 +766,13 @@
     "cookies": "Cookies",
     "copyright": "© 2026 Sila.gl",
     "slogan": "Greenland's first marketplace for local experiences"
+  },
+  "destination": {
+    "cabins_title": "Cabins in {name}",
+    "transport_title": "Sailing trips to/from {name}",
+    "no_cabins": "No cabins in {name} yet",
+    "no_transport": "No trips to/from {name} yet",
+    "request_cta": "Request transport to {name}",
+    "explore": "Explore {name}"
   }
 }

@@ -1,6 +1,8 @@
+import type { Metadata } from "next"
 import { ArrowRight } from "lucide-react"
 import { getTranslations, setRequestLocale } from "next-intl/server"
 import { Link } from "@/i18n/navigation"
+import { buildMetadata } from "@/lib/metadata"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
@@ -23,13 +25,15 @@ type Props = {
   searchParams: Promise<SearchParams>
 }
 
-export async function generateMetadata({ params }: Props) {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params
   const t = await getTranslations({ locale, namespace: "cabins" })
-  return {
-    title: t("metaTitle"),
+  return buildMetadata({
+    locale,
+    title: t("pageTitle"),
     description: t("metaDescription"),
-  }
+    path: "/hytter",
+  })
 }
 
 export default async function HytterPage({ params, searchParams }: Props) {

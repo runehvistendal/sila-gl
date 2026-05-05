@@ -438,7 +438,9 @@
     "email_change_sent_inbox": "Bekræftelsesmail sendt. Tjek din indbakke.",
     "select_location_error": "Vælg by eller sted",
     "invalid_phone": "Angiv et gyldigt telefonnummer",
-    "stars_aria": "{rating} af 5 stjerner"
+    "stars_aria": "{rating} af 5 stjerner",
+    "anonym": "Sila-sejler",
+    "publicProfileDescription": "Se {name}s profil på Sila.gl"
   },
   "create": {
     "title": "Hvad vil du oprette?",
@@ -764,5 +766,13 @@
     "cookies": "Cookies",
     "copyright": "© 2026 Sila.gl — CVR: Dansk",
     "slogan": "Grønlands første marketplace for lokale oplevelser"
+  },
+  "destination": {
+    "cabins_title": "Hytter i {name}",
+    "transport_title": "Sejladsture til/fra {name}",
+    "no_cabins": "Ingen hytter i {name} endnu",
+    "no_transport": "Ingen ture til/fra {name} endnu",
+    "request_cta": "Anmod om transport til {name}",
+    "explore": "Udforsk {name}"
   }
 }

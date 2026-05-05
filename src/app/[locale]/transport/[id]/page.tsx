@@ -1,15 +1,45 @@
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
+import { getTranslations } from "next-intl/server"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
 import TransportDetailClient from "./TransportDetailClient"
+import { buildMetadata } from "@/lib/metadata"
+import { JsonLd } from "@/components/seo/JsonLd"
+import { getLocationName } from "@/lib/greenlandLocations"
 
 interface PageProps {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string; locale: string }>
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string; locale: string }> }): Promise<Metadata> {
+  const { id, locale } = await params
+  const supabase = await createClient()
+  const { data: rs } = await supabase
+    .from("ride_shares")
+    .select("from_location, to_location, departure_at, description")
+    .eq("id", id)
+    .single()
+
+  if (!rs) return { title: "Sila.gl" }
+
+  const t = await getTranslations({ locale, namespace: "transport" })
+  const from = getLocationName(rs.from_location)
+  const to = getLocationName(rs.to_location)
+  const title = `${from} → ${to}`
+  const description = rs.description ?? t("metaDescription")
+
+  return buildMetadata({
+    locale,
+    title,
+    description,
+    path: `/transport/${id}`,
+  })
 }
 
 export default async function TransportDetailPage({ params }: PageProps) {
-  const { id } = await params
+  const { id, locale } = await params
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -80,8 +110,27 @@ export default async function TransportDetailPage({ params }: PageProps) {
       .limit(20),
   ])
 
+  const tripSchema = {
+    "@context": "https://schema.org",
+    "@type": "TouristTrip",
+    name: `${getLocationName(rs.from_location)} → ${getLocationName(rs.to_location)}`,
+    description: rs.description,
+    url: `https://sila.gl/${locale}/transport/${id}`,
+    touristType: "Adventure",
+    offers: {
+      "@type": "Offer",
+      price: rs.price_per_seat_ore / 100,
+      priceCurrency: "DKK",
+      availability:
+        rs.seats_available > 0
+          ? "https://schema.org/InStock"
+          : "https://schema.org/SoldOut",
+    },
+  }
+
   return (
     <main>
+      <JsonLd data={tripSchema} />
       <Navbar user={navUser} />
       <TransportDetailClient
         rideShare={rs}

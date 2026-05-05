@@ -1,14 +1,42 @@
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { getTranslations, setRequestLocale } from "next-intl/server"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
+import { buildMetadata } from "@/lib/metadata"
 import { StarBar } from "@/components/cabins/CabinReviews"
 import { Star, User } from "lucide-react"
 import { format } from "date-fns"
 import { da } from "date-fns/locale"
 
 export const dynamic = "force-dynamic"
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string; locale: string }>
+}): Promise<Metadata> {
+  const { id, locale } = await params
+  const supabase = await createClient()
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, avatar_url, bio")
+    .eq("id", id)
+    .maybeSingle()
+
+  if (!profile) return { title: "Sila.gl" }
+
+  const t = await getTranslations({ locale, namespace: "profile" })
+  const name = profile.full_name ?? t("anonym")
+  return buildMetadata({
+    locale,
+    title: name,
+    description: profile.bio ?? t("publicProfileDescription", { name }),
+    path: `/profil/${id}`,
+    image: profile.avatar_url ?? undefined,
+  })
+}
 
 interface ReviewRow {
   id: string

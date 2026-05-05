@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import {
@@ -10,6 +11,9 @@ import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import { nightsFromBookings } from "@/lib/cabinBookingDates"
 import Navbar from "@/components/layout/Navbar"
+import { buildMetadata } from "@/lib/metadata"
+import { JsonLd } from "@/components/seo/JsonLd"
+import { oreToKr } from "@/lib/money"
 import ListingImageGallery from "@/components/cabins/ListingImageGallery"
 import CabinReviews from "@/components/cabins/CabinReviews"
 import CabinDetailLayout from "@/components/cabins/CabinDetailLayout"
@@ -36,12 +40,38 @@ export type CabinDetailData = {
 }
 
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string; locale: string }>
+}): Promise<Metadata> {
+  const { id, locale } = await params
+  const supabase = await createClient()
+  const { data: cabin } = await supabase
+    .from("cabins")
+    .select("title, description, images")
+    .eq("id", id)
+    .eq("published", true)
+    .is("deleted_at", null)
+    .single()
+
+  if (!cabin) return { title: "Sila.gl" }
+
+  return buildMetadata({
+    locale,
+    title: cabin.title,
+    description: cabin.description ?? "",
+    path: `/hytter/${id}`,
+    image: (cabin.images as string[] | null)?.[0],
+  })
+}
+
 export default async function CabinDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string; locale: string }>
 }) {
-  const { id } = await params
+  const { id, locale } = await params
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -116,8 +146,24 @@ export default async function CabinDetailPage({
   const hostName   = cabin.profiles?.full_name ?? null
   const hostAvatar = cabin.profiles?.avatar_url ?? null
 
+  const lodgingSchema = {
+    "@context": "https://schema.org",
+    "@type": "LodgingBusiness",
+    name: cabin.title,
+    description: cabin.description,
+    url: `https://sila.gl/${locale}/hytter/${id}`,
+    image: (cabin.images as string[])?.[0],
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: cabin.location_hub,
+      addressCountry: "GL",
+    },
+    priceRange: `${oreToKr(cabin.price_per_night_ore)} DKK / nat`,
+  }
+
   return (
     <main className="min-h-screen bg-background" style={{ fontFamily: "var(--font-jakarta, system-ui)" }}>
+      <JsonLd data={lodgingSchema} />
       <Navbar user={navUser} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
