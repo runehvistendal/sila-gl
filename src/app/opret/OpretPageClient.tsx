@@ -112,6 +112,14 @@ export default function OpretPageClient({ cabins, boats }: Props) {
                     >
                       <Link href={`/opret/hytte/${c.id}/rediger`}>Rediger</Link>
                     </Button>
+                    <Button
+                      asChild
+                      size="sm"
+                      variant="outline"
+                      className="rounded-lg text-xs h-8"
+                    >
+                      <Link href={`/opret/hytte/${c.id}/tilgaengelighed`}>Tilgængelighed</Link>
+                    </Button>
                     <Button asChild size="sm" className="rounded-lg text-xs h-8">
                       <Link href={`/opret/opslag/hytte/${c.id}`}>Udlej denne</Link>
                     </Button>
