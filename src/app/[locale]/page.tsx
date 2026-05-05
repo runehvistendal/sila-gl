@@ -11,6 +11,8 @@ import { getNavUserForPage } from "@/lib/getNavUser"
 import { buildMetadata } from "@/lib/metadata"
 import { JsonLd } from "@/components/seo/JsonLd"
 import { getHomePage } from "@/lib/sanity.queries"
+import SectionRenderer from "@/components/sanity/SectionRenderer"
+import type { Locale } from "@/i18n/routing"
 
 export const revalidate = 3600
 
@@ -49,7 +51,7 @@ export default async function Home({ params }: Props) {
 
   const [t, sanityHome] = await Promise.all([
     getTranslations("home"),
-    getHomePage(),
+    getHomePage(locale),
   ])
 
   const supabase = await createClient()
@@ -306,6 +308,10 @@ export default async function Home({ params }: Props) {
           </div>
         </div>
       </section>
+
+      {(sanityHome?.sections?.length ?? 0) > 0 && (
+        <SectionRenderer sections={sanityHome.sections} locale={locale as Locale} />
+      )}
     </main>
   )
 }

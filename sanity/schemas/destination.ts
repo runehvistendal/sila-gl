@@ -31,5 +31,17 @@ export default defineType({
     defineField({ name: "seoDescription_da", title: "SEO-beskrivelse (dansk)", type: "string" }),
     defineField({ name: "seoDescription_en", title: "SEO-beskrivelse (engelsk)", type: "string" }),
     defineField({ name: "seoDescription_kl", title: "SEO-beskrivelse (grønlandsk)", type: "string" }),
+    defineField({
+      name: "sections",
+      title: "Sektioner",
+      type: "array",
+      of: [
+        { type: "heroSection" },
+        { type: "textImageSection" },
+        { type: "faqSection" },
+        { type: "ctaSection" },
+        { type: "imageGallerySection" },
+      ],
+    }),
   ],
 })

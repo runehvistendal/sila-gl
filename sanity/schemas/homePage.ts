@@ -12,5 +12,17 @@ export default defineType({
     defineField({ name: "subheadline_da", title: "Underoverskrift (dansk)", type: "string" }),
     defineField({ name: "subheadline_en", title: "Underoverskrift (engelsk)", type: "string" }),
     defineField({ name: "subheadline_kl", title: "Underoverskrift (grønlandsk)", type: "string" }),
+    defineField({
+      name: "sections",
+      title: "Sektioner",
+      type: "array",
+      of: [
+        { type: "heroSection" },
+        { type: "textImageSection" },
+        { type: "faqSection" },
+        { type: "ctaSection" },
+        { type: "imageGallerySection" },
+      ],
+    }),
   ],
 })

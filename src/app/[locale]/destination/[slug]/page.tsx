@@ -13,6 +13,8 @@ import { JsonLd } from "@/components/seo/JsonLd"
 import { DESTINATIONS, DESTINATION_SLUGS } from "@/lib/destinations"
 import { getDestination } from "@/lib/sanity.queries"
 import { sanityImage } from "@/lib/sanity"
+import SectionRenderer from "@/components/sanity/SectionRenderer"
+import type { Locale } from "@/i18n/routing"
 import Image from "next/image"
 
 export const revalidate = 3600
@@ -138,6 +140,10 @@ export default async function DestinationPage({ params }: Props) {
         <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">{t("explore", { name })}</h1>
         <p className="text-lg text-muted-foreground max-w-2xl">{description}</p>
       </section>
+
+      {(sanityDest?.sections?.length ?? 0) > 0 && (
+        <SectionRenderer sections={sanityDest.sections} locale={locale as Locale} />
+      )}
 
       {/* Hytter */}
       <section className="px-4 sm:px-6 pb-12 max-w-5xl mx-auto">

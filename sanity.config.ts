@@ -26,23 +26,56 @@ export default defineConfig({
       resolve: {
         mainDocuments: defineDocuments([
           {
+            route: "/:locale/blog/:slug",
+            filter: `_type == "post" && slug.current == $slug`,
+          },
+          {
+            route: "/:locale/destination/:slug",
+            filter: `_type == "destination" && slug.current == $slug`,
+          },
+          {
+            route: "/:locale",
+            filter: `_type == "homePage"`,
+          },
+          {
             route: "/:locale/:slug",
             filter: `_type == "page" && slug.current == $slug`,
           },
         ]),
         locations: {
+          homePage: defineLocations({
+            select: { _id: "_id" },
+            resolve: () => ({
+              locations: [
+                { title: "DA", href: "/da" },
+                { title: "EN", href: "/en" },
+              ],
+            }),
+          }),
           page: defineLocations({
-            select: { title: "title_da", slug: "slug.current" },
+            select: { slug: "slug.current" },
             resolve: (doc) => ({
               locations: [
-                {
-                  title: doc?.title ? `${doc.title} (DA)` : "Side (DA)",
-                  href: doc?.slug ? `/da/${doc.slug}` : "/da",
-                },
-                {
-                  title: doc?.title ? `${doc.title} (EN)` : "Side (EN)",
-                  href: doc?.slug ? `/en/${doc.slug}` : "/en",
-                },
+                { title: "DA", href: doc?.slug ? `/da/${doc.slug}` : "/da" },
+                { title: "EN", href: doc?.slug ? `/en/${doc.slug}` : "/en" },
+              ],
+            }),
+          }),
+          destination: defineLocations({
+            select: { slug: "slug.current" },
+            resolve: (doc) => ({
+              locations: [
+                { title: "DA", href: doc?.slug ? `/da/destination/${doc.slug}` : "/da/destination" },
+                { title: "EN", href: doc?.slug ? `/en/destination/${doc.slug}` : "/en/destination" },
+              ],
+            }),
+          }),
+          post: defineLocations({
+            select: { slug: "slug.current" },
+            resolve: (doc) => ({
+              locations: [
+                { title: "DA", href: doc?.slug ? `/da/blog/${doc.slug}` : "/da/blog" },
+                { title: "EN", href: doc?.slug ? `/en/blog/${doc.slug}` : "/en/blog" },
               ],
             }),
           }),

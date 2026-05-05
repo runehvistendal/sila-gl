@@ -5,7 +5,9 @@ import { getPost, getAllPosts } from "@/lib/sanity.queries"
 import { buildMetadata } from "@/lib/metadata"
 import { sanityImage } from "@/lib/sanity"
 import { PortableTextRenderer } from "@/components/sanity/PortableTextRenderer"
+import SectionRenderer from "@/components/sanity/SectionRenderer"
 import Navbar from "@/components/layout/Navbar"
+import type { Locale } from "@/i18n/routing"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import { createClient } from "@/lib/supabase-server"
 import { Link } from "@/i18n/navigation"
@@ -95,6 +97,10 @@ export default async function BlogPostPage({ params }: Props) {
           <p className="text-muted-foreground">{locale === "da" ? "Indhold mangler." : "Content missing."}</p>
         )}
       </div>
+
+      {(post?.sections?.length ?? 0) > 0 && (
+        <SectionRenderer sections={post.sections} locale={locale as Locale} />
+      )}
     </main>
   )
 }

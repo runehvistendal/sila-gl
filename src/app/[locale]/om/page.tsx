@@ -3,7 +3,9 @@ import { setRequestLocale } from "next-intl/server"
 import { getPage } from "@/lib/sanity.queries"
 import { buildMetadata } from "@/lib/metadata"
 import { PortableTextRenderer } from "@/components/sanity/PortableTextRenderer"
+import SectionRenderer from "@/components/sanity/SectionRenderer"
 import Navbar from "@/components/layout/Navbar"
+import type { Locale } from "@/i18n/routing"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import { createClient } from "@/lib/supabase-server"
 import { Link } from "@/i18n/navigation"
@@ -57,6 +59,10 @@ export default async function OmPage({ params }: Props) {
           </div>
         )}
       </div>
+
+      {(content?.sections?.length ?? 0) > 0 && (
+        <SectionRenderer sections={content.sections} locale={locale as Locale} />
+      )}
     </main>
   )
 }

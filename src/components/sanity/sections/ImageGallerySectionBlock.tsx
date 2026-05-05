@@ -8,7 +8,7 @@ interface Props {
   locale: Locale
 }
 
-export default function ImageGallerySectionBlock({ data, locale: _locale }: Props) {
+export default function ImageGallerySectionBlock({ data, locale }: Props) {
   const heading = data[`heading_${locale}`] ?? data.heading_da
   const images = (data.images ?? []) as unknown[]
 
