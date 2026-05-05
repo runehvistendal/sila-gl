@@ -1,11 +1,11 @@
 import type { MetadataRoute } from "next"
 import { createClient } from "@supabase/supabase-js"
 import { DESTINATION_SLUGS } from "@/lib/destinations"
+import { getAllPosts } from "@/lib/sanity.queries"
 
 const BASE_URL = "https://sila.gl"
 const LOCALES = ["da", "en"] as const
 
-// Public read-only client — no cookies needed for sitemap
 function createPublicClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,16 +14,21 @@ function createPublicClient() {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const staticPaths = ["", "/hytter", "/transport", "/anmod"]
+  // Statiske sider
+  const staticPaths = [
+    "", "/hytter", "/transport", "/anmod",
+    "/om", "/faq", "/vilkaar", "/privatlivspolitik", "/udbyderguide", "/blog",
+  ]
   const staticUrls: MetadataRoute.Sitemap = staticPaths.flatMap((path) =>
     LOCALES.map((locale) => ({
       url: `${BASE_URL}/${locale}${path}`,
       lastModified: new Date(),
-      changeFrequency: "weekly" as const,
-      priority: path === "" ? 1 : 0.8,
+      changeFrequency: (path === "" ? "weekly" : "monthly") as "weekly" | "monthly",
+      priority: path === "" ? 1 : path === "/hytter" || path === "/transport" ? 0.8 : 0.6,
     }))
   )
 
+  // Publicerede hytter fra Supabase
   const supabase = createPublicClient()
   const { data: cabins } = await supabase
     .from("cabins")
@@ -40,6 +45,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }))
   )
 
+  // Destinationer (statisk liste)
   const destinationUrls: MetadataRoute.Sitemap = DESTINATION_SLUGS.flatMap((slug) =>
     LOCALES.map((locale) => ({
       url: `${BASE_URL}/${locale}/destination/${slug}`,
@@ -49,5 +55,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }))
   )
 
-  return [...staticUrls, ...cabinUrls, ...destinationUrls]
+  // Blogindlæg fra Sanity
+  let blogUrls: MetadataRoute.Sitemap = []
+  try {
+    const posts = (await getAllPosts()) ?? []
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    blogUrls = posts.flatMap((post: any) =>
+      LOCALES.map((locale) => ({
+        url: `${BASE_URL}/${locale}/blog/${post.slug?.current ?? ""}`,
+        lastModified: post.publishedAt ? new Date(post.publishedAt) : new Date(),
+        changeFrequency: "monthly" as const,
+        priority: 0.7,
+      }))
+    )
+  } catch {
+    // Sanity er nede — sitemap fortsætter uden blogindlæg
+  }
+
+  return [...staticUrls, ...cabinUrls, ...destinationUrls, ...blogUrls]
 }

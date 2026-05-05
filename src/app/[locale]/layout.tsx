@@ -48,7 +48,7 @@ export default async function LocaleLayout({ children, params }: Props) {
       <body className="min-h-full flex flex-col bg-background font-sans">
         <NextIntlClientProvider>
           {children}
-          <Footer />
+          <Footer locale={locale} />
           <Toaster position="top-center" richColors />
         </NextIntlClientProvider>
       </body>

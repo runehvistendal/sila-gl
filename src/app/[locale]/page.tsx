@@ -10,6 +10,9 @@ import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import { buildMetadata } from "@/lib/metadata"
 import { JsonLd } from "@/components/seo/JsonLd"
+import { getHomePage } from "@/lib/sanity.queries"
+
+export const revalidate = 3600
 
 const STEP_ICONS = [Search, Anchor, HomeIcon] as const
 const FEATURE_ICONS = [Users, Anchor] as const
@@ -44,7 +47,10 @@ export default async function Home({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
 
-  const t = await getTranslations("home")
+  const [t, sanityHome] = await Promise.all([
+    getTranslations("home"),
+    getHomePage(),
+  ])
 
   const supabase = await createClient()
   const {
@@ -52,6 +58,11 @@ export default async function Home({ params }: Props) {
   } = await supabase.auth.getUser()
 
   const navUser = user ? await getNavUserForPage(supabase, user) : null
+
+  // Sanity overstyrer hvis tilgængeligt — ellers fald tilbage til messages
+  const headline = sanityHome?.[`headline_${locale}`] ?? sanityHome?.headline_da ?? t("headline")
+  const subheadline = sanityHome?.[`subheadline_${locale}`] ?? sanityHome?.subheadline_da ?? t("subheadline")
+  const badge = sanityHome?.badge ?? t("badge")
 
   const steps = ([0, 1, 2] as const).map((i) => ({
     title: t(`howItWorks.steps.${i}.title`),
@@ -100,7 +111,9 @@ export default async function Home({ params }: Props) {
           <div className="aurora-band aurora-2" />
           <div className="aurora-band aurora-3" />
         </div>
-        <div className="relative z-10 w-full"><HeroContent /></div>
+        <div className="relative z-10 w-full">
+          <HeroContent badge={badge} headline={headline} subheadline={subheadline} />
+        </div>
       </section>
 
       {/* ── Sådan virker Sila ── */}

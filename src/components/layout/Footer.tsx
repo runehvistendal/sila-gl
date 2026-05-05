@@ -1,10 +1,21 @@
-"use client"
-
-import { useTranslations } from "next-intl"
+import { getTranslations } from "next-intl/server"
 import { Link } from "@/i18n/navigation"
+import { getGlobalSettings } from "@/lib/sanity.queries"
 
-export default function Footer() {
-  const t = useTranslations("footer")
+interface FooterProps {
+  locale: string
+}
+
+export default async function Footer({ locale }: FooterProps) {
+  const [t, settings] = await Promise.all([
+    getTranslations({ locale, namespace: "footer" }),
+    getGlobalSettings().catch(() => null),
+  ])
+
+  const tagline =
+    settings?.[`footerTagline_${locale}`] ??
+    settings?.footerTagline_da ??
+    t("tagline")
 
   return (
     <footer className="bg-foreground border-t border-foreground/10 pt-12 pb-8">
@@ -15,7 +26,7 @@ export default function Footer() {
               Sila.gl
             </span>
             <p className="text-xs leading-relaxed text-primary-foreground/50">
-              {t("tagline")}
+              {tagline}
             </p>
           </div>
           <div>
@@ -28,9 +39,9 @@ export default function Footer() {
           <div>
             <p className="text-xs font-bold uppercase tracking-wider mb-4 text-primary">{t("about")}</p>
             <div className="flex flex-col gap-2.5 text-sm text-primary-foreground/60">
-              <Link href="/om-os"       className="hover:text-primary-foreground transition-colors">{t("aboutUs")}</Link>
-              <Link href="/opret-konto" className="hover:text-primary-foreground transition-colors">{t("becomeProvider")}</Link>
-              <Link href="/kontakt"     className="hover:text-primary-foreground transition-colors">{t("contact")}</Link>
+              <Link href="/om"           className="hover:text-primary-foreground transition-colors">{t("aboutUs")}</Link>
+              <Link href="/udbyderguide" className="hover:text-primary-foreground transition-colors">{t("becomeProvider")}</Link>
+              <Link href="/faq"          className="hover:text-primary-foreground transition-colors">{t("contact")}</Link>
             </div>
           </div>
           <div>
@@ -38,7 +49,7 @@ export default function Footer() {
             <div className="flex flex-col gap-2.5 text-sm text-primary-foreground/60">
               <Link href="/privatlivspolitik" className="hover:text-primary-foreground transition-colors">{t("privacy")}</Link>
               <Link href="/vilkaar"           className="hover:text-primary-foreground transition-colors">{t("terms")}</Link>
-              <Link href="/cookies"           className="hover:text-primary-foreground transition-colors">{t("cookies")}</Link>
+              <Link href="/blog"              className="hover:text-primary-foreground transition-colors">Blog</Link>
             </div>
           </div>
         </div>

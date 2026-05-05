@@ -10,9 +10,19 @@ import type { GreenlandLocation } from "@/lib/greenlandLocations"
 
 const majorHubs = GREENLAND_LOCATIONS.filter((l) => l.is_major_hub)
 
-export default function HeroContent() {
+interface HeroContentProps {
+  badge?: string
+  headline?: string
+  subheadline?: string
+}
+
+export default function HeroContent({ badge: badgeProp, headline: headlineProp, subheadline: subheadlineProp }: HeroContentProps = {}) {
   const t = useTranslations("home")
   const router = useRouter()
+
+  const badge = badgeProp ?? t("badge")
+  const headline = headlineProp ?? t("headline")
+  const subheadline = subheadlineProp ?? t("subheadline")
   const [query, setQuery] = useState("")
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -56,7 +66,7 @@ export default function HeroContent() {
         transition={{ duration: 0.5 }}
       >
         <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
-        {t("badge")}
+        {badge}
       </motion.div>
 
       {/* Headline */}
@@ -67,7 +77,7 @@ export default function HeroContent() {
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.7, delay: 0.1 }}
       >
-        {t("headline")}
+        {headline}
       </motion.h1>
 
       <motion.p
@@ -76,7 +86,7 @@ export default function HeroContent() {
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.7, delay: 0.2 }}
       >
-        {t("subheadline")}
+        {subheadline}
       </motion.p>
 
       {/* Søgefelt + separat Søg-knap */}

@@ -11,6 +11,11 @@ import TransportCard, { type RideShareCardData } from "@/app/[locale]/transport/
 import { buildMetadata } from "@/lib/metadata"
 import { JsonLd } from "@/components/seo/JsonLd"
 import { DESTINATIONS, DESTINATION_SLUGS } from "@/lib/destinations"
+import { getDestination } from "@/lib/sanity.queries"
+import { sanityImage } from "@/lib/sanity"
+import Image from "next/image"
+
+export const revalidate = 3600
 
 type Props = {
   params: Promise<{ locale: string; slug: string }>
@@ -24,16 +29,25 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params
-  const dest = DESTINATIONS[slug]
+  const [dest, sanityDest] = await Promise.all([
+    Promise.resolve(DESTINATIONS[slug]),
+    getDestination(slug),
+  ])
   if (!dest) return { title: "Sila.gl" }
-  const name = locale === "da" ? dest.name_da : dest.name_en
-  const description = locale === "da" ? dest.description_da : dest.description_en
-  return buildMetadata({
-    locale,
-    title: name,
-    description,
-    path: `/destination/${slug}`,
-  })
+
+  const name =
+    sanityDest?.[`seoTitle_${locale}`] ??
+    sanityDest?.seoTitle_da ??
+    (locale === "da" ? dest.name_da : dest.name_en)
+  const description =
+    sanityDest?.[`seoDescription_${locale}`] ??
+    sanityDest?.seoDescription_da ??
+    (locale === "da" ? dest.description_da : dest.description_en)
+  const heroImgUrl = sanityDest?.heroImage
+    ? sanityImage(sanityDest.heroImage).width(1200).height(630).url()
+    : undefined
+
+  return buildMetadata({ locale, title: name, description, path: `/destination/${slug}`, image: heroImgUrl })
 }
 
 export default async function DestinationPage({ params }: Props) {
@@ -43,9 +57,20 @@ export default async function DestinationPage({ params }: Props) {
   const dest = DESTINATIONS[slug]
   if (!dest) notFound()
 
-  const t = await getTranslations({ locale, namespace: "destination" })
+  const [t, sanityDest] = await Promise.all([
+    getTranslations({ locale, namespace: "destination" }),
+    getDestination(slug),
+  ])
+
+  // Sanity-beskrivelse overstyrer destinations.ts, men sider går aldrig ned ved fejl
   const name = locale === "da" ? dest.name_da : dest.name_en
-  const description = locale === "da" ? dest.description_da : dest.description_en
+  const description =
+    sanityDest?.[`description_${locale}`] ??
+    sanityDest?.description_da ??
+    (locale === "da" ? dest.description_da : dest.description_en)
+  const heroImgUrl = sanityDest?.heroImage
+    ? sanityImage(sanityDest.heroImage).width(1200).height(600).url()
+    : null
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -97,7 +122,13 @@ export default async function DestinationPage({ params }: Props) {
       <Navbar user={navUser} />
 
       {/* Hero */}
-      <section className="pt-28 pb-12 px-4 sm:px-6 max-w-5xl mx-auto">
+      {heroImgUrl && (
+        <div className="relative w-full h-56 sm:h-72 overflow-hidden">
+          <Image src={heroImgUrl} alt={name} fill className="object-cover" priority />
+          <div className="absolute inset-0 bg-black/40" />
+        </div>
+      )}
+      <section className={`${heroImgUrl ? "pt-10" : "pt-28"} pb-12 px-4 sm:px-6 max-w-5xl mx-auto`}>
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
           <MapPin className="w-4 h-4" />
           <span>Grønland</span>

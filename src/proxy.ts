@@ -69,6 +69,25 @@ export async function proxy(request: NextRequest) {
     strippedPath.startsWith("/admin") ||
     strippedPath.startsWith("/profil")
 
+  // /studio er ikke locale-prefixet — tjek direkte i pathname
+  if (pathname.startsWith("/studio")) {
+    if (!user) {
+      const url = request.nextUrl.clone()
+      url.pathname = "/da"
+      return NextResponse.redirect(url)
+    }
+    const { data: profile } = await adminSupabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", user.id)
+      .maybeSingle()
+    if (!profile?.is_admin) {
+      const url = request.nextUrl.clone()
+      url.pathname = "/da"
+      return NextResponse.redirect(url)
+    }
+  }
+
   if (isProtected && !user) {
     const url = request.nextUrl.clone()
     if (strippedPath.startsWith("/profil")) {
