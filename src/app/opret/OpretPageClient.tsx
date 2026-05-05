@@ -1,12 +1,30 @@
 "use client"
 
+import { useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Anchor } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
-import { deleteCabin, deleteBoat } from "@/app/dashboard/actions"
+import {
+  deleteCabin,
+  deleteBoat,
+  duplicateCabin,
+  publishCabin,
+  unpublishCabin,
+} from "@/app/dashboard/actions"
 
 export interface CabinRow {
   id: string
@@ -29,6 +47,8 @@ interface Props {
 
 export default function OpretPageClient({ cabins, boats }: Props) {
   const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [pendingId, setPendingId] = useState<string | null>(null)
 
   function onHytteCardClick() {
     if (cabins.length === 0) router.push("/opret/hytte")
@@ -36,6 +56,46 @@ export default function OpretPageClient({ cabins, boats }: Props) {
 
   function onTransportCardClick() {
     if (boats.length === 0) router.push("/opret/baad")
+  }
+
+  function handlePublish(cabinId: string) {
+    setPendingId(cabinId)
+    startTransition(async () => {
+      const res = await publishCabin(cabinId)
+      setPendingId(null)
+      if (res.error) toast.error(res.error)
+      else { toast.success("Hytte publiceret"); router.refresh() }
+    })
+  }
+
+  function handleUnpublish(cabinId: string) {
+    setPendingId(cabinId)
+    startTransition(async () => {
+      const res = await unpublishCabin(cabinId)
+      setPendingId(null)
+      if (res.error) toast.error(res.error)
+      else { toast.success("Hytte afpubliceret"); router.refresh() }
+    })
+  }
+
+  function handleDuplicate(cabinId: string) {
+    setPendingId(cabinId)
+    startTransition(async () => {
+      const res = await duplicateCabin(cabinId)
+      setPendingId(null)
+      if (res.error) toast.error(res.error)
+      else { toast.success("Hytte duplikeret — rediger og publicér den nye"); router.refresh() }
+    })
+  }
+
+  function handleDelete(cabinId: string) {
+    setPendingId(cabinId)
+    startTransition(async () => {
+      const res = await deleteCabin(cabinId)
+      setPendingId(null)
+      if (res.error) toast.error(res.error)
+      else { toast.success("Hytte slettet"); router.refresh() }
+    })
   }
 
   return (
@@ -84,62 +144,110 @@ export default function OpretPageClient({ cabins, boats }: Props) {
       {cabins.length > 0 && (
         <section className="rounded-2xl border border-border bg-muted/20 p-4 sm:p-5 mb-6">
           <ul className="space-y-2 break-words">
-            {cabins.map((c) => (
-              <li
-                key={c.id}
-                className="flex flex-col gap-2 rounded-xl border border-border p-3 bg-white"
-              >
-                <div className="min-w-0">
-                  <p className="font-semibold text-foreground break-words">{c.title}</p>
-                  <p className="text-xs text-muted-foreground break-words">{c.location_hub}</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge
-                    className={
-                      c.published
-                        ? "bg-green-100 text-green-800 border-0"
-                        : "bg-gray-100 text-gray-600 border-0"
-                    }
-                  >
-                    {c.published ? "Aktiv" : "Kladde"}
-                  </Badge>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      asChild
-                      size="sm"
-                      variant="outline"
-                      className="rounded-lg text-xs h-8"
-                    >
-                      <Link href={`/opret/hytte/${c.id}/rediger`}>Rediger</Link>
-                    </Button>
-                    <Button
-                      asChild
-                      size="sm"
-                      variant="outline"
-                      className="rounded-lg text-xs h-8"
-                    >
-                      <Link href={`/opret/hytte/${c.id}/tilgaengelighed`}>Tilgængelighed</Link>
-                    </Button>
-                    <Button asChild size="sm" className="rounded-lg text-xs h-8">
-                      <Link href={`/opret/opslag/hytte/${c.id}`}>Udlej denne</Link>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={async () => {
-                        if (!confirm("Slet hytten? Den fjernes permanent efter 30 dage.")) return
-                        const res = await deleteCabin(c.id)
-                        if (res.error) toast.error(res.error)
-                        else { toast.success("Hytte slettet"); router.refresh() }
-                      }}
-                      className="rounded-lg text-xs h-8 text-destructive hover:bg-destructive/10"
-                    >
-                      Slet
-                    </Button>
+            {cabins.map((c) => {
+              const busy = isPending && pendingId === c.id
+              return (
+                <li
+                  key={c.id}
+                  className="flex flex-col gap-2 rounded-xl border border-border p-3 bg-white"
+                >
+                  <div className="min-w-0">
+                    <p className="font-semibold text-foreground break-words">{c.title}</p>
+                    <p className="text-xs text-muted-foreground break-words">{c.location_hub}</p>
                   </div>
-                </div>
-              </li>
-            ))}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge
+                      className={
+                        c.published
+                          ? "bg-green-100 text-green-800 border-0"
+                          : "bg-gray-100 text-gray-600 border-0"
+                      }
+                    >
+                      {c.published ? "Aktiv" : "Kladde"}
+                    </Badge>
+                    <div className="flex flex-wrap gap-2">
+                      {/* Rediger */}
+                      <Button asChild size="sm" variant="outline" className="rounded-lg text-xs h-8">
+                        <Link href={`/opret/hytte/${c.id}/rediger`}>Rediger</Link>
+                      </Button>
+                      {/* Tilgængelighed */}
+                      <Button asChild size="sm" variant="outline" className="rounded-lg text-xs h-8">
+                        <Link href={`/opret/hytte/${c.id}/tilgaengelighed`}>Tilgængelighed</Link>
+                      </Button>
+
+                      {!c.published ? (
+                        /* Kladde → Publicér */
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busy}
+                          onClick={() => handlePublish(c.id)}
+                          className="rounded-lg text-xs h-8 border-green-300 text-green-700 hover:bg-green-50"
+                        >
+                          Publicér
+                        </Button>
+                      ) : (
+                        /* Aktiv → Afpublicér (med AlertDialog) + Dupliker */
+                        <>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={busy}
+                                className="rounded-lg text-xs h-8 border-amber-300 text-amber-700 hover:bg-amber-50"
+                              >
+                                Afpublicér
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Afpublicér hytte?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Hytten bliver usynlig for gæster og kan ikke bookes. Eksisterende bookinger påvirkes ikke.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Annuller</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleUnpublish(c.id)}
+                                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                                >
+                                  Afpublicér
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={busy}
+                            onClick={() => handleDuplicate(c.id)}
+                            className="rounded-lg text-xs h-8 text-muted-foreground"
+                          >
+                            Dupliker
+                          </Button>
+                        </>
+                      )}
+
+                      {/* Slet */}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={async () => {
+                          if (!confirm("Slet hytten? Den fjernes permanent efter 30 dage.")) return
+                          handleDelete(c.id)
+                        }}
+                        className="rounded-lg text-xs h-8 text-destructive hover:bg-destructive/10"
+                      >
+                        Slet
+                      </Button>
+                    </div>
+                  </div>
+                </li>
+              )
+            })}
           </ul>
           <div className="pt-3 border-t border-border mt-3">
             <Link href="/opret/hytte" className="text-sm font-medium text-primary hover:underline">

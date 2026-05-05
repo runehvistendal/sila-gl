@@ -14,7 +14,22 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatKr } from "@/lib/money"
 import BookingRow, { STATUS_COLORS, STATUS_LABELS, type CabinBookingData } from "./components/BookingRow"
-import { acceptTransportRequest, declineTransportRequest, duplicateCabin, duplicateBoat, deleteCabin, deleteBoat } from "./actions"
+import {
+  acceptTransportRequest, declineTransportRequest,
+  duplicateCabin, duplicateBoat, deleteCabin, deleteBoat,
+  publishCabin, unpublishCabin,
+} from "./actions"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import EmptyState from "./components/EmptyState"
 import OpenRequestsList, { type TransportRequestData } from "./components/OpenRequestsList"
 import ProviderOverviewTab from "./components/ProviderOverviewTab"
@@ -521,15 +536,15 @@ export default function DashboardClient({
                             <Badge className={c.published ? "bg-green-100 text-green-700 border-0" : "bg-gray-100 text-gray-500 border-0"}>
                               {c.published ? "Aktiv" : "Kladde"}
                             </Badge>
-                            <Button size="sm" variant="outline" asChild className="text-primary border-primary/30 hover:bg-primary/5 rounded-lg">
-                              <Link href={`/opret/opslag/hytte/${c.id}`}>Udlej nu</Link>
-                            </Button>
+                            {/* Rediger */}
                             <Button size="sm" variant="outline" asChild className="rounded-lg">
                               <Link href={`/opret/hytte/${c.id}/rediger`}>Rediger</Link>
                             </Button>
+                            {/* Tilgængelighed */}
                             <Button size="sm" variant="outline" asChild className="rounded-lg">
                               <Link href={`/opret/hytte/${c.id}/tilgaengelighed`}>Tilgængelighed</Link>
                             </Button>
+                            {/* Se-ikon */}
                             <Button
                               size="sm"
                               variant="ghost"
@@ -541,24 +556,75 @@ export default function DashboardClient({
                                 <Eye className="w-4 h-4" />
                               </Link>
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              disabled={isDuplicating}
-                              onClick={() =>
-                                startDuplicate(async () => {
-                                  const res = await duplicateCabin(c.id)
-                                  if (res.error) {
-                                    toast.error(res.error)
-                                  } else {
-                                    toast.success("Hytte duplikeret — rediger og publicer den nye")
+                            {!c.published ? (
+                              /* Kladde → Publicér */
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={isDuplicating}
+                                onClick={async () => {
+                                  const res = await publishCabin(c.id)
+                                  if (res.error) toast.error(res.error)
+                                  else { toast.success("Hytte publiceret"); router.refresh() }
+                                }}
+                                className="rounded-lg text-xs border-green-300 text-green-700 hover:bg-green-50"
+                              >
+                                Publicér
+                              </Button>
+                            ) : (
+                              /* Aktiv → Afpublicér + Dupliker */
+                              <>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={isDuplicating}
+                                      className="rounded-lg text-xs border-amber-300 text-amber-700 hover:bg-amber-50"
+                                    >
+                                      Afpublicér
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Afpublicér hytte?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Hytten bliver usynlig for gæster og kan ikke bookes. Eksisterende bookinger påvirkes ikke.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Annuller</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={async () => {
+                                          const res = await unpublishCabin(c.id)
+                                          if (res.error) toast.error(res.error)
+                                          else { toast.success("Hytte afpubliceret"); router.refresh() }
+                                        }}
+                                        className="bg-amber-600 hover:bg-amber-700 text-white"
+                                      >
+                                        Afpublicér
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  disabled={isDuplicating}
+                                  onClick={() =>
+                                    startDuplicate(async () => {
+                                      const res = await duplicateCabin(c.id)
+                                      if (res.error) toast.error(res.error)
+                                      else toast.success("Hytte duplikeret — rediger og publicér den nye")
+                                    })
                                   }
-                                })
-                              }
-                              className="rounded-lg text-xs text-muted-foreground"
-                            >
-                              Dupliker
-                            </Button>
+                                  className="rounded-lg text-xs text-muted-foreground"
+                                >
+                                  Dupliker
+                                </Button>
+                              </>
+                            )}
+                            {/* Slet */}
                             <Button
                               size="sm"
                               variant="ghost"

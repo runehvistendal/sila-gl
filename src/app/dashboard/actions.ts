@@ -123,6 +123,34 @@ export async function duplicateCabin(cabinId: string): Promise<{ error?: string 
   return {}
 }
 
+export async function publishCabin(cabinId: string): Promise<{ error?: string }> {
+  const { supabase, user } = await requireSession()
+  const { error } = await supabase
+    .from("cabins")
+    .update({ published: true })
+    .eq("id", cabinId)
+    .eq("owner_id", user.id)
+    .is("deleted_at", null)
+  if (error) return { error: error.message }
+  revalidatePath("/dashboard")
+  revalidatePath("/opret")
+  return {}
+}
+
+export async function unpublishCabin(cabinId: string): Promise<{ error?: string }> {
+  const { supabase, user } = await requireSession()
+  const { error } = await supabase
+    .from("cabins")
+    .update({ published: false })
+    .eq("id", cabinId)
+    .eq("owner_id", user.id)
+    .is("deleted_at", null)
+  if (error) return { error: error.message }
+  revalidatePath("/dashboard")
+  revalidatePath("/opret")
+  return {}
+}
+
 export async function deleteCabin(cabinId: string): Promise<{ error?: string }> {
   const { supabase, user } = await requireSession()
   const { error } = await supabase
