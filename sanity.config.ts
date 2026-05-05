@@ -6,7 +6,7 @@ import { schemaTypes } from "./sanity/schemas"
 export default defineConfig({
   name: "sila-gl",
   title: "Sila.gl",
-  projectId: "1u0y9jmk",
+  projectId: "lu0y9jmk",
   dataset: "production",
   plugins: [structureTool(), visionTool()],
   schema: { types: schemaTypes },

@@ -79,3 +79,12 @@
 ## Sikkerhed
 - Stripe end-to-end IKKE testet live — kritisk før lancering
 - Testbrugerne (Malik, Sara, Hans, Aviaja) er fake uden auth
+
+## Hurtig reference (ny chat — teknisk)
+- **Proxy:** Kun `src/proxy.ts` — aldrig genopfind `middleware.ts` (Next.js 16 konflikt).
+- **Locale-URLs:** `@/i18n/navigation` til `Link` / `useRouter` — ikke `next/navigation`.
+- **Studio:** Kun `https://…/studio` (øverst i domænet, ikke `/da/studio`). Kræver login + `is_admin`.
+- **Sanity-projekt:** `lu0y9jmk` + `production`; CORS `localhost:3000` med credentials hvis Studio fejler.
+- **SEO-filer:** `src/lib/metadata.ts`, `src/app/sitemap.ts`, `src/app/robots.ts`, `src/components/seo/JsonLd.tsx`.
+- **Transport-stednavne:** `getLocationName()` i `greenlandLocations.ts`.
+- Fuld agent-kontekst: **`CLAUDE.md`** (inkl. nye afsnit om i18n, SEO, Sanity-env, Next 16).

@@ -63,7 +63,7 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - **/profil/[id]** — offentlig profilside med anmeldelser og gennemsnitsscore ✅
 - **DB: cabin_requests tabel** — guest_id, cabin_id (nullable), location, desired_check_in, desired_check_out, num_guests, max_price_ore, description, status (open|matched|cancelled|expired), RLS ✅
 - **Footer** — `src/components/layout/Footer.tsx`, root layout, vises på alle sider ✅
-- **/admin** — dashboard (nøgletal), /brugere, /hytter, /bookinger, /anmodninger. `is_admin` boolean på profiles. Middleware + layout bruger service_role til is_admin-tjek ✅
+- **/admin** — dashboard (nøgletal), /brugere, /hytter, /bookinger, /anmodninger. `is_admin` på profiles. **`proxy.ts`** + admin-layout bruger service_role til is_admin-tjek ✅
 - **/opret/baad** — to knapper: "Gem båd" (→ /opret) + "Gem og opret tur →" (→ /opret/samsejlads?baadId=X) ✅
 - **/opret/samsejlads** — ny side: bådvælger, fra/til (GREENLAND_LOCATIONS), dato/tid (lokal tid → UTC server-side), pladser, tur/retur-pris (primær) + enkelttur (60% auto-forslag, kan overskrives), returtur checkbox med linked ride_shares ✅
 - **/opret/hytte** — billeder + alle felter på én side (PendingCabinImageUpload, Cloudinary `sila/cabins/pending`), redirect → /opret/hytte/[id]/tilgaengelighed ✅
@@ -137,6 +137,35 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - **Nye sider (locale):** `/om`, `/faq`, `/vilkaar`, `/privatlivspolitik`, `/udbyderguide`, `/blog`, `/blog/[slug]` (+ eksisterende destinationssider beriger med Sanity)
 - **Visual Editing + Page Builder** er næste opgave
 - **CORS:** Tilføj `http://localhost:3000` (og production-URL) med **Allow credentials** i Sanity dashboard for embedded Studio
+
+## Miljøvariabler (Sanity — ikke secrets i repo)
+- `NEXT_PUBLIC_SANITY_PROJECT_ID` (= `lu0y9jmk`)
+- `NEXT_PUBLIC_SANITY_DATASET` (typisk `production`)
+- `SANITY_API_TOKEN` i `.env.local` / Vercel — kun server-side workflows der kræver det; offentlig læsning til sideindhold bruger CDN uden token
+
+## i18n, navigation og formatering
+- **Locales:** `da`, `en` i `src/i18n/routing.ts` (`localePrefix: "always"`). **`kl` kommer senere** — Sanity-felter `_kl` findes allerede.
+- **Navigation:** Brug **`Link`, `redirect`, `useRouter`, `usePathname`** fra `@/i18n/navigation` — ikke `next/navigation` — så URLs får korrekt `/da/` eller `/en/`-prefix.
+- **Sprog i DB:** `profiles.language` som `'da' | 'en'`; Navbar kalder **`updateLanguage`** (`src/app/actions/language.ts`).
+- **Efter OAuth:** `src/app/auth/callback/route.ts` omdirigerer til brugerens foretrukne locale (`profiles.language`) og stripper evt. forkert prefixed `next`-URL.
+- **Oversættelser:** `messages/da.json` + `messages/en.json`; server: **`getTranslations`**, klient: **`useTranslations`**.
+- **Dato/pris:** Klient: **`useFormatter()`** fra `next-intl` og **`useFormatPrice()`** (`src/hooks/useFormatPrice.ts`). Server: `getFormatter()` hvor relevant. Penge i DB forbliver **øre** (`src/lib/money.ts`).
+- **Lokationsnavne (transport):** `getLocationName()` i `src/lib/greenlandLocations.ts` — DB gemmer lowercase nøgle; vis **`name_dk`**.
+
+## SEO og metadata (implementeret grundlag)
+- **`buildMetadata`** — `src/lib/metadata.ts` (canonical, hreflang DA/EN, Open Graph, Twitter).
+- **Structured data:** `src/components/seo/JsonLd.tsx` med `cleanSchema()` (ingen `undefined` i JSON-LD).
+- **Sitemap / robots:** `src/app/sitemap.ts`, `src/app/robots.ts` (rod under `src/app/`).
+- **Destination:** `src/app/[locale]/destination/[slug]/page.tsx`, statisk liste i `src/lib/destinations.ts`; Sanity **`getDestination`** kan overskrive beskrivelse/hero/metadata med fallback til `DESTINATIONS`.
+- **`next-intl` plugin:** `next.config.ts` via `createNextIntlPlugin("./src/i18n/request.ts")`.
+
+## Next.js 16 — vigtige filer
+- **`src/proxy.ts`** — eneste request-proxy (uden `middleware.ts`). **`export async function proxy`** + **`export const config.matcher`**. Kombinerer next-intl og Supabase; **`/studio` afkortet før intl**.
+- **`src/app/layout.tsx`** — global `<html>` / `<body>`, font, **`getLocale()`** til `lang`. **`src/app/[locale]/layout.tsx`** — `NextIntlClientProvider`, Footer, Toaster (ingen anden dokument-shell).
+- **Next.js dokumentation:** Læs `node_modules/next/dist/docs/` før antagelser om API (se `AGENTS.md`).
+
+## Kendte huller / teknisk gæld
+- **cookies-side:** Footer linker ikke længere til `/cookies`; hvis politikken skal frem — tilføj side (evt. Sanity `page` slug `cookies`) eller link fra footer.
 
 ## Påmindelser inden lancering
 - Destinationssider poleres
