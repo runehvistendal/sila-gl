@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation"
 import { Anchor } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
+import { deleteCabin, deleteBoat } from "@/app/dashboard/actions"
 
 export interface CabinRow {
   id: string
@@ -113,6 +115,19 @@ export default function OpretPageClient({ cabins, boats }: Props) {
                     <Button asChild size="sm" className="rounded-lg text-xs h-8">
                       <Link href={`/opret/opslag/hytte/${c.id}`}>Udlej denne</Link>
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={async () => {
+                        if (!confirm("Slet hytten? Den fjernes permanent efter 30 dage.")) return
+                        const res = await deleteCabin(c.id)
+                        if (res.error) toast.error(res.error)
+                        else { toast.success("Hytte slettet"); router.refresh() }
+                      }}
+                      className="rounded-lg text-xs h-8 text-destructive hover:bg-destructive/10"
+                    >
+                      Slet
+                    </Button>
                   </div>
                 </div>
               </li>
@@ -151,6 +166,19 @@ export default function OpretPageClient({ cabins, boats }: Props) {
                   </Button>
                   <Button asChild size="sm" className="rounded-lg text-xs h-8">
                     <Link href={`/opret/opslag/sejlads/${b.id}`}>Post tur</Link>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={async () => {
+                      if (!confirm("Slet båden? Den fjernes permanent efter 30 dage.")) return
+                      const res = await deleteBoat(b.id)
+                      if (res.error) toast.error(res.error)
+                      else { toast.success("Båd slettet"); router.refresh() }
+                    }}
+                    className="rounded-lg text-xs h-8 text-destructive hover:bg-destructive/10"
+                  >
+                    Slet
                   </Button>
                 </div>
               </li>

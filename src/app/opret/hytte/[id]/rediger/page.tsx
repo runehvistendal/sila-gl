@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
 import HytteForm from "@/app/opret/hytte/HytteForm"
+import AvailabilityCalendar from "@/app/opret/hytte/[id]/tilgængelighed/AvailabilityCalendar"
 
 export const metadata = {
   title: "Rediger hytte — Sila.gl",
@@ -42,6 +43,35 @@ export default async function RedigerHyttePage({ params, searchParams }: PagePro
     .single()
 
   if (error || !cabin) notFound()
+
+  // Blocked dates
+  const { data: blockedRows } = await supabase
+    .from("cabin_availability")
+    .select("date")
+    .eq("cabin_id", id)
+    .eq("is_available", false)
+
+  const initialBlocked = (blockedRows ?? []).map((r) => r.date as string)
+
+  // Booked dates (confirmed + pending)
+  const today = new Date().toISOString().split("T")[0]
+  const { data: bookedRows } = await supabase
+    .from("cabin_bookings")
+    .select("check_in, check_out")
+    .eq("cabin_id", id)
+    .in("status", ["confirmed", "pending"])
+    .gte("check_out", today)
+    .is("deleted_at", null)
+
+  const bookedDates: string[] = []
+  for (const b of bookedRows ?? []) {
+    const cur = new Date(b.check_in)
+    const end = new Date(b.check_out)
+    while (cur < end) {
+      bookedDates.push(cur.toISOString().split("T")[0])
+      cur.setDate(cur.getDate() + 1)
+    }
+  }
 
   const isNewlySaved = toastParam === "hytte-saved"
 
@@ -92,6 +122,17 @@ export default async function RedigerHyttePage({ params, searchParams }: PagePro
             images: (cabin.images ?? []) as string[],
           }}
         />
+
+        <section className="mt-10 pt-8 border-t border-border">
+          <h2 className="text-lg font-semibold mb-4">Tilgængelighed</h2>
+          <div className="bg-white rounded-2xl border border-border shadow-sm p-6">
+            <AvailabilityCalendar
+              cabinId={id}
+              initialBlocked={initialBlocked}
+              bookedDates={bookedDates}
+            />
+          </div>
+        </section>
       </div>
     </main>
   )
