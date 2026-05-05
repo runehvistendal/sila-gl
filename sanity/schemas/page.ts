@@ -16,6 +16,18 @@ export default defineType({
       options: { source: "title_da" },
     }),
     defineField({
+      name: "sections",
+      title: "Sektioner",
+      type: "array",
+      of: [
+        { type: "heroSection" },
+        { type: "textImageSection" },
+        { type: "faqSection" },
+        { type: "ctaSection" },
+        { type: "imageGallerySection" },
+      ],
+    }),
+    defineField({
       name: "body_da",
       title: "Indhold (dansk)",
       type: "array",
