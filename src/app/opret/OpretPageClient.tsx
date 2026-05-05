@@ -151,10 +151,13 @@ export default function OpretPageClient({ cabins, boats }: Props) {
                   key={c.id}
                   className="flex flex-col gap-2 rounded-xl border border-border p-3 bg-white"
                 >
-                  <div className="min-w-0">
-                    <p className="font-semibold text-foreground break-words">{c.title}</p>
+                  <Link
+                    href={c.published ? `/hytter/${c.id}` : `/opret/hytte/${c.id}/rediger`}
+                    className="min-w-0 group"
+                  >
+                    <p className="font-semibold text-foreground break-words group-hover:underline">{c.title}</p>
                     <p className="text-xs text-muted-foreground break-words">{c.location_hub}</p>
-                  </div>
+                  </Link>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge
                       className={

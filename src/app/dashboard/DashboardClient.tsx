@@ -517,21 +517,31 @@ export default function DashboardClient({
                     <div className="space-y-3">
                       {myCabins.map((c) => (
                         <div key={c.id} className="bg-white rounded-xl border border-border p-4 flex gap-4 items-center">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={c.images?.[0] ?? "https://images.unsplash.com/photo-1510798831971-661eb04b3739?w=100&h=80&fit=crop"}
-                            alt=""
-                            className="w-16 h-16 rounded-lg object-cover shrink-0"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-sm text-foreground truncate">{c.title}</p>
+                          {/* Klikbart billede */}
+                          <Link
+                            href={c.published ? `/hytter/${c.id}` : `/opret/hytte/${c.id}/rediger`}
+                            className="shrink-0 group"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={c.images?.[0] ?? "https://images.unsplash.com/photo-1510798831971-661eb04b3739?w=100&h=80&fit=crop"}
+                              alt=""
+                              className="w-16 h-16 rounded-lg object-cover transition-opacity group-hover:opacity-80"
+                            />
+                          </Link>
+                          {/* Klikbart navn + lokation */}
+                          <Link
+                            href={c.published ? `/hytter/${c.id}` : `/opret/hytte/${c.id}/rediger`}
+                            className="flex-1 min-w-0 group"
+                          >
+                            <p className="font-semibold text-sm text-foreground truncate group-hover:underline">{c.title}</p>
                             <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                               <MapPin className="w-3 h-3" />{c.location_hub}
                             </p>
                             <p className="text-xs font-medium text-primary mt-1">
                               {formatKr(c.price_per_night_ore)}/nat
                             </p>
-                          </div>
+                          </Link>
                           <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                             <Badge className={c.published ? "bg-green-100 text-green-700 border-0" : "bg-gray-100 text-gray-500 border-0"}>
                               {c.published ? "Aktiv" : "Kladde"}
@@ -543,18 +553,6 @@ export default function DashboardClient({
                             {/* Tilgængelighed */}
                             <Button size="sm" variant="outline" asChild className="rounded-lg">
                               <Link href={`/opret/hytte/${c.id}/tilgaengelighed`}>Tilgængelighed</Link>
-                            </Button>
-                            {/* Se-ikon */}
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              asChild
-                              className="rounded-lg"
-                              title={c.published ? "Se offentlig side" : "Hytten er ikke publiceret — rediger"}
-                            >
-                              <Link href={c.published ? `/hytter/${c.id}` : `/opret/hytte/${c.id}/rediger`}>
-                                <Eye className="w-4 h-4" />
-                              </Link>
                             </Button>
                             {!c.published ? (
                               /* Kladde → Publicér */
