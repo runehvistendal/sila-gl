@@ -9,7 +9,10 @@ Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort 
 
 ## Status (5.5.2026)
 
-- `/admin`: dashboard, brugere, hytter, bookinger, anmodninger. is_admin + service_role middleware
+- `/admin`: dashboard, brugere, hytter, bookinger, anmodninger — `is_admin` + `proxy.ts` + service_role
+- **`/studio`:** Sanity Studio (`is_admin`; håndteres i `proxy.ts` før next-intl — intet `/da`-prefix)
+- **Sanity CMS:** `lu0y9jmk` / `production`, schemas med `_da`/`_en`/`_kl`, queries + PortableText — se [hukommelse.md](hukommelse.md)
+- **SEO grundlag:** metadata, sitemap, robots, `/destination/[slug]`, JsonLd
 - `/opret/baad`: to knapper — "Gem båd" + "Gem og opret tur →"
 - `/opret/samsejlads`: ny side, tur/retur-pris (primær) + enkelttur 60% auto-forslag
 - `/opret/hytte`: billeder + alle felter på én side (PendingCabinImageUpload)
@@ -29,8 +32,8 @@ Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort 
 
 ## Næste fokus
 
-- **i18n** — dansk + engelsk med next-intl
-- Derefter: SEO → Stripe live-test → PostHog → lancering
+- **Sanity:** Visual Editing + Page Builder
+- Stripe live-test → PostHog → se **Påmindelser inden lancering** i `hukommelse.md`
 
 ## Vigtige beslutninger (gældende)
 
@@ -43,7 +46,7 @@ Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort 
 - **amenityMeta.ts:** AMENITY_META (display) + AMENITY_FILTER_KEYS (18 DB-nøgler til filterpanel).
 - **TransportDrawer props:** `id` (ride_share_id), `seats`, `onClose`.
 - **cabin_availability:** gemmer BLOKEREDE datoer (is_available=false) — ledige er default.
-- **Admin-middleware:** service_role key til is_admin-tjek (anon-key blokeres af RLS).
+- **Admin / proxy:** service_role key til is_admin-tjek i `proxy.ts` (anon-key blokeres af RLS).
 - **Samsejlads pris:** tur/retur primær → enkelttur = 60% auto-forslag (kan overskrives).
 - **AvailabilityCalendar settings:** min_nights (1-30) + preparation_days (0/1/2/3) gemmes via saveCabinSettings (hurtig-gem) eller saveAll (kombineret med tilgængelighed).
 - **Publish/unpublish:** `publishCabin` + `unpublishCabin` i `src/app/dashboard/actions.ts`.

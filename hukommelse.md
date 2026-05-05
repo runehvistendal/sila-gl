@@ -6,7 +6,7 @@
 - /dashboard, /anmod, /opret, /profil ✅
 - Stripe Connect, bookingflow, anmeldelser, Mapbox ✅
 - cabin_requests tabel ✅
-- /admin ✅ — dashboard, brugere, hytter, bookinger, anmodninger (is_admin, middleware, service_role)
+- /admin ✅ — dashboard, brugere, hytter, bookinger, anmodninger (`is_admin`; `proxy.ts` + service_role)
 - /opret/baad ✅ — "Gem båd" + "Gem og opret tur →"
 - /opret/samsejlads ✅ — bådvælger, fra/til, dato/tid, pladser, tur/retur pris (60% enkelttur), returtur, UTC
 - /opret/hytte ✅ — billeder + alle felter på én side (Cloudinary pending upload)
@@ -36,23 +36,45 @@
 - Primær testkonto: rune.runesen@gmail.com
 
 ## Næste trin
-1. ~~i18n — dansk + engelsk med next-intl~~ ✅ FÆRDIG — se detaljer nedenfor
-2. SEO — metadata, sitemap, landingssider pr. destination
-3. Stripe live-test end-to-end — kritisk inden lancering
-4. PostHog analytics — installer inden lancering
-5. Lancering — første 20 udbydere
+1. ~~i18n — dansk + engelsk med next-intl~~ ✅ FÆRDIG — se nedenfor
+2. ~~SEO grundlag~~ ✅ FÆRDIG — `src/lib/metadata.ts`, `sitemap.ts`, `robots.ts`, `/destination/[slug]`, JsonLd (forside, hytte, transport, destination); polering + indhold se **Påmindelser**
+3. **Sanity:** Visual Editing + Page Builder (næste opgave)
+4. Stripe live-test end-to-end — kritisk inden lancering
+5. PostHog analytics — installer inden lancering
+6. Lancering — første 20 udbydere
+
+## Sanity CMS (5.5.2026)
+- Sanity Studio kører på `/studio` — beskyttet af `is_admin` (prioritet **før** next-intl i `proxy.ts`, da Studio ikke må få `/da`-prefix)
+- **Project ID:** `lu0y9jmk`, **dataset:** `production` (`sanity.config.ts`, `sanity.cli.ts`, `NEXT_PUBLIC_SANITY_PROJECT_ID` i env)
+- **Schemas:** homePage, destination, page, post, globalSettings (`sanity/schemas/`)
+- Lokalisering: `_da`, `_en`, **`_kl`** (Kalaallisut forberedt; `routing` har endnu ikke `kl` — fase 4)
+- **Fallback:** `content?.[`felt_${locale}`] ?? content?.felt_da`; GROQ i `safeFetch`-wrapper så manglende dataset/API ikke crasher siden
+- **GROQ:** `src/lib/sanity.queries.ts` · **Portable tekst:** `src/components/sanity/PortableTextRenderer.tsx`
+- **Klient:** `src/lib/sanity.ts` (next-sanity + image-url) · **Root:** `sanity.cli.ts` til CLI (`cors add` m.m.)
+- **CMS-sider (locale-prefix):** `/om`, `/faq`, `/vilkaar`, `/privatlivspolitik`, `/udbyderguide`, `/blog`, `/blog/[slug]` — `revalidate = 3600` hvor relevant
+- Forside + destination + footer henter Sanity med fallback til `messages` / `destinations.ts`
+- **Visual Editing + Page Builder** er næste opgave
+
+## Påmindelser inden lancering
+- Destinationssider poleres
+- Indholdsmæssig SEO
+- Lighthouse-test
+- PostHog analytics
+- MobilePay til Stripe
+- Udbyderguide
+- Stripe live-test end-to-end
 
 ## i18n — dansk + engelsk (færdig 5.5.2026)
 - **next-intl** installeret og konfigureret
 - **Routing:** `localePrefix: "always"` → /da/... og /en/...
 - **Filer:** `src/i18n/routing.ts`, `src/i18n/request.ts`, `src/i18n/navigation.ts`
 - **Messages:** `messages/da.json` + `messages/en.json` (comprehensive, alle namespaces)
-- **proxy.ts:** Erstatter middleware.ts — combinerer next-intl + Supabase auth middleware
-- **App-struktur:** Alle sider under `src/app/[locale]/`; api/, auth/, stripe/ forbliver på rodniveau
-- **Oversat (fase 1):** Landingpage, /hytter, /transport, Navbar, Footer
-- **Navbar:** Fungerende locale-skifter (dropdown med 🇩🇰 Dansk / 🇬🇧 English) + opdaterer profiles.language i DB
-- **Import-fix:** Alle shared components opdateret til `@/app/[locale]/...` paths
-- **Ikke oversat (fase 2):** Dashboard, /opret, /admin, /profil — bruger hardkodet dansk for nu
+- **`proxy.ts`:** Next.js 16 proxy — kombinerer next-intl + Supabase; `/studio` håndteres uden locale-prefix
+- **`src/app/layout.tsx`:** `<html>` / `<body>` + font; **`[locale]/layout.tsx`:** providers + Footer (ingen dobbelt shell)
+- **App-struktur:** Sider under `src/app/[locale]/`; `/studio` ved roden; api/, auth/, stripe/ på rodniveau
+- **Oversat:** Landingpage, /hytter, /transport, Navbar, Footer, /opret, /admin, /profil, /anmod, mange delte komponenter
+- **Navbar:** Locale-skifter + `profiles.language` via server action
+- **Import-fix:** `@/app/[locale]/...` hvor relevant
 
 ## Sikkerhed
 - Stripe end-to-end IKKE testet live — kritisk før lancering

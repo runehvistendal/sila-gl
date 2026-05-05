@@ -12,7 +12,7 @@ Grønlands marketplace for hytteudlejning og samsejlads.
 - Supabase: pngpelcaodbwwggaeyue (West EU Ireland)
 
 ## Stack
-Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Vercel 
+Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Vercel + **Sanity** (CMS)
 **Font:** Plus Jakarta Sans
 
 ## Udvikler- og testkonti (DB)
@@ -71,7 +71,7 @@ Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Ver
 - **cabin_availability semantik vendt** — gemmer nu BLOKEREDE datoer (is_available=false). Alle fremtidige datoer er ledige som standard ✅
 - **Æ-fix i mappenavn** — `tilgaengelighed` (ASCII-safe, undgår Windows-fejl) ✅
 - **Duplicate location keys** — 7 dubletter slettet fra `greenlandLocations.ts` (Qeqertarsuaq ×3, Tasiilaq ×2, Uummannaq ×4, Sisimiut ×2 → én by pr. navn). React-keys opdateret til `postal_code-name_dk` i alle 4 dropdown-filer ✅
-- **middleware.ts beholdt** — proxy.ts-rename reverteret; Next.js kræver præcist dette filnavn for auth-middleware ✅
+- **Request proxy:** `src/proxy.ts` (Next.js 16) — next-intl + Supabase; `/studio` før intl (intet `/da`-prefix). Eksporterer `proxy` + `matcher` ✅
 - **AvailabilityCalendar** — rent klik-baseret (ingen drag): klik 1 = periodestart (mørk markering), klik 2 = fuldfør periode. Hover-preview viser påvirkede datoer. Annuller-banner. Farver via inline style ✅
 - **saveAvailability / saveAll** — returnerer `{ redirectTo }` / `{ error }`, aldrig `redirect()` direkte. `saveAll` gemmer settings + tilgængelighed + publicering i ét kald ✅
 - **min_nights + preparation_days** — migration `20260505120000_min_nights_preparation.sql` pushet. UI i AvailabilityCalendar (settings-sektion øverst med separat "Gem indstillinger"). Server-side validering i bookings.ts. CabinBookingWidget viser amber-advarsel ved for få nætter ✅
@@ -120,11 +120,32 @@ Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Ver
 - **OBS:** "Udlej nu/denne" findes ikke længere — publicering sker via Publicér-knappen direkte
 
 ## Næste i rækkefølge
-1. i18n dansk + engelsk (next-intl)
-3. SEO — metadata, sitemap, landingssider pr. destination
+1. ~~i18n dansk + engelsk (next-intl)~~ ✅
+2. ~~SEO grundlag~~ ✅ — `metadata.ts`, `sitemap.ts`, `robots.ts`, `/destination/[slug]`, JsonLd; polering se **Påmindelser inden lancering**
+3. **Sanity:** Visual Editing + Page Builder
 4. Stripe live-test end-to-end — kritisk inden lancering
 5. PostHog analytics — installer inden lancering
 6. Lancering — første 20 udbydere
+
+## Sanity CMS (5.5.2026)
+- Sanity Studio kører på `/studio` — beskyttet af `is_admin` (`proxy.ts`: studio **før** next-intl, ellers `/da/studio`-404)
+- **Project ID:** `lu0y9jmk`, **dataset:** `production` (`sanity.config.ts`, `sanity.cli.ts`, `.env`: `NEXT_PUBLIC_SANITY_PROJECT_ID`)
+- **Schemas:** homePage, destination, page, post, globalSettings (`sanity/schemas/`)
+- Alle relevante felter har `_da`, `_en`, **`_kl`** (Kalaallisut forberedt; `src/i18n/routing.ts` har endnu ikke `kl` — fase 4)
+- **Fallback:** `content?.[`felt_${locale}`] ?? content?.felt_da`; queries i `src/lib/sanity.queries.ts` bruger fejlsikker `fetch` (null ved API/dataset-fejl)
+- **Portable tekst:** `src/components/sanity/PortableTextRenderer.tsx` · **Klient:** `src/lib/sanity.ts`
+- **Nye sider (locale):** `/om`, `/faq`, `/vilkaar`, `/privatlivspolitik`, `/udbyderguide`, `/blog`, `/blog/[slug]` (+ eksisterende destinationssider beriger med Sanity)
+- **Visual Editing + Page Builder** er næste opgave
+- **CORS:** Tilføj `http://localhost:3000` (og production-URL) med **Allow credentials** i Sanity dashboard for embedded Studio
+
+## Påmindelser inden lancering
+- Destinationssider poleres
+- Indholdsmæssig SEO
+- Lighthouse-test
+- PostHog analytics
+- MobilePay til Stripe
+- Udbyderguide
+- Stripe live-test end-to-end
 
 ## Aktiv arkitektur: aktiver + opslag
 - Aktiver: cabins (hytte) + boats (båd) — gemmes med `published=false` indtil opslag
@@ -160,7 +181,7 @@ Rolle-**UPDATE** (reconcile, server): `src/lib/supabase-service.ts` med **`SUPAB
 - **service_role** (`createServiceClient` i `supabase-service.ts`): bruges **KUN** til UPDATE af `profiles.role_type` (reconcile) + cancel-operationer der passerer update-guard-trigger — **aldrig** som generel dataklient. Øvrige queries: almindelig **anon + session** (`createClient` server).
 - `host_id` / `owner_id` sættes via `auth.uid()` server-side
 - Reviews kræver completed booking (RLS)
-- Admin-ruter: middleware + RLS
+- Admin-ruter: `proxy.ts` + RLS
 - Filtrering **ALTID** i Supabase query — aldrig «hemmelig» forretningslogik kun client-side
 - **profiles følsomme felter** (`stripe_account_id`, `phone`, `stripe_onboarding_complete`): læses **ALDRIG** direkte via `.from("profiles").select(...)` fra klientkode eller server actions — brug udelukkende:
  - `get_my_sensitive_profile()` — egne data
