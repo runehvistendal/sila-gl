@@ -12,17 +12,68 @@ const adminSupabase = createClient(
 
 const handleI18nRouting = createIntlMiddleware(routing)
 
+/** Sanity Studio ligger uden for locale-prefix — må ikke køre gennem next-intl (ville omdirigere til /da/studio → 404). */
+async function studioMiddleware(request: NextRequest) {
+  let res = NextResponse.next()
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          res = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            res.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    const url = request.nextUrl.clone()
+    url.pathname = "/da"
+    return NextResponse.redirect(url)
+  }
+
+  const { data: profile } = await adminSupabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .maybeSingle()
+
+  if (!profile?.is_admin) {
+    const url = request.nextUrl.clone()
+    url.pathname = "/da"
+    return NextResponse.redirect(url)
+  }
+
+  return res
+}
+
 export async function proxy(request: NextRequest) {
-  // Run next-intl locale routing first
+  const { pathname } = request.nextUrl
+
+  if (pathname.startsWith("/studio")) {
+    return studioMiddleware(request)
+  }
+
   const intlResponse = handleI18nRouting(request)
 
-  // If intl is redirecting (locale negotiation), return immediately
   const status = intlResponse.status
   if (status === 301 || status === 302 || status === 307 || status === 308) {
     return intlResponse
   }
 
-  // Chain Supabase auth — start from intl response to preserve locale headers
   let supabaseResponse = intlResponse
 
   const supabase = createServerClient(
@@ -37,7 +88,6 @@ export async function proxy(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           )
-          // Preserve intl headers when creating the new response
           supabaseResponse = NextResponse.next({
             request,
             headers: intlResponse.headers,
@@ -50,14 +100,10 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  // VIGTIGT: brug getUser() — ikke getSession() — for at validere JWT mod Supabase
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const { pathname } = request.nextUrl
-
-  // Strip locale prefix to get the raw path for route matching
   const localePattern = new RegExp(
     `^/(${routing.locales.join("|")})(/.*)?(\\?.*)?$`
   )
@@ -68,25 +114,6 @@ export async function proxy(request: NextRequest) {
     strippedPath.startsWith("/dashboard") ||
     strippedPath.startsWith("/admin") ||
     strippedPath.startsWith("/profil")
-
-  // /studio er ikke locale-prefixet — tjek direkte i pathname
-  if (pathname.startsWith("/studio")) {
-    if (!user) {
-      const url = request.nextUrl.clone()
-      url.pathname = "/da"
-      return NextResponse.redirect(url)
-    }
-    const { data: profile } = await adminSupabase
-      .from("profiles")
-      .select("is_admin")
-      .eq("id", user.id)
-      .maybeSingle()
-    if (!profile?.is_admin) {
-      const url = request.nextUrl.clone()
-      url.pathname = "/da"
-      return NextResponse.redirect(url)
-    }
-  }
 
   if (isProtected && !user) {
     const url = request.nextUrl.clone()
@@ -99,7 +126,6 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Admin-ruter: kræver is_admin = true på profiles-rækken
   if (strippedPath.startsWith("/admin") && user) {
     const { data: profile } = await adminSupabase
       .from("profiles")
@@ -119,7 +145,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Match all page routes — skip API, auth callbacks, Stripe, static files
     "/((?!api|auth|stripe|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 }
