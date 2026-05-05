@@ -15,6 +15,7 @@ export default defineType({
     defineField({ name: "name", title: "Navn", type: "string" }),
     defineField({ name: "description_da", title: "Beskrivelse (dansk)", type: "text" }),
     defineField({ name: "description_en", title: "Beskrivelse (engelsk)", type: "text" }),
+    defineField({ name: "description_kl", title: "Beskrivelse (grønlandsk)", type: "text" }),
     defineField({
       name: "heroImage",
       title: "Hero-billede",
@@ -26,7 +27,9 @@ export default defineType({
     }),
     defineField({ name: "seoTitle_da", title: "SEO-titel (dansk)", type: "string" }),
     defineField({ name: "seoTitle_en", title: "SEO-titel (engelsk)", type: "string" }),
+    defineField({ name: "seoTitle_kl", title: "SEO-titel (grønlandsk)", type: "string" }),
     defineField({ name: "seoDescription_da", title: "SEO-beskrivelse (dansk)", type: "string" }),
     defineField({ name: "seoDescription_en", title: "SEO-beskrivelse (engelsk)", type: "string" }),
+    defineField({ name: "seoDescription_kl", title: "SEO-beskrivelse (grønlandsk)", type: "string" }),
   ],
 })

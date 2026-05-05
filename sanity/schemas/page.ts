@@ -7,6 +7,7 @@ export default defineType({
   fields: [
     defineField({ name: "title_da", title: "Titel (dansk)", type: "string" }),
     defineField({ name: "title_en", title: "Titel (engelsk)", type: "string" }),
+    defineField({ name: "title_kl", title: "Titel (grønlandsk)", type: "string" }),
     defineField({
       name: "slug",
       title: "Slug",
@@ -26,9 +27,17 @@ export default defineType({
       type: "array",
       of: [{ type: "block" }],
     }),
+    defineField({
+      name: "body_kl",
+      title: "Indhold (grønlandsk)",
+      type: "array",
+      of: [{ type: "block" }],
+    }),
     defineField({ name: "seoTitle_da", title: "SEO-titel (dansk)", type: "string" }),
     defineField({ name: "seoTitle_en", title: "SEO-titel (engelsk)", type: "string" }),
+    defineField({ name: "seoTitle_kl", title: "SEO-titel (grønlandsk)", type: "string" }),
     defineField({ name: "seoDescription_da", title: "SEO-beskrivelse (dansk)", type: "string" }),
     defineField({ name: "seoDescription_en", title: "SEO-beskrivelse (engelsk)", type: "string" }),
+    defineField({ name: "seoDescription_kl", title: "SEO-beskrivelse (grønlandsk)", type: "string" }),
   ],
 })
