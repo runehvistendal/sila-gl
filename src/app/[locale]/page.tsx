@@ -8,9 +8,9 @@ import MapWrapper from "./components/MapWrapper"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 
-const STEP_ICONS = [Search, Anchor, HomeIcon]
-const FEATURE_ICONS = [Users, Anchor]
-const STAT_ICONS = [HomeIcon, Anchor, Users, Search]
+const STEP_ICONS = [Search, Anchor, HomeIcon] as const
+const FEATURE_ICONS = [Users, Anchor] as const
+const STAT_ICONS = [HomeIcon, Anchor, Users, Search] as const
 
 const CABINS = [
   { id: 1, titleKey: "cabinsSection.demo.cabin1", location: "Ilulissat", region: "Qeqertalik", price: 1200, rating: 4.9, host: "Niels A.",  badgeKey: "cabinBadges.superhytte" },
@@ -38,9 +38,18 @@ export default async function Home({ params }: Props) {
 
   const navUser = user ? await getNavUserForPage(supabase, user) : null
 
-  const steps = t.raw("howItWorks.steps") as { title: string; desc: string }[]
-  const features = t.raw("sailSection.features") as { label: string; desc: string }[]
-  const stats = t.raw("cta.stats") as { value: string; sub: string }[]
+  const steps = ([0, 1, 2] as const).map((i) => ({
+    title: t(`howItWorks.steps.${i}.title`),
+    desc:  t(`howItWorks.steps.${i}.desc`),
+  }))
+  const features = ([0, 1] as const).map((i) => ({
+    label: t(`sailSection.features.${i}.label`),
+    desc:  t(`sailSection.features.${i}.desc`),
+  }))
+  const stats = ([0, 1, 2, 3] as const).map((i) => ({
+    value: t(`cta.stats.${i}.value`),
+    sub:   t(`cta.stats.${i}.sub`),
+  }))
 
   return (
     <main>

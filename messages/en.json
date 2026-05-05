@@ -85,11 +85,11 @@
       "title": "How Sila works",
       "subtitle": "Reserve your spot with instant confirmation",
       "step": "Step",
-      "steps": [
-        { "title": "Discover", "desc": "Find authentic experiences from local Greenlanders" },
-        { "title": "Book directly", "desc": "Reserve your spot with instant confirmation" },
-        { "title": "Experience", "desc": "Experience the Arctic on local terms — guides keep 85% of every booking" }
-      ]
+      "steps": {
+        "0": { "title": "Discover", "desc": "Find authentic experiences from local Greenlanders" },
+        "1": { "title": "Book directly", "desc": "Reserve your spot with instant confirmation" },
+        "2": { "title": "Experience", "desc": "Experience the Arctic on local terms — guides keep 85% of every booking" }
+      }
     },
     "cabinsSection": {
       "demo": {
@@ -111,10 +111,10 @@
       "title": "Local sailing —",
       "titleHighlight": "share the boat",
       "desc": "A Greenlander heading to their cabin offers a spare seat in their boat. That's how people here have always moved — and now visitors can join. Authentic, affordable and the only real way to see true Greenland.",
-      "features": [
-        { "label": "Shared seats", "desc": "Pay per seat" },
-        { "label": "Driven by locals", "desc": "Authentic experiences" }
-      ],
+      "features": {
+        "0": { "label": "Shared seats", "desc": "Pay per seat" },
+        "1": { "label": "Driven by locals", "desc": "Authentic experiences" }
+      },
       "findBoat": "Find a boat trip"
     },
     "cta": {
@@ -122,12 +122,12 @@
       "subtitle": "Authentic Arctic experiences from those who call it home",
       "createExperience": "Create your experience",
       "transport": "Transport",
-      "stats": [
-        { "value": "Free to list", "sub": "Cabins" },
-        { "value": "You set the price", "sub": "Transport routes" },
-        { "value": "Direct booking", "sub": "Travelers" },
-        { "value": "Arctic-focused", "sub": "Visibility" }
-      ]
+      "stats": {
+        "0": { "value": "Free to list", "sub": "Cabins" },
+        "1": { "value": "You set the price", "sub": "Transport routes" },
+        "2": { "value": "Direct booking", "sub": "Travelers" },
+        "3": { "value": "Arctic-focused", "sub": "Visibility" }
+      }
     },
     "heroImageAlt": "Northern lights over Greenland",
     "cabinBadges": {

@@ -85,11 +85,11 @@
       "title": "Sådan virker Sila",
       "subtitle": "Reserver din plads med øjeblikkelig bekræftelse",
       "step": "Step",
-      "steps": [
-        { "title": "Opdag", "desc": "Find autentiske oplevelser fra lokale grønlændere" },
-        { "title": "Book direkte", "desc": "Reserver din plads med øjeblikkelig bekræftelse" },
-        { "title": "Oplev", "desc": "Oplev Arktis på lokale vilkår — guider beholder 85% af hver booking" }
-      ]
+      "steps": {
+        "0": { "title": "Opdag", "desc": "Find autentiske oplevelser fra lokale grønlændere" },
+        "1": { "title": "Book direkte", "desc": "Reserver din plads med øjeblikkelig bekræftelse" },
+        "2": { "title": "Oplev", "desc": "Oplev Arktis på lokale vilkår — guider beholder 85% af hver booking" }
+      }
     },
     "cabinsSection": {
       "demo": {
@@ -111,10 +111,10 @@
       "title": "Lokale sejlture —",
       "titleHighlight": "del båden",
       "desc": "En grønlænder på vej til sin hytte tilbyder en ledig plads i sin båd. Det er sådan, folk her altid har bevæget sig — og nu kan besøgende rejse med. Autentisk, overkommeligt og den eneste rigtige måde at se det ægte Grønland.",
-      "features": [
-        { "label": "Delte pladser", "desc": "Betal per plads" },
-        { "label": "Drevet af lokale", "desc": "Autentiske oplevelser" }
-      ],
+      "features": {
+        "0": { "label": "Delte pladser", "desc": "Betal per plads" },
+        "1": { "label": "Drevet af lokale", "desc": "Autentiske oplevelser" }
+      },
       "findBoat": "Find en bådtur"
     },
     "cta": {
@@ -122,12 +122,12 @@
       "subtitle": "Autentiske arktiske oplevelser fra dem, der kalder det hjem",
       "createExperience": "Opret din oplevelse",
       "transport": "Transport",
-      "stats": [
-        { "value": "Gratis at liste", "sub": "Hytter" },
-        { "value": "Du sætter prisen", "sub": "Transportruter" },
-        { "value": "Direkte booking", "sub": "Rejsende" },
-        { "value": "Arktisk fokus", "sub": "Synlighed" }
-      ]
+      "stats": {
+        "0": { "value": "Gratis at liste", "sub": "Hytter" },
+        "1": { "value": "Du sætter prisen", "sub": "Transportruter" },
+        "2": { "value": "Direkte booking", "sub": "Rejsende" },
+        "3": { "value": "Arktisk fokus", "sub": "Synlighed" }
+      }
     },
     "heroImageAlt": "Nordlys over Grønland",
     "cabinBadges": {
