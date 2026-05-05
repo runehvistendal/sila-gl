@@ -38,8 +38,8 @@ const MONTH_NAMES = [
 
 interface Props {
   cabinId: string
-  initialBlocked: string[]  // YYYY-MM-DD strings already blocked in DB
-  bookedDates: string[]     // YYYY-MM-DD strings that are booked (not clickable)
+  initialBlocked: string[]
+  bookedDates: string[]
 }
 
 export default function AvailabilityCalendar({
@@ -71,17 +71,24 @@ export default function AvailabilityCalendar({
     })
   }
 
-  function getDayStyle(date: string): string {
-    if (bookedSet.has(date)) {
-      return "bg-[#4A9CC7] text-white cursor-not-allowed opacity-80"
+  function getDayProps(date: string): { className: string; style: React.CSSProperties } {
+    const base = "select-none transition-colors text-center text-sm py-1.5 rounded-md"
+    if (bookedSet.has(date)) return {
+      className: `${base} cursor-not-allowed opacity-80`,
+      style: { backgroundColor: "#4A9CC7", color: "white" },
     }
-    if (date < today) {
-      return "text-gray-300 cursor-not-allowed"
+    if (date < today) return {
+      className: `${base} cursor-not-allowed`,
+      style: { color: "#d1d5db" },
     }
-    if (blockedDates.has(date)) {
-      return "bg-gray-200 text-gray-400 cursor-pointer rounded-md hover:bg-gray-300"
+    if (blockedDates.has(date)) return {
+      className: `${base} cursor-pointer`,
+      style: { backgroundColor: "#e5e7eb", color: "#9ca3af" },
     }
-    return "bg-green-100 text-green-800 cursor-pointer rounded-md hover:bg-green-200"
+    return {
+      className: `${base} cursor-pointer`,
+      style: { backgroundColor: "#dcfce7", color: "#166534" },
+    }
   }
 
   function renderMonth(monthDate: Date) {
@@ -100,19 +107,20 @@ export default function AvailabilityCalendar({
               {l}
             </div>
           ))}
-          {days.map((date, i) =>
-            date === null ? (
-              <div key={`empty-${i}`} />
-            ) : (
+          {days.map((date, i) => {
+            if (date === null) return <div key={`empty-${i}`} />
+            const props = getDayProps(date)
+            return (
               <div
                 key={date}
-                className={`text-center text-sm py-1.5 select-none transition-colors ${getDayStyle(date)}`}
+                className={props.className}
+                style={props.style}
                 onClick={() => handleDayClick(date)}
               >
                 {parseInt(date.split("-")[2])}
               </div>
-            ),
-          )}
+            )
+          })}
         </div>
       </div>
     )
@@ -136,15 +144,24 @@ export default function AvailabilityCalendar({
       {/* Legend */}
       <div className="flex flex-wrap gap-4 text-xs text-gray-600">
         <span className="flex items-center gap-1.5">
-          <span className="w-4 h-4 rounded bg-green-100 border border-green-200 inline-block" />
+          <span
+            className="w-4 h-4 rounded inline-block"
+            style={{ backgroundColor: "#dcfce7", border: "1px solid #bbf7d0" }}
+          />
           Ledig (standard)
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-4 h-4 rounded bg-gray-200 inline-block" />
+          <span
+            className="w-4 h-4 rounded inline-block"
+            style={{ backgroundColor: "#e5e7eb" }}
+          />
           Blokeret af dig
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-4 h-4 rounded bg-[#4A9CC7] inline-block" />
+          <span
+            className="w-4 h-4 rounded inline-block"
+            style={{ backgroundColor: "#4A9CC7" }}
+          />
           Booket af gæst
         </span>
       </div>
@@ -172,8 +189,8 @@ export default function AvailabilityCalendar({
         </button>
       </div>
 
-      {/* Two-month grid */}
-      <div className="flex flex-col sm:flex-row gap-6 sm:gap-8 select-none">
+      {/* Two-month grid — no select-none here so clicks propagate */}
+      <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
         {renderMonth(firstMonth)}
         {renderMonth(secondMonth)}
       </div>
