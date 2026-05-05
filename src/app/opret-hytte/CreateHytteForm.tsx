@@ -128,7 +128,7 @@ export default function CreateHytteForm() {
           </SelectTrigger>
           <SelectContent>
             {MAJOR_HUBS.map((loc) => (
-              <SelectItem key={loc.postal_code} value={loc.name_dk}>
+              <SelectItem key={`${loc.postal_code}-${loc.name_dk}`} value={loc.name_dk}>
                 {loc.name_dk}
               </SelectItem>
             ))}

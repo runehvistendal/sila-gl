@@ -45,12 +45,26 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
   const [fromLocation, setFromLocation] = useState("")
   const [toLocation, setToLocation] = useState("")
   const [returtur, setReturtur] = useState(false)
-  const [priceKr, setPriceKr] = useState("")
+  const [priceRoundtripKr, setPriceRoundtripKr] = useState("")
+  const [priceOneWayKr, setPriceOneWayKr] = useState("")
+  const [oneWayUserEdited, setOneWayUserEdited] = useState(false)
 
-  const singlePreview =
-    priceKr && !isNaN(Number(priceKr))
-      ? Math.round(Number(priceKr) * 0.6)
+  const suggestedOneWay =
+    priceRoundtripKr && !isNaN(Number(priceRoundtripKr)) && Number(priceRoundtripKr) > 0
+      ? Math.round(Number(priceRoundtripKr) * 0.6)
       : null
+
+  const handleRoundtripChange = (val: string) => {
+    setPriceRoundtripKr(val)
+    if (!oneWayUserEdited) {
+      const n = Number(val)
+      if (val && !isNaN(n) && n > 0) {
+        setPriceOneWayKr(String(Math.round(n * 0.6)))
+      } else {
+        setPriceOneWayKr("")
+      }
+    }
+  }
 
   const today = new Date().toISOString().split("T")[0]
 
@@ -110,7 +124,7 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
             </SelectTrigger>
             <SelectContent>
               {SORTED_LOCATIONS.map((l) => (
-                <SelectItem key={l.postal_code} value={l.name_dk}>
+                <SelectItem key={`${l.postal_code}-${l.name_dk}`} value={l.name_dk}>
                   {l.name_dk}
                 </SelectItem>
               ))}
@@ -127,7 +141,7 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
             </SelectTrigger>
             <SelectContent>
               {SORTED_LOCATIONS.filter((l) => l.name_dk !== fromLocation).map((l) => (
-                <SelectItem key={l.postal_code} value={l.name_dk}>
+                <SelectItem key={`${l.postal_code}-${l.name_dk}`} value={l.name_dk}>
                   {l.name_dk}
                 </SelectItem>
               ))}
@@ -174,47 +188,61 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
           Pladser og pris
         </p>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="total_pladser">Ledige pladser <span className="text-destructive">*</span></Label>
-            <Input
-              id="total_pladser"
-              name="total_pladser"
-              type="number"
-              min={1}
-              max={20}
-              defaultValue={1}
-              className="mt-1 rounded-xl"
-              required
-            />
-            <FieldError messages={state?.errors?.total_pladser} />
-          </div>
-          <div>
-            <Label htmlFor="pris_roundtrip_kr">Tur/retur pr. plads (kr) <span className="text-destructive">*</span></Label>
-            <Input
-              id="pris_roundtrip_kr"
-              name="pris_roundtrip_kr"
-              type="number"
-              min={0}
-              step={1}
-              value={priceKr}
-              onChange={(e) => setPriceKr(e.target.value)}
-              placeholder="800"
-              className="mt-1 rounded-xl"
-              required
-            />
-            <FieldError messages={state?.errors?.pris_roundtrip_kr} />
-          </div>
+        <div>
+          <Label htmlFor="total_pladser">Ledige pladser <span className="text-destructive">*</span></Label>
+          <Input
+            id="total_pladser"
+            name="total_pladser"
+            type="number"
+            min={1}
+            max={20}
+            defaultValue={1}
+            className="mt-1 rounded-xl"
+            required
+          />
+          <FieldError messages={state?.errors?.total_pladser} />
         </div>
-        {singlePreview !== null && priceKr !== "" && (
-          <p className="text-sm text-muted-foreground bg-muted/50 rounded-xl px-4 py-3">
-            Enkeltbilletpris:{" "}
-            <span className="font-semibold text-foreground">
-              {singlePreview.toLocaleString("da-DK")} kr.
-            </span>{" "}
-            <span className="text-xs">(60% — beregnes automatisk)</span>
-          </p>
-        )}
+        <div>
+          <Label htmlFor="pris_roundtrip_kr">
+            Pris pr. plads, tur/retur (kr) <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="pris_roundtrip_kr"
+            name="pris_roundtrip_kr"
+            type="number"
+            min={0}
+            step={1}
+            value={priceRoundtripKr}
+            onChange={(e) => handleRoundtripChange(e.target.value)}
+            placeholder="800"
+            className="mt-1 rounded-xl"
+            required
+          />
+          <FieldError messages={state?.errors?.pris_roundtrip_kr} />
+        </div>
+        <div>
+          <Label htmlFor="pris_oneway_kr">Pris pr. plads, enkelttur (kr)</Label>
+          <Input
+            id="pris_oneway_kr"
+            name="pris_oneway_kr"
+            type="number"
+            min={0}
+            step={1}
+            value={priceOneWayKr}
+            onChange={(e) => {
+              setOneWayUserEdited(true)
+              setPriceOneWayKr(e.target.value)
+            }}
+            placeholder={suggestedOneWay != null ? String(suggestedOneWay) : "480"}
+            className="mt-1 rounded-xl"
+          />
+          {priceOneWayKr !== "" && (
+            <p className="text-sm text-gray-500 mt-1">
+              Vi foreslår {Number(priceOneWayKr).toLocaleString("da-DK")} kr (60% af tur/retur-prisen). Du kan ændre beløbet.
+            </p>
+          )}
+          <FieldError messages={state?.errors?.pris_oneway_kr} />
+        </div>
       </div>
 
       {/* Beskrivelse */}
