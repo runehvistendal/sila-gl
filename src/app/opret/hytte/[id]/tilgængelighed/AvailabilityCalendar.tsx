@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { saveAvailability } from "./actions"
@@ -47,7 +48,9 @@ export default function AvailabilityCalendar({
   initialBlocked,
   bookedDates,
 }: Props) {
+  const router = useRouter()
   const today = toYMD(new Date())
+
   const [firstMonth, setFirstMonth] = useState<Date>(() => {
     const d = new Date()
     d.setDate(1)
@@ -59,19 +62,56 @@ export default function AvailabilityCalendar({
   )
   const bookedSet = new Set(bookedDates)
 
+  const [periodStart, setPeriodStart] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   function handleDayClick(date: string) {
     if (bookedSet.has(date) || date < today) return
+
+    if (!periodStart) {
+      // First click — set period start
+      setPeriodStart(date)
+      return
+    }
+
+    if (periodStart === date) {
+      // Click same date — toggle single date and reset
+      setPeriodStart(null)
+      setBlockedDates((prev) => {
+        const next = new Set(prev)
+        if (next.has(date)) next.delete(date)
+        else next.add(date)
+        return next
+      })
+      return
+    }
+
+    // Second click — build range and toggle all dates in it
+    const start = periodStart < date ? periodStart : date
+    const end = periodStart < date ? date : periodStart
+    const range: string[] = []
+    const cur = new Date(start)
+    const endDate = new Date(end)
+    while (cur <= endDate) {
+      const d = toYMD(cur)
+      if (!bookedSet.has(d) && d >= today) range.push(d)
+      cur.setDate(cur.getDate() + 1)
+    }
+
+    const allBlocked = range.every((d) => blockedDates.has(d))
     setBlockedDates((prev) => {
       const next = new Set(prev)
-      if (next.has(date)) next.delete(date)
-      else next.add(date)
+      if (allBlocked) range.forEach((d) => next.delete(d))
+      else range.forEach((d) => next.add(d))
       return next
     })
+    setPeriodStart(null)
   }
 
-  function getDayProps(date: string): { className: string; style: React.CSSProperties } {
+  function getDayProps(
+    date: string,
+    isPeriodStart: boolean,
+  ): { className: string; style: React.CSSProperties } {
     const base = "select-none transition-colors text-center text-sm py-1.5 rounded-md"
     if (bookedSet.has(date)) return {
       className: `${base} cursor-not-allowed opacity-80`,
@@ -80,6 +120,10 @@ export default function AvailabilityCalendar({
     if (date < today) return {
       className: `${base} cursor-not-allowed`,
       style: { color: "#d1d5db" },
+    }
+    if (isPeriodStart) return {
+      className: `${base} cursor-pointer ring-2 ring-offset-1`,
+      style: { backgroundColor: "#0e7490", color: "white" },
     }
     if (blockedDates.has(date)) return {
       className: `${base} cursor-pointer`,
@@ -109,7 +153,7 @@ export default function AvailabilityCalendar({
           ))}
           {days.map((date, i) => {
             if (date === null) return <div key={`empty-${i}`} />
-            const props = getDayProps(date)
+            const props = getDayProps(date, date === periodStart)
             return (
               <div
                 key={date}
@@ -128,11 +172,12 @@ export default function AvailabilityCalendar({
 
   function handleSave(publish: boolean) {
     startTransition(async () => {
-      try {
-        await saveAvailability(cabinId, [...blockedDates], publish)
+      const result = await saveAvailability(cabinId, [...blockedDates], publish)
+      if ("error" in result) {
+        toast.error(result.error)
+      } else {
         toast.success(publish ? "Hytte publiceret!" : "Tilgængelighed gemt")
-      } catch {
-        toast.error("Noget gik galt — prøv igen")
+        router.push(result.redirectTo)
       }
     })
   }
@@ -166,7 +211,7 @@ export default function AvailabilityCalendar({
         </span>
       </div>
 
-      {/* Month navigation */}
+      {/* Month navigation + status */}
       <div className="flex items-center justify-between">
         <button
           type="button"
@@ -176,8 +221,10 @@ export default function AvailabilityCalendar({
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
-        <span className="text-sm text-gray-500">
-          Klik for at blokere datoer — alle datoer er ledige som standard
+        <span className="text-sm text-gray-500 text-center px-2">
+          {periodStart
+            ? `Startdato valgt: ${periodStart} — klik en slutdato for at blokere perioden`
+            : "Klik en dato, eller klik to datoer for at blokere en periode"}
         </span>
         <button
           type="button"
@@ -189,7 +236,20 @@ export default function AvailabilityCalendar({
         </button>
       </div>
 
-      {/* Two-month grid — no select-none here so clicks propagate */}
+      {/* Cancel period selection */}
+      {periodStart && (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => setPeriodStart(null)}
+            className="text-xs text-muted-foreground underline hover:text-foreground"
+          >
+            Annullér periodevalg
+          </button>
+        </div>
+      )}
+
+      {/* Two-month grid */}
       <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
         {renderMonth(firstMonth)}
         {renderMonth(secondMonth)}

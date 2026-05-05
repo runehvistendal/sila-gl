@@ -6,16 +6,15 @@ import { requireCabinOwner } from "@/lib/requireCabinOwner"
 
 export async function saveAvailability(
   cabinId: string,
-  blockedDates: string[], // ["YYYY-MM-DD", ...] — only the blocked dates
+  blockedDates: string[],
   publish: boolean,
-): Promise<void> {
+): Promise<{ redirectTo: string } | { error: string }> {
   const supabase = await createClient()
   const {
     data: { session },
   } = await supabase.auth.getSession()
   if (!session?.user) redirect("/")
 
-  // Verify ownership
   try {
     await requireCabinOwner(supabase, cabinId, session.user.id)
   } catch {
@@ -36,7 +35,7 @@ export async function saveAvailability(
       is_available: false,
     }))
     const { error } = await supabase.from("cabin_availability").insert(rows)
-    if (error) throw new Error(error.message)
+    if (error) return { error: error.message }
   }
 
   if (publish) {
@@ -45,9 +44,9 @@ export async function saveAvailability(
       .update({ published: true })
       .eq("id", cabinId)
       .eq("owner_id", session.user.id)
-    if (error) throw new Error(error.message)
-    redirect("/dashboard?tab=mine-opslag")
+    if (error) return { error: error.message }
+    return { redirectTo: "/dashboard?tab=mine-opslag" }
   }
 
-  redirect("/opret")
+  return { redirectTo: "/opret" }
 }
