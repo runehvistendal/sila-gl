@@ -7,20 +7,26 @@ alwaysApply: true
 
 Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort status til sessioner.
 
-## Status (29.4.2026)
+## Status (5.5.2026)
 
-- `/hytter`: facilitetsfiltre i Filtrer-popover (AMENITY_FILTER_KEYS), HytterClient.tsx
-- `/hytter/[id]`: to-kolonne layout, sticky booking, CabinDetailLayout.tsx. Rækkefølge: Om hytten → Inkluderet → Din vært → Kom dertil → Anmeldelser
-- `/transport`: Filtrer-knap med popover (bådtype, kabine, ledige pladser)
-- `/transport/[id]` + `/hytter/[id]`: TransportDrawer.tsx (returture via shadcn Sheet)
-- `/dashboard`: BookingRow accordion, Mine ønsker + Gæsteønsker med cabin_requests
-- `/anmod`: hytteanmodnings-formular (ny side + server action)
-- DB: cabin_requests tabel + RLS oprettet
-- Ingen kendte bugs.
+- `/admin`: dashboard, brugere, hytter, bookinger, anmodninger. is_admin + service_role middleware
+- `/opret/baad`: to knapper — "Gem båd" + "Gem og opret tur →"
+- `/opret/samsejlads`: ny side, tur/retur-pris (primær) + enkelttur 60% auto-forslag
+- `/opret/hytte`: billeder + alle felter på én side (PendingCabinImageUpload)
+- `/opret/hytte/[id]/tilgængelighed`: kalender, simpelt klik-toggle + periodevalg, blokér datoer (grøn=ledig standard)
+- `cabin_availability`: gemmer BLOKEREDE datoer (is_available=false) — ledige er default
+- `saveAvailability`: returnerer `{ redirectTo }` / `{ error }` — ingen redirect() i action
+- Tilgængelighed tilføjet på `/opret/hytte/[id]/rediger`
+- Slet hytte + båd: soft delete via `deleted_at`, Slet-knap på dashboard + /opret
+- Øje-symbol: kladder → rediger-side, publicerede → /hytter/[id]
+- Duplicate location keys fjernet fra greenlandLocations.ts (7 dubletter)
+- Mappenavne: æ/ø/å forbudt i routes — brug ae/oe/aa (fx tilgaengelighed)
+- pt-20 navbar-fix på alle opret-sider
 
 ## Næste fokus
 
-- **Footer** — se CLAUDE.md, sektionen «Næste i rækkefølge».
+- **Minimum nætter + forberedelsestid** på tilgængeligheds-siden
+- Derefter: i18n → SEO → Stripe live-test → PostHog → lancering
 
 ## Vigtige beslutninger (gældende)
 
@@ -29,9 +35,12 @@ Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort 
 - **Telefon:** react-phone-number-input, E.164, `defaultCountry: GL`.
 - **Email-skift:** `supabase.auth.updateUser` med bekræftelse til ny adresse.
 - **Navbar sprog + avatar:** `NavUser` + `revalidatePath("/")` (ingen særskilt client-fetch til sprog).
-- **Cloudinary:** signed uploads, `sila/avatars` og `sila/cabins/[id]`.
+- **Cloudinary:** signed uploads, `sila/avatars` og `sila/cabins/[id]`. Pending upload: `sila/cabins/pending`.
 - **amenityMeta.ts:** AMENITY_META (display) + AMENITY_FILTER_KEYS (18 DB-nøgler til filterpanel).
 - **TransportDrawer props:** `id` (ride_share_id), `seats`, `onClose`.
+- **cabin_availability:** gemmer BLOKEREDE datoer (is_available=false) — ledige er default.
+- **Admin-middleware:** service_role key til is_admin-tjek (anon-key blokeres af RLS).
+- **Samsejlads pris:** tur/retur primær → enkelttur = 60% auto-forslag (kan overskrives).
 
 ## Ikke nu (backlog / Fase 3)
 

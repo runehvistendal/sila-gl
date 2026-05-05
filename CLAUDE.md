@@ -21,7 +21,7 @@ Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Ver
 - **Test (kun reference, ikke primær adfærd):** rune.runesen.test@gmail.com 
  `id: 8c29ab7f-fe44-43ef-a1af-64eda151b2f7`
 
-## Bygget og komplet (29.4.2026)
+## Bygget og komplet (5.5.2026)
 - Landingpage (/)
 - Auth (email + Google, httpOnly cookies via @supabase/ssr)
 - Datamodel (12 tabeller inkl. boats + rate_limits, RLS, triggers)
@@ -63,6 +63,28 @@ Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Ver
 - **/profil/[id]** — offentlig profilside med anmeldelser og gennemsnitsscore ✅
 - **DB: cabin_requests tabel** — guest_id, cabin_id (nullable), location, desired_check_in, desired_check_out, num_guests, max_price_ore, description, status (open|matched|cancelled|expired), RLS ✅
 - **Footer** — `src/components/layout/Footer.tsx`, root layout, vises på alle sider ✅
+- **/admin** — dashboard (nøgletal), /brugere, /hytter, /bookinger, /anmodninger. `is_admin` boolean på profiles. Middleware + layout bruger service_role til is_admin-tjek ✅
+- **/opret/baad** — to knapper: "Gem båd" (→ /opret) + "Gem og opret tur →" (→ /opret/samsejlads?baadId=X) ✅
+- **/opret/samsejlads** — ny side: bådvælger, fra/til (GREENLAND_LOCATIONS), dato/tid (lokal tid → UTC server-side), pladser, tur/retur-pris (primær) + enkelttur (60% auto-forslag, kan overskrives), returtur checkbox med linked ride_shares ✅
+- **/opret/hytte** — billeder + alle felter på én side (PendingCabinImageUpload, Cloudinary `sila/cabins/pending`), redirect → /opret/hytte/[id]/tilgaengelighed ✅
+- **/opret/hytte/[id]/tilgaengelighed** — kalender (to måneder, klik+drag), blokér datoer (grøn=ledig standard, grå=blokeret, blå=booket), infobox til udlejer, legende, "Gem tilgængelighed" + "Gem og publicér hytte →" ✅
+- **cabin_availability semantik vendt** — gemmer nu BLOKEREDE datoer (is_available=false). Alle fremtidige datoer er ledige som standard ✅
+- **Æ-fix i mappenavn** — `tilgaengelighed` (ASCII-safe, undgår Windows-fejl) ✅
+- **Duplicate location keys** — 7 dubletter slettet fra `greenlandLocations.ts` (Qeqertarsuaq ×3, Tasiilaq ×2, Uummannaq ×4, Sisimiut ×2 → én by pr. navn). React-keys opdateret til `postal_code-name_dk` i alle 4 dropdown-filer ✅
+- **middleware.ts beholdt** — proxy.ts-rename reverteret; Next.js kræver præcist dette filnavn for auth-middleware ✅
+- **AvailabilityCalendar** — simpelt klik-toggle + periodevalg (klik startdato → klik slutdato → hele perioden blokeres/afblokeres). Farver via inline style (ingen Tailwind-override). `select-none` fjernet fra forælde-div ✅
+- **saveAvailability** — returnerer `{ redirectTo }` / `{ error }` i stedet for `redirect()` — undgår at NEXT_REDIRECT-exception fanges af catch-blok ✅
+- **Tilgængelighed på rediger-siden** — `AvailabilityCalendar` tilføjet på `/opret/hytte/[id]/rediger` med hentning af blokerede + bookede datoer ✅
+- **Slet hytte + båd** — soft delete (`deleted_at`) via `deleteCabin` / `deleteBoat` server actions. Slet-knap på dashboard (Mine opslag) og /opret ✅
+- **Øje-symbol på dashboard** — linker til `/hytter/[id]` for publicerede hytter, `/opret/hytte/[id]/rediger` for kladder (undgår 404 på upublicerede) ✅
+
+## Nye filer (30.4.2026)
+- `src/app/admin/` — layout.tsx, page.tsx, actions.ts, AdminSidebar.tsx, brugere/, hytter/, bookinger/, anmodninger/
+- `src/app/opret/samsejlads/` — page.tsx, SamsejladsForm.tsx, actions.ts
+- `src/app/opret/hytte/[id]/tilgaengelighed/` — page.tsx, AvailabilityCalendar.tsx, actions.ts
+- `src/components/cabins/PendingCabinImageUpload.tsx` — Cloudinary upload uden forudgående cabin_id
+- `supabase/migrations/20260430000000_is_admin.sql` — is_admin kolonne + SECURITY DEFINER funktion
+- `supabase/migrations/20260430110000_cabin_availability_blocked.sql` — ryd eksisterende availability-rækker
 
 ## Nye filer (29.4.2026)
 - `src/lib/amenityMeta.ts` — AMENITY_META + AMENITY_FILTER_KEYS
@@ -83,14 +105,12 @@ Next.js 14 (App Router) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Ver
 - /opret/opslag/sejlads/[id] → samsejladstur
 
 ## Næste i rækkefølge
-1. Footer
-2. /admin
-3. Samsejlads opret-flow (sejler opretter tur med returtur-tilvalg)
-4. i18n (dansk + engelsk, next-intl)
-5. SEO — metadata, sitemap, landingssider pr. destination
-6. Premium-placering (299 kr/md, Stripe subscription)
-7. Gæstegebyr 3-5% (tilføjes ved 20+ listings)
-8. Offentlig lancering
+1. Minimum nætter + forberedelsestid på tilgængeligheds-siden
+2. i18n dansk + engelsk (next-intl)
+3. SEO — metadata, sitemap, landingssider pr. destination
+4. Stripe live-test end-to-end — kritisk inden lancering
+5. PostHog analytics — installer inden lancering
+6. Lancering — første 20 udbydere
 
 ## Aktiv arkitektur: aktiver + opslag
 - Aktiver: cabins (hytte) + boats (båd) — gemmes med `published=false` indtil opslag
@@ -140,6 +160,10 @@ Rolle-**UPDATE** (reconcile, server): `src/lib/supabase-service.ts` med **`SUPAB
 - **/samsejlads eksisterer ikke** — al funktionalitet (søgeside, detaljeside, opret, bekræftelse) er på **/transport**
 - `TransportMap.tsx` erstatter de slettede `SejlruteMap.tsx` og `SamsejladsOversigt.tsx`
 - **Alternative returture query**: `WHERE from_location = [to_location] AND skipper_id != [denne turs skipper_id]` — vises kun når `return_ride_share_id IS NULL`
+- **cabin_availability** gemmer BLOKEREDE datoer (`is_available=false`). Alle fremtidige datoer er ledige som standard — gem kun undtagelserne
+- **Admin-middleware** bruger `createClient` fra `@supabase/supabase-js` med `SUPABASE_SERVICE_ROLE_KEY` til is_admin-tjek (RLS blokerer anon-key)
+- **Mappenavne i Next.js**: brug aldrig æ/ø/å i route-mapper på Windows — brug ae/oe/aa (fx `tilgaengelighed`, ikke `tilgængelighed`)
+- **/opret/samsejlads pris-logik**: tur/retur er primær (påkrævet). Enkelttur = 60% af tur/retur som auto-forslag — sejleren kan overskrive frit. Gem begge i DB: `price_per_seat_roundtrip_ore` + `price_per_seat_ore`
 
 ## Privatlivs- og kommunikationsregel — må ALDRIG brydes
 - Vis **ALDRIG** bruger-e-mails i UI — brug `full_name` (fallback: «Sila-sejler» / «Sila-udbyder»)
