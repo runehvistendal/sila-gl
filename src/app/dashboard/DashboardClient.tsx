@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatKr } from "@/lib/money"
 import BookingRow, { STATUS_COLORS, STATUS_LABELS, type CabinBookingData } from "./components/BookingRow"
-import { acceptTransportRequest, declineTransportRequest, duplicateCabin, duplicateBoat } from "./actions"
+import { acceptTransportRequest, declineTransportRequest, duplicateCabin, duplicateBoat, deleteCabin, deleteBoat } from "./actions"
 import EmptyState from "./components/EmptyState"
 import OpenRequestsList, { type TransportRequestData } from "./components/OpenRequestsList"
 import ProviderOverviewTab from "./components/ProviderOverviewTab"
@@ -548,6 +548,19 @@ export default function DashboardClient({
                             >
                               Dupliker
                             </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={async () => {
+                                if (!confirm("Slet hytten? Den fjernes permanent efter 30 dage.")) return
+                                const res = await deleteCabin(c.id)
+                                if (res.error) toast.error(res.error)
+                                else { toast.success("Hytte slettet"); router.refresh() }
+                              }}
+                              className="rounded-lg text-xs text-destructive hover:bg-destructive/10"
+                            >
+                              Slet
+                            </Button>
                           </div>
                         </div>
                       ))}
@@ -603,6 +616,19 @@ export default function DashboardClient({
                               className="rounded-lg text-xs text-muted-foreground"
                             >
                               Dupliker
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={async () => {
+                                if (!confirm("Slet båden? Den fjernes permanent efter 30 dage.")) return
+                                const res = await deleteBoat(b.id)
+                                if (res.error) toast.error(res.error)
+                                else { toast.success("Båd slettet"); router.refresh() }
+                              }}
+                              className="rounded-lg text-xs text-destructive hover:bg-destructive/10"
+                            >
+                              Slet
                             </Button>
                           </div>
                         </div>

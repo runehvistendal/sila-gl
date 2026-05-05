@@ -6,7 +6,7 @@ import { requireCabinOwner } from "@/lib/requireCabinOwner"
 
 export async function saveAvailability(
   cabinId: string,
-  availableDates: string[], // ["YYYY-MM-DD", ...]
+  blockedDates: string[], // ["YYYY-MM-DD", ...] — only the blocked dates
   publish: boolean,
 ): Promise<void> {
   const supabase = await createClient()
@@ -22,30 +22,31 @@ export async function saveAvailability(
     redirect("/")
   }
 
-  // Delete all existing non-booked availability rows for this cabin
+  // Delete all existing availability rows for this cabin
   await supabase
     .from("cabin_availability")
     .delete()
     .eq("cabin_id", cabinId)
 
-  // Insert new available dates
-  if (availableDates.length > 0) {
-    const rows = availableDates.map((date) => ({
+  // Insert blocked dates as is_available: false
+  if (blockedDates.length > 0) {
+    const rows = blockedDates.map((date) => ({
       cabin_id: cabinId,
       date,
-      is_available: true,
+      is_available: false,
     }))
     const { error } = await supabase.from("cabin_availability").insert(rows)
     if (error) throw new Error(error.message)
   }
 
-  // Optionally publish
   if (publish) {
-    await supabase
+    const { error } = await supabase
       .from("cabins")
       .update({ published: true })
       .eq("id", cabinId)
       .eq("owner_id", session.user.id)
+    if (error) throw new Error(error.message)
+    redirect("/dashboard?tab=mine-opslag")
   }
 
   redirect("/opret")

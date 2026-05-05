@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase-server"
+import { requireSession } from "@/lib/requireSession"
 
 export async function confirmBooking(bookingId: string) {
   const supabase = await createClient()
@@ -117,6 +118,30 @@ export async function duplicateCabin(cabinId: string): Promise<{ error?: string 
     .from("cabins")
     .insert({ ...rest, images: [], published: false })
 
+  if (error) return { error: error.message }
+  revalidatePath("/dashboard")
+  return {}
+}
+
+export async function deleteCabin(cabinId: string): Promise<{ error?: string }> {
+  const { supabase, user } = await requireSession()
+  const { error } = await supabase
+    .from("cabins")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", cabinId)
+    .eq("owner_id", user.id)
+  if (error) return { error: error.message }
+  revalidatePath("/dashboard")
+  return {}
+}
+
+export async function deleteBoat(boatId: string): Promise<{ error?: string }> {
+  const { supabase, user } = await requireSession()
+  const { error } = await supabase
+    .from("boats")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", boatId)
+    .eq("owner_id", user.id)
   if (error) return { error: error.message }
   revalidatePath("/dashboard")
   return {}

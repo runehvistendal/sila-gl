@@ -12,6 +12,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
+  void id
   return { title: `Tilgængelighed — Sila.gl` }
 }
 
@@ -30,7 +31,6 @@ export default async function TilgængelighedPage({
 
   const navUser = await getNavUserForPage(supabase, user)
 
-  // Fetch cabin (owner check)
   const { data: cabin } = await supabase
     .from("cabins")
     .select("id, title, published")
@@ -41,12 +41,14 @@ export default async function TilgængelighedPage({
 
   if (!cabin) notFound()
 
-  // Already-available dates
-  const { data: availabilityRows } = await supabase
+  // Fetch blocked dates (is_available = false)
+  const { data: blockedRows } = await supabase
     .from("cabin_availability")
     .select("date")
     .eq("cabin_id", cabinId)
-    .eq("is_available", true)
+    .eq("is_available", false)
+
+  const initialBlocked = (blockedRows ?? []).map((r) => r.date as string)
 
   // Booked dates (confirmed + pending bookings in the future)
   const today = new Date().toISOString().split("T")[0]
@@ -58,7 +60,6 @@ export default async function TilgængelighedPage({
     .gte("check_out", today)
     .is("deleted_at", null)
 
-  // Expand booking ranges to individual dates
   const bookedDates: string[] = []
   for (const b of bookingRows ?? []) {
     const cur = new Date(b.check_in)
@@ -68,8 +69,6 @@ export default async function TilgængelighedPage({
       cur.setDate(cur.getDate() + 1)
     }
   }
-
-  const initialAvailable = (availabilityRows ?? []).map((r) => r.date as string)
 
   return (
     <main className="min-h-screen bg-background">
@@ -81,10 +80,10 @@ export default async function TilgængelighedPage({
             Trin 2 af 2
           </p>
           <h1 className="text-2xl font-bold text-foreground mb-2">
-            Vælg ledige datoer
+            Tilgængelighed
           </h1>
           <p className="text-sm text-muted-foreground">
-            Alle datoer er blokerede som standard. Klik (eller klik og træk) for at markere datoer som ledige.
+            Klik for at blokere datoer — alle datoer er ledige som standard.
           </p>
           <p className="text-sm font-medium text-foreground mt-2">{cabin.title}</p>
         </div>
@@ -92,7 +91,7 @@ export default async function TilgængelighedPage({
         <div className="bg-white rounded-2xl border border-border shadow-sm p-6">
           <AvailabilityCalendar
             cabinId={cabinId}
-            initialAvailable={initialAvailable}
+            initialBlocked={initialBlocked}
             bookedDates={bookedDates}
           />
         </div>
