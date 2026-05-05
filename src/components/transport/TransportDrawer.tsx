@@ -12,7 +12,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { createClient } from "@/lib/supabase"
-import { formatKr, oreToKr } from "@/lib/money"
+import { useTranslations } from "next-intl"
+import { useFormatPrice } from "@/hooks/useFormatPrice"
 import { formatNuukDate, formatNuukTime } from "@/lib/nuukTime"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 
@@ -43,6 +44,10 @@ interface Props {
 
 export default function TransportDrawer({ id, seats, onClose }: Props) {
   const router = useRouter()
+  const t = useTranslations("transport")
+  const tCommon = useTranslations("common")
+  const tErrors = useTranslations("errors")
+  const formatPrice = useFormatPrice()
 
   const [data, setData] = useState<RideShareDetail | null>(null)
   const [loading, setLoading] = useState(false)
@@ -68,7 +73,7 @@ export default function TransportDrawer({ id, seats, onClose }: Props) {
       .single()
       .then(({ data: row, error }) => {
         if (error) {
-          toast.error("Kunne ikke hente turinfo. Prøv igen.")
+          toast.error(tErrors("generic"))
           onClose()
         } else {
           setData(row as unknown as RideShareDetail)
@@ -90,17 +95,17 @@ export default function TransportDrawer({ id, seats, onClose }: Props) {
       })
       const json = (await res.json()) as { url?: string; error?: string }
       if (res.status === 401) {
-        toast.error("Log ind for at booke")
+        toast.error(tErrors("unauthorized"))
         router.push("/login")
         return
       }
       if (!res.ok || !json.url) {
-        toast.error(json.error ?? "Noget gik galt. Prøv igen.")
+        toast.error(json.error ?? tErrors("generic"))
         return
       }
       router.push(json.url)
     } catch {
-      toast.error("Forbindelsesfejl. Prøv igen.")
+      toast.error(tErrors("network"))
     } finally {
       setBookPending(false)
     }
@@ -122,7 +127,7 @@ export default function TransportDrawer({ id, seats, onClose }: Props) {
         {/* ── Header ── */}
         <SheetHeader className="flex-row items-center justify-between px-5 py-4 border-b border-border gap-3 shrink-0">
           <SheetTitle className="text-base font-bold flex items-center gap-1.5 flex-wrap leading-snug">
-            <span className="text-muted-foreground font-normal">Returrejse</span>
+            <span className="text-muted-foreground font-normal">{t("drawer_return_trip")}</span>
             {data && (
               <>
                 <span className="text-foreground">—</span>
@@ -134,7 +139,7 @@ export default function TransportDrawer({ id, seats, onClose }: Props) {
           </SheetTitle>
           <button
             onClick={onClose}
-            aria-label="Luk"
+            aria-label={tCommon("close")}
             className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
             <X className="w-4 h-4" />
@@ -155,7 +160,7 @@ export default function TransportDrawer({ id, seats, onClose }: Props) {
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-muted rounded-xl p-3">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                    <Calendar className="w-3.5 h-3.5" />Dato
+                    <Calendar className="w-3.5 h-3.5" />{t("drawer_date")}
                   </div>
                   <p className="font-semibold text-sm">
                     {formatNuukDate(data.departure_at)}
@@ -165,7 +170,7 @@ export default function TransportDrawer({ id, seats, onClose }: Props) {
                 {depTime && (
                   <div className="bg-muted rounded-xl p-3">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                      <Clock className="w-3.5 h-3.5" />Afgang
+                      <Clock className="w-3.5 h-3.5" />{t("drawer_departure")}
                     </div>
                     <p className="font-semibold text-sm">{depTime}</p>
                   </div>
@@ -173,7 +178,7 @@ export default function TransportDrawer({ id, seats, onClose }: Props) {
 
                 <div className="bg-muted rounded-xl p-3">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                    <Users className="w-3.5 h-3.5" />Ledige pladser
+                    <Users className="w-3.5 h-3.5" />{t("drawer_seats_available")}
                   </div>
                   <p className="font-semibold text-sm">{data.seats_available}</p>
                 </div>
@@ -181,7 +186,7 @@ export default function TransportDrawer({ id, seats, onClose }: Props) {
                 {data.boat_description && (
                   <div className="bg-muted rounded-xl p-3">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                      <Anchor className="w-3.5 h-3.5" />Båd
+                      <Anchor className="w-3.5 h-3.5" />{t("boat")}
                     </div>
                     <p className="font-semibold text-sm truncate">
                       {data.boat_description}
@@ -206,7 +211,7 @@ export default function TransportDrawer({ id, seats, onClose }: Props) {
                     )}
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Sejler</p>
+                    <p className="text-xs text-muted-foreground">{t("drawer_sailor")}</p>
                     <p className="text-sm font-semibold text-foreground">
                       {data.profiles.full_name ?? "Sila-sejler"}
                     </p>
@@ -218,10 +223,8 @@ export default function TransportDrawer({ id, seats, onClose }: Props) {
               <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl p-4">
                 <span className="text-amber-500 text-base leading-none mt-0.5">⚠️</span>
                 <p className="text-sm text-amber-800 leading-relaxed">
-                  <strong>Bemærk:</strong> Denne tur udbydes af en anden sejler.{" "}
-                  Denne booking gælder kun transport til {toName}.{" "}
-                  Husk stadig at gennemføre den anden booking.{" "}
-                  Du modtager to separate betalingskvitteringer.
+                  <strong>{t("drawer_warning_note")}</strong>{" "}
+                  {t("drawer_warning_text", { destination: toName })}
                 </p>
               </div>
 
@@ -229,14 +232,14 @@ export default function TransportDrawer({ id, seats, onClose }: Props) {
               <div className="bg-muted rounded-xl p-4 text-sm space-y-1.5">
                 <div className="flex justify-between text-muted-foreground">
                   <span>
-                    {oreToKr(data.price_per_seat_ore).toLocaleString("da-DK")} kr.{" "}
-                    × {seats} plads{seats !== 1 ? "er" : ""}
+                    {formatPrice(data.price_per_seat_ore)}{" "}
+                    {t("drawer_seat_count", { count: seats })}
                   </span>
-                  <span>{formatKr(totalOre)}</span>
+                  <span>{formatPrice(totalOre)}</span>
                 </div>
                 <div className="flex justify-between font-bold text-foreground pt-1.5 border-t border-border">
-                  <span>Total</span>
-                  <span>{formatKr(totalOre)}</span>
+                  <span>{tCommon("total")}</span>
+                  <span>{formatPrice(totalOre)}</span>
                 </div>
               </div>
             </>
@@ -252,13 +255,13 @@ export default function TransportDrawer({ id, seats, onClose }: Props) {
               className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl font-semibold"
             >
               {bookPending
-                ? "Åbner betaling…"
+                ? t("drawer_opening_payment")
                 : notEnoughSeats
-                  ? `Kun ${data.seats_available} plads${data.seats_available !== 1 ? "er" : ""} tilbage`
-                  : `Book denne returtur — ${formatKr(totalOre)}`}
+                  ? t("drawer_not_enough_seats", { count: data.seats_available })
+                  : t("drawer_book_return", { price: formatPrice(totalOre) })}
             </Button>
             <p className="text-xs text-muted-foreground text-center">
-              Sikker betaling via Stripe
+              {t("drawer_secure")}
             </p>
           </div>
         )}

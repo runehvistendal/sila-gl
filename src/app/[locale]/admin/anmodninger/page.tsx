@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server"
 import { createServiceClient } from "@/lib/supabase-service"
 import {
   Table,
@@ -13,15 +14,23 @@ import { formatKr } from "@/lib/money"
 export const metadata = { title: "Anmodninger — Admin" }
 export const dynamic = "force-dynamic"
 
-const statusLabel: Record<string, { label: string; className: string }> = {
-  open:      { label: "Åben",       className: "bg-emerald-100 text-emerald-800 border-emerald-200" },
-  matched:   { label: "Matchet",    className: "bg-blue-100 text-blue-800 border-blue-200" },
-  cancelled: { label: "Annulleret", className: "bg-red-100 text-red-800 border-red-200" },
-  expired:   { label: "Udløbet",    className: "bg-gray-100 text-gray-600 border-gray-200" },
+const STATUS_CLASSES: Record<string, string> = {
+  open:      "bg-emerald-100 text-emerald-800 border-emerald-200",
+  matched:   "bg-blue-100 text-blue-800 border-blue-200",
+  cancelled: "bg-red-100 text-red-800 border-red-200",
+  expired:   "bg-gray-100 text-gray-600 border-gray-200",
 }
 
 export default async function AdminAnmodningerPage() {
+  const t = await getTranslations("admin")
   const svc = createServiceClient()
+
+  const statusLabel: Record<string, string> = {
+    open:      t("status_open"),
+    matched:   t("status_matched"),
+    cancelled: t("status_cancelled"),
+    expired:   t("status_expired"),
+  }
 
   const { data: requests } = await svc
     .from("cabin_requests")
@@ -51,31 +60,32 @@ export default async function AdminAnmodningerPage() {
   return (
     <div className="p-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Anmodninger</h1>
-        <p className="text-gray-500 mt-1">{rows.length} hytteanmodninger (seneste 200)</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t("requests")}</h1>
+        <p className="text-gray-500 mt-1">{t("requests_count", { count: rows.length })}</p>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50">
-              <TableHead className="font-semibold">Gæst</TableHead>
-              <TableHead className="font-semibold">Destination</TableHead>
-              <TableHead className="font-semibold">Check-in</TableHead>
-              <TableHead className="font-semibold">Check-ud</TableHead>
-              <TableHead className="font-semibold">Antal</TableHead>
-              <TableHead className="font-semibold">Maks. budget</TableHead>
-              <TableHead className="font-semibold">Status</TableHead>
-              <TableHead className="font-semibold">Oprettet</TableHead>
+              <TableHead className="font-semibold">{t("col_guest")}</TableHead>
+              <TableHead className="font-semibold">{t("col_destination")}</TableHead>
+              <TableHead className="font-semibold">{t("col_check_in")}</TableHead>
+              <TableHead className="font-semibold">{t("col_check_out")}</TableHead>
+              <TableHead className="font-semibold">{t("col_count")}</TableHead>
+              <TableHead className="font-semibold">{t("col_max_budget")}</TableHead>
+              <TableHead className="font-semibold">{t("col_status")}</TableHead>
+              <TableHead className="font-semibold">{t("col_created")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((r) => {
-              const st = statusLabel[r.status] ?? { label: r.status, className: "bg-gray-100 text-gray-600 border-gray-200" }
+              const label = statusLabel[r.status] ?? r.status
+              const className = STATUS_CLASSES[r.status] ?? "bg-gray-100 text-gray-600 border-gray-200"
               return (
                 <TableRow key={r.id} className="hover:bg-gray-50">
                   <TableCell className="font-medium text-sm">
-                    {r.profiles?.full_name ?? <span className="text-gray-400 italic">Ukendt</span>}
+                    {r.profiles?.full_name ?? <span className="text-gray-400 italic">{t("unknown")}</span>}
                   </TableCell>
                   <TableCell className="text-gray-700 text-sm capitalize">
                     {r.location || "—"}
@@ -93,8 +103,8 @@ export default async function AdminAnmodningerPage() {
                     {r.max_price_ore ? formatKr(r.max_price_ore) : <span className="text-gray-400">—</span>}
                   </TableCell>
                   <TableCell>
-                    <Badge className={`text-xs ${st.className}`}>
-                      {st.label}
+                    <Badge className={`text-xs ${className}`}>
+                      {label}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-gray-500 text-sm">

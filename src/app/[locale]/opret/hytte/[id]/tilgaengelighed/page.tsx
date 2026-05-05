@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation"
+import { getTranslations } from "next-intl/server"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
@@ -24,6 +25,7 @@ export default async function TilgaengelighedPage({
   if (!user) redirect("/")
 
   const navUser = await getNavUserForPage(supabase, user)
+  const t = await getTranslations("create")
 
   const { data: cabin } = await supabase
     .from("cabins")
@@ -73,20 +75,17 @@ export default async function TilgaengelighedPage({
         <div className="mb-8">
           {!isPublished && (
             <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-              Trin 2 af 2
+              {t("step_2_of_2")}
             </p>
           )}
           <h1 className="text-2xl font-bold text-foreground mb-1">
-            Administrér tilgængelighed
+            {t("manage_availability_title")}
           </h1>
           <p className="text-sm font-medium text-foreground mb-6">{cabin.title}</p>
 
           <div className="rounded-xl border border-[#4A9CC7]/30 bg-[#4A9CC7]/8 px-4 py-4 text-sm text-[#1a5f7a]">
-            <p className="font-semibold mb-1">Din hytte er som standard ledig alle dage.</p>
-            <p>
-              Klik på de datoer du vil blokere — fx når du selv bruger hytten eller ikke ønsker gæster.
-              Bookede datoer låses automatisk.
-            </p>
+            <p className="font-semibold mb-1">{t("availability_default_info")}</p>
+            <p>{t("availability_click_info")}</p>
           </div>
         </div>
 

@@ -1,6 +1,7 @@
 "use client"
 
 import { useActionState, useState, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { createHytte, updateHytte, type HytteFormState } from "./actions"
 import { CABIN_FACILITIES, FACILITY_SECTION_LABELS, getFixedFacilityValueSet } from "@/lib/cabinFacilities"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
@@ -51,6 +52,9 @@ interface Props {
 }
 
 export default function HytteForm({ mode, initialCabin }: Props) {
+  const t = useTranslations("create")
+  const tCommon = useTranslations("common")
+
   const action = mode === "edit" ? updateHytte : createHytte
   const [state, formAction, isPending] = useActionState<HytteFormState, FormData>(
     action,
@@ -162,18 +166,18 @@ export default function HytteForm({ mode, initialCabin }: Props) {
       {/* 1. Titel */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-          Titel
+          {t("section_title")}
         </p>
         <div>
           <Label htmlFor="title">
-            Navn på hytten <span className="text-destructive">*</span>
+            {t("cabin_name_label")} <span className="text-destructive">*</span>
           </Label>
           <Input
             id="title"
             name="title"
             maxLength={80}
             defaultValue={initialCabin?.title}
-            placeholder="F.eks. Hytte ved fjorden i Nuuk"
+            placeholder={t("cabin_name_placeholder")}
             className="mt-1 rounded-xl"
             required
           />
@@ -184,11 +188,11 @@ export default function HytteForm({ mode, initialCabin }: Props) {
       {/* 2. Beskrivelse */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-          Beskrivelse
+          {t("section_description")}
         </p>
         <div>
           <Label htmlFor="description">
-            Beskriv hytten <span className="text-destructive">*</span>
+            {t("cabin_desc_label")} <span className="text-destructive">*</span>
           </Label>
           <textarea
             id="description"
@@ -198,7 +202,7 @@ export default function HytteForm({ mode, initialCabin }: Props) {
             required
             minLength={50}
             rows={5}
-            placeholder="Beskriv hytten, omgivelserne og hvad gæster kan forvente (mindst 50 tegn)"
+            placeholder={t("cabin_desc_placeholder")}
             className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
           />
           <div className="flex items-center justify-between mt-1">
@@ -208,7 +212,7 @@ export default function HytteForm({ mode, initialCabin }: Props) {
                 description.length < 50 ? "text-muted-foreground" : "text-green-600"
               }`}
             >
-              {description.length} / 50+ tegn
+              {description.length} {t("char_count_suffix")}
             </span>
           </div>
         </div>
@@ -217,15 +221,15 @@ export default function HytteForm({ mode, initialCabin }: Props) {
       {/* 3. Destination */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-          Destination
+          {t("section_destination")}
         </p>
         <div>
           <Label>
-            Nærmeste by <span className="text-destructive">*</span>
+            {t("nearest_city_label")} <span className="text-destructive">*</span>
           </Label>
           <Select onValueChange={setLocationHub} value={locationHub} required>
             <SelectTrigger className="mt-1 rounded-xl">
-              <SelectValue placeholder="Vælg destination" />
+              <SelectValue placeholder={t("select_destination")} />
             </SelectTrigger>
             <SelectContent>
               {MAJOR_HUBS.map((loc) => (
@@ -242,12 +246,12 @@ export default function HytteForm({ mode, initialCabin }: Props) {
       {/* 4. Kapacitet */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-          Kapacitet
+          {t("section_capacity")}
         </p>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label htmlFor="max_guests">
-              Max gæster <span className="text-destructive">*</span>
+              {t("max_guests_label")} <span className="text-destructive">*</span>
             </Label>
             <Input
               id="max_guests"
@@ -262,7 +266,7 @@ export default function HytteForm({ mode, initialCabin }: Props) {
           </div>
           <div>
             <Label htmlFor="bedrooms">
-              Soverum <span className="text-destructive">*</span>
+              {t("bedrooms_label")} <span className="text-destructive">*</span>
             </Label>
             <Input
               id="bedrooms"
@@ -281,7 +285,7 @@ export default function HytteForm({ mode, initialCabin }: Props) {
       {/* 5. Faciliteter + Andet */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-5">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Faciliteter
+          {t("section_facilities")}
         </p>
         {(Object.keys(CABIN_FACILITIES) as Array<keyof typeof CABIN_FACILITIES>).map(
           (sectionKey) => (
@@ -311,9 +315,9 @@ export default function HytteForm({ mode, initialCabin }: Props) {
         )}
 
         <div>
-          <p className="text-xs font-semibold text-muted-foreground mb-2">Andet</p>
+          <p className="text-xs font-semibold text-muted-foreground mb-2">{t("section_other")}</p>
           <p className="text-xs text-muted-foreground mb-2">
-            Tilføj fritekst (komma eller Enter) — f.eks. solpanel, generator, sauna
+            {t("custom_facility_hint")}
           </p>
           <div className="flex flex-wrap gap-2 mb-2 min-h-6">
             {customFacilities.map((tag) => (
@@ -326,7 +330,7 @@ export default function HytteForm({ mode, initialCabin }: Props) {
                   type="button"
                   onClick={() => removeCustom(tag)}
                   className="p-0.5 rounded hover:bg-primary/20"
-                  aria-label={`Fjern ${tag}`}
+                  aria-label={t("remove_tag", { tag })}
                 >
                   ×
                 </button>
@@ -345,7 +349,7 @@ export default function HytteForm({ mode, initialCabin }: Props) {
             onBlur={() => {
               if (customInput.trim()) addCustomFromInput()
             }}
-            placeholder="f.eks. Solpanel, Generator, Sauna"
+            placeholder={t("custom_facility_placeholder")}
             className="rounded-xl"
           />
         </div>
@@ -354,7 +358,7 @@ export default function HytteForm({ mode, initialCabin }: Props) {
       {/* 6. Tilvalgsydelser */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Tilvalgsydelser
+          {t("section_addon_services")}
         </p>
         <AddOnServicesEditor
           services={addonServices}
@@ -366,7 +370,7 @@ export default function HytteForm({ mode, initialCabin }: Props) {
       {/* 7. Transport */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-4">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Transport
+          {t("section_transport")}
         </p>
         <div className="flex items-center gap-3">
           <Switch
@@ -375,35 +379,33 @@ export default function HytteForm({ mode, initialCabin }: Props) {
             onCheckedChange={setOffersTransport}
           />
           <Label htmlFor="offers_transport_switch" className="cursor-pointer">
-            Jeg tilbyder transport til hytten
+            {t("offers_transport_label")}
           </Label>
         </div>
 
         {offersTransport && (
           <div className="space-y-4 pt-2">
             <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 space-y-2">
-              <p>
-                Prisen du angiver er for transport tur/retur pr. person.
-              </p>
-              <p>Gæster der kun vil én vej betaler 60% automatisk.</p>
+              <p>{t("transport_price_info")}</p>
+              <p>{t("transport_oneway_info")}</p>
             </div>
             <div>
               <Label htmlFor="transport_from">
-                Transport fra (by/havn) <span className="text-destructive">*</span>
+                {t("transport_from_label")} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="transport_from"
                 name="transport_from"
                 value={transportFrom}
                 onChange={(e) => setTransportFrom(e.target.value)}
-                placeholder="F.eks. Nuuk havn"
+                placeholder={t("transport_from_placeholder")}
                 className="mt-1 rounded-xl"
               />
               <FieldError messages={state?.errors?.transport_from} />
             </div>
             <div>
               <Label htmlFor="transport_price_roundtrip_kr">
-                Tur/retur pris pr. person (kr) <span className="text-destructive">*</span>
+                {t("transport_roundtrip_price_label")} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="transport_price_roundtrip_kr"
@@ -420,11 +422,11 @@ export default function HytteForm({ mode, initialCabin }: Props) {
             </div>
             {singlePreviewKr != null && transportPriceKr !== "" && (
               <p className="text-sm text-muted-foreground bg-muted/50 rounded-xl px-4 py-3">
-                Enkeltbilletpris:{" "}
+                {t("single_ticket_price")}{" "}
                 <span className="font-semibold text-foreground">
                   {singlePreviewKr.toLocaleString("da-DK")} kr.
                 </span>{" "}
-                <span className="text-xs">(60% — beregnes automatisk)</span>
+                <span className="text-xs">{t("auto_calculated")}</span>
               </p>
             )}
           </div>
@@ -434,7 +436,7 @@ export default function HytteForm({ mode, initialCabin }: Props) {
       {/* 8. Billeder */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-          Billeder
+          {t("section_images")}
         </p>
         {mode === "edit" && initialCabin ? (
           <CabinImageUpload
@@ -462,10 +464,10 @@ export default function HytteForm({ mode, initialCabin }: Props) {
         style={mode === "create" ? { backgroundColor: "#4A9CC7" } : undefined}
       >
         {isPending
-          ? "Gemmer…"
+          ? tCommon("saving")
           : mode === "edit"
-            ? "Gem ændringer"
-            : "Gem og fortsæt →"}
+            ? t("save_changes")
+            : t("save_and_continue")}
       </Button>
     </form>
   )

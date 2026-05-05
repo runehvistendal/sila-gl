@@ -4,11 +4,13 @@ import { useState, useTransition } from "react"
 import { Star, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { useTranslations } from "next-intl"
 import { createReview, type BookingType, type ReviewerRole } from "@/app/actions/reviews"
 
 const MIN_COMMENT = 20
 
 function StarPicker({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const t = useTranslations("reviews")
   const [hovered, setHovered] = useState(0)
   return (
     <div className="flex gap-1">
@@ -16,7 +18,7 @@ function StarPicker({ value, onChange }: { value: number; onChange: (n: number) 
         <button
           key={n}
           type="button"
-          aria-label={`${n} stjerner`}
+          aria-label={t("star_aria_label", { count: n })}
           onMouseEnter={() => setHovered(n)}
           onMouseLeave={() => setHovered(0)}
           onClick={() => onChange(n)}
@@ -51,6 +53,8 @@ export default function ReviewForm({
   reviewerRole,
   onSuccess,
 }: ReviewFormProps) {
+  const t = useTranslations("reviews")
+  const tCommon = useTranslations("common")
   const [rating, setRating] = useState(0)
   const [comment, setComment] = useState("")
   const [submitted, setSubmitted] = useState(false)
@@ -60,9 +64,9 @@ export default function ReviewForm({
   if (submitted) {
     return (
       <div className="rounded-xl bg-green-50 border border-green-200 p-5 text-center space-y-1">
-        <p className="font-semibold text-green-800 text-sm">Anmeldelse modtaget</p>
+        <p className="font-semibold text-green-800 text-sm">{t("submitted_title")}</p>
         <p className="text-xs text-green-700">
-          Vises når den anden part har anmeldt, eller efter 30 dage.
+          {t("submitted_body")}
         </p>
       </div>
     )
@@ -70,9 +74,9 @@ export default function ReviewForm({
 
   function handleSubmit() {
     setErrorMsg("")
-    if (rating === 0) { setErrorMsg("Vælg en bedømmelse"); return }
+    if (rating === 0) { setErrorMsg(t("error_rating")); return }
     if (comment.trim().length < MIN_COMMENT) {
-      setErrorMsg(`Kommentar skal være mindst ${MIN_COMMENT} tegn`)
+      setErrorMsg(t("error_comment_min", { min: MIN_COMMENT }))
       return
     }
 
@@ -101,26 +105,26 @@ export default function ReviewForm({
     <div className="space-y-5">
       {/* Stars */}
       <div>
-        <p className="text-sm font-medium text-foreground mb-2">Din bedømmelse</p>
+        <p className="text-sm font-medium text-foreground mb-2">{t("your_rating")}</p>
         <StarPicker value={rating} onChange={setRating} />
       </div>
 
       {/* Comment */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <label className="text-sm font-medium text-foreground">Kommentar</label>
+          <label className="text-sm font-medium text-foreground">{t("comment_label")}</label>
           {comment.trim().length < MIN_COMMENT && (
-            <span className="text-xs text-muted-foreground">{remaining} tegn mangler</span>
+            <span className="text-xs text-muted-foreground">{t("chars_remaining", { count: remaining })}</span>
           )}
         </div>
         <Textarea
-          placeholder="Del din oplevelse..."
+          placeholder={t("placeholder")}
           value={comment}
           onChange={(e) => setComment(e.target.value)}
           className="h-28 resize-none text-sm rounded-xl"
           disabled={isPending}
         />
-        <p className="text-xs text-muted-foreground mt-1">{comment.trim().length} / min. {MIN_COMMENT} tegn</p>
+        <p className="text-xs text-muted-foreground mt-1">{t("chars_count", { count: comment.trim().length, min: MIN_COMMENT })}</p>
       </div>
 
       {errorMsg && (
@@ -137,10 +141,10 @@ export default function ReviewForm({
         {isPending ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            Sender...
+            {tCommon("sending")}
           </>
         ) : (
-          "Send anmeldelse"
+          t("submit_review")
         )}
       </Button>
     </div>

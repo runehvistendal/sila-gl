@@ -4,27 +4,15 @@ import { useState } from "react"
 import { Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { oreToKr, krToOre } from "@/lib/money"
+import { krToOre } from "@/lib/money"
+import { useTranslations } from "next-intl"
+import { useFormatPrice } from "@/hooks/useFormatPrice"
 
 export type AddOnService = {
   name: string
   description?: string
   price_ore: number
 }
-
-const CABIN_SUGGESTIONS = [
-  { name: "Slutrengøring",   description: "Professionel rengøring ved afrejse" },
-  { name: "Brænde",          description: "Levering af brænde til brændeovn" },
-  { name: "Indkøbspakke",    description: "Basale dagligvarer klar ved ankomst" },
-  { name: "Morgenmadskurv",  description: "Hjemmelavet morgenmad første morgen" },
-  { name: "Udstyrsleje",     description: "Udstyr til aktiviteter (kajak, fiskegrej m.m.)" },
-]
-
-const TRANSPORT_SUGGESTIONS = [
-  { name: "Fiskestænger",      description: "Leje af fiskestænger og grej" },
-  { name: "Måltid ombord",     description: "Varm mad eller snacks inkluderet" },
-  { name: "Kikkertudlejning",  description: "Udlån af kikkert til dyreobservation" },
-]
 
 interface Props {
   services: AddOnService[]
@@ -33,6 +21,23 @@ interface Props {
 }
 
 export default function AddOnServicesEditor({ services, onChange, type }: Props) {
+  const t = useTranslations("cabins")
+  const formatPrice = useFormatPrice()
+
+  const CABIN_SUGGESTIONS = [
+    { name: t("addon_cabin_cleaning"),   description: t("addon_cabin_cleaning_desc") },
+    { name: t("addon_cabin_firewood"),   description: t("addon_cabin_firewood_desc") },
+    { name: t("addon_cabin_grocery"),    description: t("addon_cabin_grocery_desc") },
+    { name: t("addon_cabin_breakfast"),  description: t("addon_cabin_breakfast_desc") },
+    { name: t("addon_cabin_equipment"),  description: t("addon_cabin_equipment_desc") },
+  ]
+
+  const TRANSPORT_SUGGESTIONS = [
+    { name: t("addon_transport_fishing_rods"),   description: t("addon_transport_fishing_rods_desc") },
+    { name: t("addon_transport_meal_onboard"),   description: t("addon_transport_meal_onboard_desc") },
+    { name: t("addon_transport_binoculars"),     description: t("addon_transport_binoculars_desc") },
+  ]
+
   const suggestions = type === "cabin" ? CABIN_SUGGESTIONS : TRANSPORT_SUGGESTIONS
 
   const [name,        setName]        = useState("")
@@ -72,7 +77,7 @@ export default function AddOnServicesEditor({ services, onChange, type }: Props)
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 <p className="text-sm font-semibold text-primary">
-                  {oreToKr(s.price_ore).toLocaleString("da-DK")} kr.
+                  {formatPrice(s.price_ore)}
                 </p>
                 <button
                   type="button"
@@ -105,17 +110,17 @@ export default function AddOnServicesEditor({ services, onChange, type }: Props)
       <div className="bg-muted/50 rounded-xl p-4 space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-semibold text-muted-foreground block mb-1">Navn</label>
+            <label className="text-xs font-semibold text-muted-foreground block mb-1">{t("addon_name_label")}</label>
             <Input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="F.eks. Slutrengøring"
+              placeholder={t("addon_name_placeholder")}
               className="rounded-xl"
             />
           </div>
           <div>
-            <label className="text-xs font-semibold text-muted-foreground block mb-1">Pris (kr)</label>
+            <label className="text-xs font-semibold text-muted-foreground block mb-1">{t("addon_price_label")}</label>
             <Input
               type="number"
               min={0}
@@ -128,12 +133,12 @@ export default function AddOnServicesEditor({ services, onChange, type }: Props)
           </div>
         </div>
         <div>
-          <label className="text-xs font-semibold text-muted-foreground block mb-1">Beskrivelse (valgfri)</label>
+          <label className="text-xs font-semibold text-muted-foreground block mb-1">{t("addon_description_label")}</label>
           <Input
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Kort beskrivelse af ydelsen"
+            placeholder={t("addon_description_placeholder")}
             className="rounded-xl"
           />
         </div>
@@ -145,7 +150,7 @@ export default function AddOnServicesEditor({ services, onChange, type }: Props)
           disabled={!name.trim() || !priceKr}
           className="gap-1.5 rounded-xl"
         >
-          <Plus className="w-3.5 h-3.5" /> Tilføj ydelse
+          <Plus className="w-3.5 h-3.5" /> {t("addon_add_button")}
         </Button>
       </div>
     </div>

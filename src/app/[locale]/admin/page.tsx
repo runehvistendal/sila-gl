@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server"
 import { createServiceClient } from "@/lib/supabase-service"
 import { Users, Home, CalendarCheck, MessageSquare, TrendingUp } from "lucide-react"
 
@@ -26,6 +27,7 @@ function StatCard({ label, value, icon: Icon, color }: StatCardProps) {
 }
 
 export default async function AdminPage() {
+  const t = await getTranslations("admin")
   const svc = createServiceClient()
 
   const [
@@ -49,31 +51,31 @@ export default async function AdminPage() {
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 mt-1">Overblik over Sila.gl platformen</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t("dashboard")}</h1>
+        <p className="text-gray-500 mt-1">{t("overview")}</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-10">
         <StatCard
-          label="Brugere i alt"
+          label={t("total_users")}
           value={totalUsers ?? 0}
           icon={Users}
           color="bg-blue-500"
         />
         <StatCard
-          label="Aktive hytter"
+          label={t("active_cabins")}
           value={`${publishedCabins ?? 0} / ${totalCabins ?? 0}`}
           icon={Home}
           color="bg-emerald-500"
         />
         <StatCard
-          label="Bookinger bekræftet"
+          label={t("confirmed_bookings")}
           value={`${confirmedBookings ?? 0} / ${totalBookings ?? 0}`}
           icon={CalendarCheck}
           color="bg-violet-500"
         />
         <StatCard
-          label="Åbne anmodninger"
+          label={t("open_requests")}
           value={`${openRequests ?? 0} / ${totalRequests ?? 0}`}
           icon={MessageSquare}
           color="bg-amber-500"
@@ -83,14 +85,14 @@ export default async function AdminPage() {
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="flex items-center gap-2 mb-4">
           <TrendingUp className="h-5 w-5 text-gray-400" />
-          <h2 className="font-semibold text-gray-900">Hurtige links</h2>
+          <h2 className="font-semibold text-gray-900">{t("quick_links")}</h2>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { href: "/admin/brugere", label: "Administrer brugere" },
-            { href: "/admin/hytter", label: "Administrer hytter" },
-            { href: "/admin/bookinger", label: "Se bookinger" },
-            { href: "/admin/anmodninger", label: "Se anmodninger" },
+            { href: "/admin/brugere", label: t("manage_users") },
+            { href: "/admin/hytter", label: t("manage_cabins") },
+            { href: "/admin/bookinger", label: t("see_bookings") },
+            { href: "/admin/anmodninger", label: t("see_requests") },
           ].map(({ href, label }) => (
             <a
               key={href}

@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation"
+import { getTranslations, setRequestLocale } from "next-intl/server"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
@@ -20,9 +21,13 @@ interface ReviewRow {
 export default async function PublicProfilPage({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string; locale: string }>
 }) {
-  const { id } = await params
+  const { id, locale } = await params
+  setRequestLocale(locale)
+
+  const t = await getTranslations({ locale, namespace: "profile" })
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -55,10 +60,10 @@ export default async function PublicProfilPage({
 
   const roleLabel =
     profile.role_type === "provider"
-      ? "Udbyder"
+      ? t("role_provider")
       : profile.role_type === "both"
-      ? "Gæst & Udbyder"
-      : "Gæst"
+      ? t("role_guest_provider")
+      : t("role_guest")
 
   const memberSince = format(
     new Date((profile as { created_at?: string }).created_at ?? Date.now()),
@@ -78,7 +83,7 @@ export default async function PublicProfilPage({
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={(profile as { avatar_url: string }).avatar_url}
-                alt={profile.full_name ?? "Profil"}
+                alt={profile.full_name ?? t("title")}
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -96,7 +101,9 @@ export default async function PublicProfilPage({
                 {(profile as { location: string }).location}
               </p>
             )}
-            <p className="text-xs text-muted-foreground mt-1">Medlem siden {memberSince}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {t("member_since")} {memberSince}
+            </p>
           </div>
 
           {avgRating !== null && (
@@ -105,7 +112,9 @@ export default async function PublicProfilPage({
                 <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
                 <span className="font-bold text-foreground">{avgRating.toFixed(1)}</span>
               </div>
-              <p className="text-xs text-muted-foreground">{reviews.length} anmeldelse{reviews.length !== 1 ? "r" : ""}</p>
+              <p className="text-xs text-muted-foreground">
+                {t("reviews_count", { count: reviews.length })}
+              </p>
             </div>
           )}
         </div>
@@ -122,7 +131,7 @@ export default async function PublicProfilPage({
         {/* Reviews */}
         <section>
           <div className="flex items-center gap-2 mb-4">
-            <h2 className="text-lg font-bold text-foreground">Anmeldelser</h2>
+            <h2 className="text-lg font-bold text-foreground">{t("reviews")}</h2>
             {avgRating !== null && (
               <StarBar stars={avgRating} count={reviews.length} />
             )}
@@ -130,7 +139,7 @@ export default async function PublicProfilPage({
 
           {reviews.length === 0 ? (
             <p className="text-sm text-muted-foreground bg-muted rounded-xl p-5 text-center">
-              Ingen anmeldelser endnu.
+              {t("no_reviews")}
             </p>
           ) : (
             <div className="space-y-4">

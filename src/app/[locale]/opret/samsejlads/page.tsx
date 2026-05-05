@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation"
+import { getTranslations } from "next-intl/server"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
@@ -21,6 +22,7 @@ export default async function OpretSamsejladsPage({
   if (!user) redirect("/")
 
   const navUser = await getNavUserForPage(supabase, user)
+  const t = await getTranslations("create")
 
   const { data: boatsRaw } = await supabase
     .from("boats")
@@ -43,10 +45,10 @@ export default async function OpretSamsejladsPage({
       <div className="mx-auto max-w-xl px-4 pt-20 pb-20">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-foreground mb-2">
-            Opret samsejladstur
+            {t("samsejlads_title")}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Vælg din båd, rute og dato. Tidspunkter angives i lokal tid.
+            {t("samsejlads_subtitle")}
           </p>
         </div>
 

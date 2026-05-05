@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { setCabinPublished } from "../actions"
 import { toast } from "sonner"
@@ -11,6 +12,8 @@ interface Props {
 }
 
 export default function AdminTogglePublished({ cabinId, published }: Props) {
+  const t = useTranslations("admin")
+  const tCommon = useTranslations("common")
   const [isPending, startTransition] = useTransition()
   const [current, setCurrent] = useState(published)
 
@@ -19,9 +22,9 @@ export default function AdminTogglePublished({ cabinId, published }: Props) {
       try {
         await setCabinPublished(cabinId, !current)
         setCurrent((v) => !v)
-        toast.success(!current ? "Hytte publiceret" : "Hytte sat som kladde")
+        toast.success(!current ? t("cabin_published") : t("cabin_unpublished"))
       } catch {
-        toast.error("Noget gik galt")
+        toast.error(t("something_went_wrong"))
       }
     })
   }
@@ -34,7 +37,7 @@ export default function AdminTogglePublished({ cabinId, published }: Props) {
       disabled={isPending}
       className="text-xs"
     >
-      {current ? "Afpublicér" : "Publicér"}
+      {current ? tCommon("unpublish") : tCommon("publish")}
     </Button>
   )
 }

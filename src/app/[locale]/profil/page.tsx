@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation"
+import { getTranslations, setRequestLocale } from "next-intl/server"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
@@ -7,11 +8,19 @@ import ProfileForm, {
   type ProfileReview,
 } from "./ProfileForm"
 
-export const metadata = { title: "Min profil — Sila.gl" }
-
 export const dynamic = "force-dynamic"
 
-export default async function ProfilPage() {
+type Props = { params: Promise<{ locale: string }> }
+
+export async function generateMetadata({ params }: Props) {
+  const { locale } = await params
+  const t = await getTranslations({ locale, namespace: "profile" })
+  return { title: t("meta_title") }
+}
+
+export default async function ProfilPage({ params }: Props) {
+  const { locale } = await params
+  setRequestLocale(locale)
   const supabase = await createClient()
   const {
     data: { user },

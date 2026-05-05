@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { setIsAdmin } from "../actions"
 import { toast } from "sonner"
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function AdminToggleAdmin({ userId, isAdmin }: Props) {
+  const t = useTranslations("admin")
   const [isPending, startTransition] = useTransition()
   const [current, setCurrent] = useState(isAdmin)
 
@@ -19,9 +21,9 @@ export default function AdminToggleAdmin({ userId, isAdmin }: Props) {
       try {
         await setIsAdmin(userId, !current)
         setCurrent((v) => !v)
-        toast.success(!current ? "Admin-adgang givet" : "Admin-adgang fjernet")
+        toast.success(!current ? t("admin_granted") : t("admin_revoked"))
       } catch {
-        toast.error("Noget gik galt")
+        toast.error(t("something_went_wrong"))
       }
     })
   }
@@ -34,7 +36,7 @@ export default function AdminToggleAdmin({ userId, isAdmin }: Props) {
       disabled={isPending}
       className="text-xs"
     >
-      {current ? "Fjern admin" : "Giv admin"}
+      {current ? t("revoke_admin") : t("grant_admin")}
     </Button>
   )
 }

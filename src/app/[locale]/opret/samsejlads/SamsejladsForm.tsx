@@ -1,6 +1,8 @@
 "use client"
 
 import { useActionState, useState } from "react"
+import { useTranslations } from "next-intl"
+import { Link } from "@/i18n/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -36,6 +38,9 @@ function FieldError({ messages }: { messages?: string[] }) {
 }
 
 export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
+  const t = useTranslations("create")
+  const tCommon = useTranslations("common")
+
   const [state, formAction, isPending] = useActionState<SamsejladsFormState, FormData>(
     createSamsejlads,
     null,
@@ -83,25 +88,29 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
       {/* Båd */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Båd
+          {t("section_boat")}
         </p>
         {boats.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Du har ingen registrerede både. <a href="/opret/baad" className="underline text-foreground">Registrér en båd</a> først.
+            {t("no_boats")}{" "}
+            <Link href="/opret/baad" className="underline text-foreground">
+              {t("register_a_boat")}
+            </Link>{" "}
+            først.
           </p>
         ) : (
           <div>
-            <Label>Vælg båd <span className="text-destructive">*</span></Label>
+            <Label>{t("select_boat_label")} <span className="text-destructive">*</span></Label>
             <Select onValueChange={setBoatId} value={boatId} required>
               <SelectTrigger className="mt-1 rounded-xl">
-                <SelectValue placeholder="Vælg din båd" />
+                <SelectValue placeholder={t("select_boat_placeholder")} />
               </SelectTrigger>
               <SelectContent>
                 {boats.map((b) => (
                   <SelectItem key={b.id} value={b.id}>
                     {b.name}
                     {b.boat_type ? ` — ${b.boat_type}` : ""}
-                    {` (${b.capacity} pladser)`}
+                    {` (${b.capacity} ${tCommon("seats")})`}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -114,13 +123,13 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
       {/* Rute */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-4">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Rute
+          {t("section_route")}
         </p>
         <div>
-          <Label>Fra <span className="text-destructive">*</span></Label>
+          <Label>{tCommon("from")} <span className="text-destructive">*</span></Label>
           <Select onValueChange={setFromLocation} value={fromLocation} required>
             <SelectTrigger className="mt-1 rounded-xl">
-              <SelectValue placeholder="Afgangsby" />
+              <SelectValue placeholder={t("departure_city_placeholder")} />
             </SelectTrigger>
             <SelectContent>
               {SORTED_LOCATIONS.map((l) => (
@@ -134,10 +143,10 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
         </div>
 
         <div>
-          <Label>Til <span className="text-destructive">*</span></Label>
+          <Label>{tCommon("to")} <span className="text-destructive">*</span></Label>
           <Select onValueChange={setToLocation} value={toLocation} required>
             <SelectTrigger className="mt-1 rounded-xl">
-              <SelectValue placeholder="Ankomstby" />
+              <SelectValue placeholder={t("arrival_city_placeholder")} />
             </SelectTrigger>
             <SelectContent>
               {SORTED_LOCATIONS.filter((l) => l.name_dk !== fromLocation).map((l) => (
@@ -154,11 +163,11 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
       {/* Afgang */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-4">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Afgang
+          {t("section_departure")}
         </p>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="afgang_dato">Dato <span className="text-destructive">*</span></Label>
+            <Label htmlFor="afgang_dato">{tCommon("date")} <span className="text-destructive">*</span></Label>
             <Input
               id="afgang_dato"
               name="afgang_dato"
@@ -170,7 +179,7 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
             <FieldError messages={state?.errors?.afgang_dato} />
           </div>
           <div>
-            <Label htmlFor="afgang_tid">Tidspunkt <span className="text-destructive">*</span></Label>
+            <Label htmlFor="afgang_tid">{t("time_label")} <span className="text-destructive">*</span></Label>
             <Input
               id="afgang_tid"
               name="afgang_tid"
@@ -186,10 +195,10 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
       {/* Pladser + pris */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-4">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Pladser og pris
+          {t("section_seats_and_price")}
         </p>
         <div>
-          <Label htmlFor="total_pladser">Ledige pladser <span className="text-destructive">*</span></Label>
+          <Label htmlFor="total_pladser">{t("available_seats_label")} <span className="text-destructive">*</span></Label>
           <Input
             id="total_pladser"
             name="total_pladser"
@@ -204,7 +213,7 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
         </div>
         <div>
           <Label htmlFor="pris_roundtrip_kr">
-            Pris pr. plads, tur/retur (kr) <span className="text-destructive">*</span>
+            {t("roundtrip_price_label")} <span className="text-destructive">*</span>
           </Label>
           <Input
             id="pris_roundtrip_kr"
@@ -221,7 +230,7 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
           <FieldError messages={state?.errors?.pris_roundtrip_kr} />
         </div>
         <div>
-          <Label htmlFor="pris_oneway_kr">Pris pr. plads, enkelttur (kr)</Label>
+          <Label htmlFor="pris_oneway_kr">{t("oneway_price_label")}</Label>
           <Input
             id="pris_oneway_kr"
             name="pris_oneway_kr"
@@ -238,7 +247,7 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
           />
           {priceOneWayKr !== "" && (
             <p className="text-sm text-gray-500 mt-1">
-              Vi foreslår {Number(priceOneWayKr).toLocaleString("da-DK")} kr (60% af tur/retur-prisen). Du kan ændre beløbet.
+              {t("oneway_price_suggestion", { price: Number(priceOneWayKr).toLocaleString("da-DK") })}
             </p>
           )}
           <FieldError messages={state?.errors?.pris_oneway_kr} />
@@ -248,15 +257,15 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
       {/* Beskrivelse */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Beskrivelse
+          {t("section_description")}
         </p>
         <div>
-          <Label htmlFor="beskrivelse">Om turen (valgfri)</Label>
+          <Label htmlFor="beskrivelse">{t("trip_desc_label")}</Label>
           <textarea
             id="beskrivelse"
             name="beskrivelse"
             rows={3}
-            placeholder="Fortæl om turen, evt. stop undervejs, vejrforhold o.l."
+            placeholder={t("trip_desc_placeholder")}
             className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
           />
         </div>
@@ -265,7 +274,7 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
       {/* Returtur */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-4">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Returtur
+          {t("section_return")}
         </p>
         <label className="flex items-center gap-3 cursor-pointer">
           <input
@@ -276,13 +285,13 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
             onChange={(e) => setReturtur(e.target.checked)}
             className="w-4 h-4 accent-primary"
           />
-          <span className="text-sm font-medium">Jeg tilbyder også returtur</span>
+          <span className="text-sm font-medium">{t("offers_return")}</span>
         </label>
 
         {returtur && (
           <div className="grid grid-cols-2 gap-4 pt-1">
             <div>
-              <Label htmlFor="retur_dato">Returdato <span className="text-destructive">*</span></Label>
+              <Label htmlFor="retur_dato">{t("return_date_label")} <span className="text-destructive">*</span></Label>
               <Input
                 id="retur_dato"
                 name="retur_dato"
@@ -293,7 +302,7 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
               <FieldError messages={state?.errors?.retur_dato} />
             </div>
             <div>
-              <Label htmlFor="retur_tid">Returtidspunkt <span className="text-destructive">*</span></Label>
+              <Label htmlFor="retur_tid">{t("return_time_label")} <span className="text-destructive">*</span></Label>
               <Input
                 id="retur_tid"
                 name="retur_tid"
@@ -312,7 +321,7 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
         className="w-full rounded-xl h-12 text-base font-semibold"
         style={{ backgroundColor: "#4A9CC7" }}
       >
-        {isPending ? "Opretter tur…" : "Opret tur"}
+        {isPending ? t("creating_trip") : t("create_trip_button")}
       </Button>
     </form>
   )

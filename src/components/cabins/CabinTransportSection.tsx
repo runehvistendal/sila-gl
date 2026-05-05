@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { createClient } from "@/lib/supabase"
-import { formatKr } from "@/lib/money"
+import { useTranslations, useFormatter } from "next-intl"
+import { useFormatPrice } from "@/hooks/useFormatPrice"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
-import { format } from "date-fns"
 import TransportDrawer from "@/components/transport/TransportDrawer"
 
 const LOCATIONS = [...new Set(GREENLAND_LOCATIONS.map((l) => l.name_dk))].sort()
@@ -41,15 +41,20 @@ interface Props {
 
 type TripType = "round_trip" | "outbound" | "return"
 
-const TRIP_LABELS: Record<TripType, string> = {
-  round_trip: "Tur-retur",
-  outbound:   "Udrejse",
-  return:     "Hjemrejse",
-}
-
 export default function CabinTransportSection({ cabin, transports, guests, onTransportCostChange }: Props) {
+  const t = useTranslations("cabins")
+  const tCommon = useTranslations("common")
+  const fmt = useFormatter()
+  const formatPrice = useFormatPrice()
+
   const pricePerSeat = cabin.transport_price_per_person_ore ?? 0
-  const hostName     = cabin.profiles?.full_name ?? "Udbyderen"
+  const hostName     = cabin.profiles?.full_name ?? t("transport_host_fallback")
+
+  const TRIP_LABELS: Record<TripType, string> = {
+    round_trip: t("transport_trip_round_trip"),
+    outbound:   t("transport_trip_outbound"),
+    return:     t("transport_trip_return"),
+  }
 
   const [selectedType, setSelectedType] = useState<TripType | null>(null)
   const [drawerRideShareId, setDrawerRideShareId] = useState<string | null>(null)
@@ -106,21 +111,21 @@ export default function CabinTransportSection({ cabin, transports, guests, onTra
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-foreground mb-4">Kom dertil</h2>
+      <h2 className="text-xl font-bold text-foreground mb-4">{t("getting_there")}</h2>
 
       {/* ── HOST-PROVIDED TRANSPORT ── */}
       {cabin.offers_transport && pricePerSeat > 0 && (
         <div className="bg-primary/5 border border-primary/15 rounded-2xl p-5 mb-5">
           <div className="flex items-center gap-2 mb-2">
             <Anchor className="w-5 h-5 text-primary" />
-            <span className="font-semibold text-foreground">Værtens transport</span>
+            <span className="font-semibold text-foreground">{t("transport_host_title")}</span>
           </div>
           <p className="text-sm text-muted-foreground mb-4">
-            <strong>{hostName}</strong> tilbyder transport til hytten.
+            <strong>{hostName}</strong> {t("transport_host_offers_suffix")}
           </p>
 
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-            Jeg ønsker
+            {t("transport_i_want")}
           </p>
           <div className="space-y-2 mb-3">
             {(["round_trip", "outbound", "return"] as TripType[]).map((type) => {
@@ -144,7 +149,7 @@ export default function CabinTransportSection({ cabin, transports, guests, onTra
                     <span className="text-sm font-medium">{TRIP_LABELS[type]}</span>
                   </div>
                   <span className={`text-sm font-bold ${active ? "text-primary" : "text-foreground"}`}>
-                    {formatKr(cost)}
+                    {formatPrice(cost)}
                   </span>
                 </button>
               )
@@ -153,23 +158,23 @@ export default function CabinTransportSection({ cabin, transports, guests, onTra
 
           {selectedType && (
             <div className="bg-white rounded-lg px-3 py-2 text-xs text-muted-foreground">
-              {formatKr(pricePerSeat)} × {guests} {guests !== 1 ? "gæster" : "gæst"}
-              {selectedType === "round_trip" ? " × 2 (tur-retur)" : ""} ={" "}
-              <span className="font-semibold text-foreground">{formatKr(transportCostOre)}</span>{" "}
-              <span className="text-muted-foreground/60">(lægges til totalen)</span>
+              {formatPrice(pricePerSeat)} × {guests} {t("booking_guest_count", { count: guests })}
+              {selectedType === "round_trip" ? ` ${t("transport_calc_times2")}` : ""} ={" "}
+              <span className="font-semibold text-foreground">{formatPrice(transportCostOre)}</span>{" "}
+              <span className="text-muted-foreground/60">{t("transport_calc_added")}</span>
             </div>
           )}
         </div>
       )}
 
       {!cabin.offers_transport && (
-        <p className="text-sm text-muted-foreground mb-4">Udbyderen tilbyder ikke transport til denne hytte.</p>
+        <p className="text-sm text-muted-foreground mb-4">{t("transport_no_host")}</p>
       )}
 
       {/* ── OTHER TRANSPORT LISTINGS ── */}
       <div className="mb-5">
         <p className="text-sm font-bold text-foreground mb-3">
-          Andre transportmuligheder til <strong>{cabin.location_hub}</strong>:
+          {t("transport_other_title", { location: cabin.location_hub })}
         </p>
         {transports.length > 0 ? (
           <div className="space-y-3">
@@ -185,9 +190,9 @@ export default function CabinTransportSection({ cabin, transports, guests, onTra
                     <span>{capitalize(tr.to_location)}</span>
                   </div>
                   <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-                    <span>{format(new Date(tr.departure_at), "d. MMM yyyy")}</span>
-                    <span>{tr.seats_available} plads{tr.seats_available !== 1 ? "er" : ""} tilbage</span>
-                    <span className="font-semibold text-foreground">{formatKr(tr.price_per_seat_ore)}/sæde</span>
+                    <span>{fmt.dateTime(new Date(tr.departure_at), { day: "numeric", month: "short", year: "numeric" })}</span>
+                    <span>{t("transport_seats_left", { count: tr.seats_available })}</span>
+                    <span className="font-semibold text-foreground">{formatPrice(tr.price_per_seat_ore)}{t("transport_per_seat")}</span>
                   </div>
                   {tr.profiles?.full_name && (
                     <p className="text-xs text-muted-foreground/60 mt-0.5">{tr.profiles.full_name}</p>
@@ -197,14 +202,14 @@ export default function CabinTransportSection({ cabin, transports, guests, onTra
                   onClick={() => setDrawerRideShareId(tr.id)}
                   className="shrink-0 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
                 >
-                  Se &amp; Book
+                  {t("transport_see_and_book")}
                 </button>
               </div>
             ))}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground bg-muted rounded-xl p-4">
-            Ingen planlagte ture til {cabin.location_hub} lige nu.
+            {t("transport_no_trips", { location: cabin.location_hub })}
           </p>
         )}
       </div>
@@ -212,7 +217,7 @@ export default function CabinTransportSection({ cabin, transports, guests, onTra
       {/* ── REQUEST CTA ── */}
       {!showRequest && !reqSent && (
         <div className="flex items-center gap-3 mt-2">
-          <span className="text-sm text-muted-foreground">Passer datoen ikke?</span>
+          <span className="text-sm text-muted-foreground">{t("transport_date_mismatch")}</span>
           <Button
             variant="outline"
             size="sm"
@@ -220,7 +225,7 @@ export default function CabinTransportSection({ cabin, transports, guests, onTra
             className="gap-1.5 rounded-xl shrink-0"
           >
             <MessageSquare className="w-3.5 h-3.5" />
-            Anmod om transport
+            {t("transport_request_cta")}
           </Button>
         </div>
       )}
@@ -237,8 +242,8 @@ export default function CabinTransportSection({ cabin, transports, guests, onTra
             <div className="mt-4 bg-muted/60 border border-border rounded-2xl p-5">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="font-semibold text-foreground text-sm">Anmod om transport</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Vi finder en sejler til dig</p>
+                  <h3 className="font-semibold text-foreground text-sm">{t("transport_request_title")}</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t("transport_request_subtitle")}</p>
                 </div>
                 <button onClick={() => setShowRequest(false)} className="text-muted-foreground hover:text-foreground">
                   <X className="w-4 h-4" />
@@ -248,7 +253,7 @@ export default function CabinTransportSection({ cabin, transports, guests, onTra
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Fra</label>
+                    <label className="text-xs font-semibold text-muted-foreground block mb-1.5">{tCommon("from")}</label>
                     <select
                       value={reqForm.from_location}
                       onChange={(e) => setReqForm((p) => ({ ...p, from_location: e.target.value }))}
@@ -258,7 +263,7 @@ export default function CabinTransportSection({ cabin, transports, guests, onTra
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Til</label>
+                    <label className="text-xs font-semibold text-muted-foreground block mb-1.5">{tCommon("to")}</label>
                     <select
                       value={reqForm.to_location}
                       onChange={(e) => setReqForm((p) => ({ ...p, to_location: e.target.value }))}
@@ -270,7 +275,7 @@ export default function CabinTransportSection({ cabin, transports, guests, onTra
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Ønsket dato</label>
+                    <label className="text-xs font-semibold text-muted-foreground block mb-1.5">{t("transport_desired_date")}</label>
                     <Input
                       type="date"
                       value={reqForm.travel_date}
@@ -280,7 +285,7 @@ export default function CabinTransportSection({ cabin, transports, guests, onTra
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Passagerer</label>
+                    <label className="text-xs font-semibold text-muted-foreground block mb-1.5">{t("transport_passengers")}</label>
                     <Input
                       type="number"
                       min={1}
@@ -292,11 +297,11 @@ export default function CabinTransportSection({ cabin, transports, guests, onTra
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Besked (valgfrit)</label>
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1.5">{t("transport_message_label")}</label>
                   <Textarea
                     value={reqForm.message}
                     onChange={(e) => setReqForm((p) => ({ ...p, message: e.target.value }))}
-                    placeholder="Fortæl os mere om din tur..."
+                    placeholder={t("transport_message_placeholder")}
                     rows={2}
                     className="resize-none bg-white"
                   />
@@ -306,7 +311,7 @@ export default function CabinTransportSection({ cabin, transports, guests, onTra
                   disabled={!reqForm.travel_date || reqPending}
                   className="w-full bg-primary text-primary-foreground rounded-xl h-10 font-semibold text-sm"
                 >
-                  {reqPending ? "Sender..." : "Send anmodning"}
+                  {reqPending ? tCommon("sending") : t("transport_send_request")}
                 </Button>
               </div>
             </div>
@@ -321,10 +326,10 @@ export default function CabinTransportSection({ cabin, transports, guests, onTra
             <Check className="w-4 h-4 text-green-600" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-green-800">Anmodning sendt!</p>
-            <p className="text-xs text-green-700 mt-0.5">Sejlere i området vil se din anmodning og kontakte dig.</p>
+            <p className="text-sm font-semibold text-green-800">{t("transport_request_sent")}</p>
+            <p className="text-xs text-green-700 mt-0.5">{t("transport_request_sent_body")}</p>
             <button onClick={() => { setReqSent(false); setShowRequest(false) }} className="text-xs text-green-600 underline mt-1">
-              Send en til
+              {t("transport_send_another")}
             </button>
           </div>
         </div>

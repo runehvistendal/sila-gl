@@ -1,32 +1,23 @@
 "use client"
 
 import { useActionState, useState, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { createBaad, updateBaad, type BaadFormState } from "./actions"
 import AddOnServicesEditor, { type AddOnService } from "@/components/shared/AddOnServicesEditor"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-const COMFORT_CHIPS = [
-  { value: "cabin", label: "Kabine/overnatning" },
-  { value: "toilet", label: "Toilet om bord" },
-  { value: "kitchen", label: "Køkken/kogemulighed" },
-  { value: "heater", label: "Varmeapparat" },
-  { value: "dinghy", label: "Gummibåd om bord" },
-]
-
-const EXTRA_CHIPS = [
-  { value: "fishing_gear", label: "Fiskegrej" },
-  { value: "binoculars", label: "Kikkert" },
-]
-
-const PREDEFINED = new Set([...COMFORT_CHIPS, ...EXTRA_CHIPS].map((c) => c.value))
+const PREDEFINED_VALUES = new Set([
+  "cabin", "toilet", "kitchen", "heater", "dinghy",
+  "fishing_gear", "binoculars",
+])
 
 function splitEquipment(equipment: string[] | null | undefined) {
   const list = equipment ?? []
   return {
-    fixed: list.filter((e) => PREDEFINED.has(e)),
-    custom: list.filter((e) => !PREDEFINED.has(e)),
+    fixed: list.filter((e) => PREDEFINED_VALUES.has(e)),
+    custom: list.filter((e) => !PREDEFINED_VALUES.has(e)),
   }
 }
 
@@ -46,6 +37,22 @@ interface Props {
 }
 
 export default function BaadForm({ mode, initialBoat }: Props) {
+  const t = useTranslations("create")
+  const tCommon = useTranslations("common")
+
+  const COMFORT_CHIPS = [
+    { value: "cabin", label: t("comfort_cabin") },
+    { value: "toilet", label: t("comfort_toilet") },
+    { value: "kitchen", label: t("comfort_kitchen") },
+    { value: "heater", label: t("comfort_heater") },
+    { value: "dinghy", label: t("comfort_dinghy") },
+  ]
+
+  const EXTRA_CHIPS = [
+    { value: "fishing_gear", label: t("extra_fishing") },
+    { value: "binoculars", label: t("extra_binoculars") },
+  ]
+
   const action = mode === "edit" ? updateBaad : createBaad
   const [state, formAction, isPending] = useActionState<BaadFormState, FormData>(action, null)
   const [actionType, setActionType] = useState<"save" | "create_trip">("save")
@@ -128,15 +135,14 @@ export default function BaadForm({ mode, initialBoat }: Props) {
       <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6 space-y-4">
         <div>
           <p className="text-sm font-semibold text-blue-900 mb-2">
-            Alle både på Sila skal have følgende sikkerhedsudstyr om bord. Bekræft at din
-            båd lever op til kravene.
+            {t("safety_intro")}
           </p>
           <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-            <li>Redningsveste til alle</li>
-            <li>Flare-sæt</li>
-            <li>VHF-radio</li>
-            <li>Førstehjælpskasse</li>
-            <li>GPS</li>
+            <li>{t("safety_item_lifejackets")}</li>
+            <li>{t("safety_item_flares")}</li>
+            <li>{t("safety_item_vhf")}</li>
+            <li>{t("safety_item_firstaid")}</li>
+            <li>{t("safety_item_gps")}</li>
           </ul>
         </div>
 
@@ -148,7 +154,7 @@ export default function BaadForm({ mode, initialBoat }: Props) {
             className="mt-0.5 w-4 h-4 accent-primary"
           />
           <span className="text-sm text-blue-900 font-medium">
-            Jeg bekræfter at min båd har alt ovenstående sikkerhedsudstyr
+            {t("safety_confirm")}
           </span>
         </label>
 
@@ -159,18 +165,18 @@ export default function BaadForm({ mode, initialBoat }: Props) {
 
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Bådens navn
+          {t("section_boat_name")}
         </p>
         <div>
           <Label htmlFor="name">
-            Navn <span className="text-destructive">*</span>
+            {t("boat_name_label")} <span className="text-destructive">*</span>
           </Label>
           <Input
             id="name"
             name="name"
             maxLength={80}
             defaultValue={initialBoat?.name}
-            placeholder="F.eks. Nordstjernen"
+            placeholder={t("boat_name_placeholder")}
             className="mt-1 rounded-xl"
             required
           />
@@ -182,15 +188,15 @@ export default function BaadForm({ mode, initialBoat }: Props) {
 
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Bådtype
+          {t("section_boat_type")}
         </p>
         <div>
-          <Label htmlFor="boat_type">Bådtype</Label>
+          <Label htmlFor="boat_type">{t("boat_type_label")}</Label>
           <Input
             id="boat_type"
             name="boat_type"
             defaultValue={initialBoat?.boat_type ?? ""}
-            placeholder="Speedbåd, Fiskerbåd, Katamaran"
+            placeholder={t("boat_type_placeholder")}
             className="mt-1 rounded-xl"
           />
         </div>
@@ -198,11 +204,11 @@ export default function BaadForm({ mode, initialBoat }: Props) {
 
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Kapacitet
+          {t("section_capacity")}
         </p>
         <div>
           <Label htmlFor="capacity">
-            Antal passagerer <span className="text-destructive">*</span>
+            {t("passengers_label")} <span className="text-destructive">*</span>
           </Label>
           <Input
             id="capacity"
@@ -222,16 +228,16 @@ export default function BaadForm({ mode, initialBoat }: Props) {
 
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Beskrivelse
+          {t("section_description")}
         </p>
         <div>
-          <Label htmlFor="description">Beskriv båden (valgfri)</Label>
+          <Label htmlFor="description">{t("boat_desc_label")}</Label>
           <textarea
             id="description"
             name="description"
             defaultValue={initialBoat?.description ?? ""}
             rows={4}
-            placeholder="Fortæl om båden, dens egenskaber og hvad gæster kan forvente"
+            placeholder={t("boat_desc_placeholder")}
             className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
           />
         </div>
@@ -239,11 +245,11 @@ export default function BaadForm({ mode, initialBoat }: Props) {
 
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-5">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Udstyr
+          {t("section_equipment")}
         </p>
 
         <div>
-          <p className="text-xs font-semibold text-muted-foreground mb-2">Komfort om bord</p>
+          <p className="text-xs font-semibold text-muted-foreground mb-2">{t("equipment_comfort")}</p>
           <div className="flex flex-wrap gap-2">
             {COMFORT_CHIPS.map((chip) => (
               <button
@@ -264,7 +270,7 @@ export default function BaadForm({ mode, initialBoat }: Props) {
         </div>
 
         <div>
-          <p className="text-xs font-semibold text-muted-foreground mb-2">Ekstraudstyr</p>
+          <p className="text-xs font-semibold text-muted-foreground mb-2">{t("equipment_extra")}</p>
           <div className="flex flex-wrap gap-2">
             {EXTRA_CHIPS.map((chip) => (
               <button
@@ -285,9 +291,9 @@ export default function BaadForm({ mode, initialBoat }: Props) {
         </div>
 
         <div>
-          <p className="text-xs font-semibold text-muted-foreground mb-2">Tilføj eget udstyr</p>
+          <p className="text-xs font-semibold text-muted-foreground mb-2">{t("equipment_custom")}</p>
           <p className="text-xs text-muted-foreground mb-2">
-            Komma eller Enter — tilføjer mærke med ×-knap
+            {t("equipment_custom_hint")}
           </p>
           <div className="flex flex-wrap gap-2 mb-2 min-h-6">
             {customEquipment.map((tag) => (
@@ -300,7 +306,7 @@ export default function BaadForm({ mode, initialBoat }: Props) {
                   type="button"
                   onClick={() => removeCustom(tag)}
                   className="p-0.5 rounded hover:bg-primary/20"
-                  aria-label={`Fjern ${tag}`}
+                  aria-label={t("remove_tag", { tag })}
                 >
                   ×
                 </button>
@@ -319,7 +325,7 @@ export default function BaadForm({ mode, initialBoat }: Props) {
             onBlur={() => {
               if (customInput.trim()) addCustomFromInput()
             }}
-            placeholder="Eget udstyr"
+            placeholder={t("equipment_custom_placeholder")}
             className="rounded-xl"
           />
         </div>
@@ -327,7 +333,7 @@ export default function BaadForm({ mode, initialBoat }: Props) {
 
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Tilvalgsydelser
+          {t("section_addon_services")}
         </p>
         <AddOnServicesEditor
           services={addonServices}
@@ -338,10 +344,10 @@ export default function BaadForm({ mode, initialBoat }: Props) {
 
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-          Billeder
+          {t("section_images")}
         </p>
         <div className="rounded-xl border-2 border-dashed border-border bg-muted/30 py-10 flex flex-col items-center justify-center gap-2 text-muted-foreground">
-          <p className="text-sm">Billeder tilføjes i næste trin (Cloudinary)</p>
+          <p className="text-sm">{t("images_next_step")}</p>
         </div>
       </div>
 
@@ -355,7 +361,7 @@ export default function BaadForm({ mode, initialBoat }: Props) {
           disabled={!safetyConfirmed || isPending}
           className="w-full rounded-xl h-12 text-base font-semibold"
         >
-          {isPending ? "Gemmer…" : "Gem ændringer"}
+          {isPending ? tCommon("saving") : t("save_changes")}
         </Button>
       ) : (
         <div className="flex flex-col sm:flex-row gap-3">
@@ -366,7 +372,7 @@ export default function BaadForm({ mode, initialBoat }: Props) {
             onClick={() => setActionType("save")}
             className="flex-1 rounded-xl h-12 text-base"
           >
-            {isPending && actionType === "save" ? "Gemmer…" : "Gem båd"}
+            {isPending && actionType === "save" ? tCommon("saving") : t("save_boat")}
           </Button>
           <Button
             type="submit"
@@ -375,7 +381,7 @@ export default function BaadForm({ mode, initialBoat }: Props) {
             className="flex-1 rounded-xl h-12 text-base font-semibold"
             style={{ backgroundColor: "#4A9CC7" }}
           >
-            {isPending && actionType === "create_trip" ? "Gemmer…" : "Gem og opret tur →"}
+            {isPending && actionType === "create_trip" ? tCommon("saving") : t("save_and_create_trip")}
           </Button>
         </div>
       )}

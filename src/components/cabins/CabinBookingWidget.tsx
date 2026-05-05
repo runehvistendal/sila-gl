@@ -6,7 +6,8 @@ import { toast } from "sonner"
 import Link from "next/link"
 import { DayPicker, type DateRange } from "react-day-picker"
 import { da, enUS } from "date-fns/locale"
-import { useLocale } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
+import { useFormatPrice } from "@/hooks/useFormatPrice"
 import {
   format as formatDate,
   isBefore,
@@ -16,7 +17,6 @@ import {
 import { Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { formatKr } from "@/lib/money"
 import {
   createCabinBooking,
   type TransportTrip,
@@ -53,12 +53,6 @@ type Props = {
   onGuestsChange?: (guests: number) => void
 }
 
-const TRIP_OPTIONS: { value: TransportTrip; label: string }[] = [
-  { value: "outbound", label: "Kun udrejse" },
-  { value: "return", label: "Kun hjemrejse" },
-  { value: "round_trip", label: "Tur-retur" },
-]
-
 function parseYmdLocal(s: string): Date {
   return parseISO(s + "T12:00:00")
 }
@@ -73,6 +67,9 @@ export default function CabinBookingWidget({
   const router = useRouter()
   const locale = useLocale()
   const dayPickerLocale = locale === "en" ? enUS : da
+  const t = useTranslations("cabins")
+  const tCommon = useTranslations("common")
+  const formatPrice = useFormatPrice()
   const [pending, start] = useTransition()
   const today = startOfDay(new Date())
 
@@ -87,17 +84,24 @@ export default function CabinBookingWidget({
     cabin.offers_transport ? "outbound" : "none"
   )
 
+  const TRIP_OPTIONS: { value: TransportTrip; label: string }[] = [
+    { value: "outbound", label: t("booking_trip_outbound_only") },
+    { value: "return",   label: t("booking_trip_return_only") },
+    { value: "round_trip", label: t("booking_trip_round_trip") },
+  ]
+
   const guests = Math.floor(Number(guestsInput)) || 0
   const guestInvalid = guests < 1 || guests > cabin.max_guests
 
   useEffect(() => {
     if (guests >= 1) onGuestsChange?.(guests)
   }, [guests, onGuestsChange])
+
   const guestError =
     guestInvalid && guestsInput !== ""
       ? guests > cabin.max_guests
-        ? `Højst ${cabin.max_guests} gæster`
-        : "Mindst 1 gæst"
+        ? t("booking_error_max_guests", { count: cabin.max_guests })
+        : t("booking_error_min_guest")
       : null
 
   const checkIn =
@@ -191,26 +195,24 @@ export default function CabinBookingWidget({
       if (guestInvalid) {
         toast.error(
           guests > cabin.max_guests
-            ? `Højst ${cabin.max_guests} gæster`
-            : "Angiv et gyldigt antal gæster",
+            ? t("booking_error_max_guests", { count: cabin.max_guests })
+            : t("booking_error_min_guest"),
         )
       } else {
-        toast.error("Vælg både ind- og udtjek (datointerval)")
+        toast.error(t("booking_error_select_dates"))
       }
       return
     }
     if (checkOut <= checkIn) {
-      toast.error("Udtjek skal være efter indtjek")
+      toast.error(t("booking_error_checkout_order"))
       return
     }
     if (nights < 1) {
-      toast.error("Mindst én overnatning")
+      toast.error(t("booking_error_min_one_night"))
       return
     }
     if (nights < minNights) {
-      toast.error(
-        `Minimum ${minNights} ${minNights === 1 ? "nat" : "nætter"} kræves for denne hytte`,
-      )
+      toast.error(t("booking_error_min_nights", { count: minNights }))
       return
     }
     if (!isLoggedIn) {
@@ -233,7 +235,7 @@ export default function CabinBookingWidget({
         }
         window.location.assign(r.url)
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Noget gik galt")
+        toast.error(e instanceof Error ? e.message : tCommon("error"))
       }
     })
   }
@@ -254,16 +256,16 @@ export default function CabinBookingWidget({
       style={{ fontFamily: "var(--font-jakarta, system-ui)" }}
     >
       <h2 className="text-lg sm:text-xl font-bold text-foreground mb-1">
-        Book hytten
+        {t("booking_title")}
       </h2>
       <p className="text-sm text-muted-foreground mb-4">
-        Vælg datoer og gæster. Priser i DKK. Betaling via Stripe.
+        {t("booking_subtitle")}
       </p>
       <div className="bg-white dark:bg-card rounded-2xl border border-border shadow-card p-4 sm:p-5">
         <div className="space-y-4">
           <div>
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">
-              Datoer
+              {t("booking_dates_label")}
             </span>
             <div className="flex justify-center py-1 rounded-xl border border-border/80 bg-muted/20">
               <DayPicker
@@ -283,14 +285,13 @@ export default function CabinBookingWidget({
               />
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Datoer med eksisterende booking eller værtens blokering er
-              utilgængelige.
+              {t("booking_dates_hint")}
             </p>
             {minNights > 1 && (
               <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
-                Minimum {minNights} nætter kræves for denne hytte
+                {t("booking_min_nights_warning", { count: minNights })}
                 {nights > 0 && nights < minNights
-                  ? ` — du har valgt ${nights}`
+                  ? ` ${t("booking_min_nights_selected", { count: nights })}`
                   : ""}
               </p>
             )}
@@ -301,7 +302,7 @@ export default function CabinBookingWidget({
               htmlFor="cabin_guests"
               className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block"
             >
-              Gæster
+              {tCommon("guests")}
             </label>
             <Input
               id="cabin_guests"
@@ -316,7 +317,7 @@ export default function CabinBookingWidget({
               aria-invalid={!!guestError}
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Maks. {cabin.max_guests} gæster
+              {t("booking_max_guests_label", { count: cabin.max_guests })}
             </p>
             {guestError && (
               <p className="text-xs text-destructive mt-1">{guestError}</p>
@@ -326,7 +327,7 @@ export default function CabinBookingWidget({
           {cabin.offers_transport && perPerson > 0 && (
             <div>
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">
-                Transport
+                {t("booking_transport_label")}
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {TRIP_OPTIONS.map((o) => (
@@ -346,8 +347,7 @@ export default function CabinBookingWidget({
                 ))}
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                Pris pr. person pr. strækning: {formatKr(perPerson)} (beregning
-                følger værtens tilbud).
+                {t("booking_transport_hint", { price: formatPrice(perPerson) })}
               </p>
             </div>
           )}
@@ -357,27 +357,26 @@ export default function CabinBookingWidget({
           <div className="mt-4 rounded-xl bg-muted p-4 text-sm space-y-1.5">
             <div className="flex justify-between text-muted-foreground">
               <span>
-                {formatKr(cabin.price_per_night_ore)} × {nights} nat
-                {nights !== 1 ? "ter" : ""}
+                {formatPrice(cabin.price_per_night_ore)} × {nights} {t("booking_night", { count: nights })}
               </span>
               <span className="font-medium text-foreground tabular-nums">
-                {formatKr(cabinTotalOre)}
+                {formatPrice(cabinTotalOre)}
               </span>
             </div>
             {transportTotalOre > 0 && (
               <div className="flex justify-between text-muted-foreground">
-                <span>Transport (tilvalg)</span>
+                <span>{t("booking_transport_addon")}</span>
                 <span className="font-medium text-foreground tabular-nums">
-                  {formatKr(transportTotalOre)}
+                  {formatPrice(transportTotalOre)}
                 </span>
               </div>
             )}
             <div className="flex justify-between font-bold text-foreground pt-1 border-t border-border">
-              <span>Total</span>
-              <span className="tabular-nums">{formatKr(totalOre)}</span>
+              <span>{tCommon("total")}</span>
+              <span className="tabular-nums">{formatPrice(totalOre)}</span>
             </div>
             <p className="text-xs text-muted-foreground pt-1">
-              Platformgebyr (15 %) håndteres i forbindelse med betalingen.
+              {t("booking_platform_fee_note")}
             </p>
           </div>
         )}
@@ -393,12 +392,12 @@ export default function CabinBookingWidget({
               {pending ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin inline" />
-                  Omdirigerer…
+                  {t("booking_redirecting")}
                 </>
               ) : nights > 0 && !guestInvalid ? (
-                `Book nu${totalOre > 0 ? " — " + formatKr(totalOre) : ""}`
+                `${t("booking_book_now")}${totalOre > 0 ? " — " + formatPrice(totalOre) : ""}`
               ) : (
-                "Vælg datoer og gæster"
+                t("booking_select_dates_guests")
               )}
             </Button>
           ) : (
@@ -408,17 +407,17 @@ export default function CabinBookingWidget({
               disabled={bookDisabled}
               className="h-12 w-full rounded-xl font-semibold"
             >
-              Log ind og book
+              {t("booking_login_book")}
             </Button>
           )}
         </div>
 
         <p className="text-xs text-center text-muted-foreground mt-3">
           {isLoggedIn ? (
-            "Sikker betaling med Stripe"
+            t("booking_secure")
           ) : (
             <>
-              Har du allerede konto?{" "}
+              {t("booking_has_account")}{" "}
               <Link
                 href={loginHref}
                 className="text-primary font-medium hover:underline"
@@ -426,7 +425,7 @@ export default function CabinBookingWidget({
                   if (checkIn && checkOut) persistDraft()
                 }}
               >
-                Log ind
+                {t("booking_login")}
               </Link>
             </>
           )}

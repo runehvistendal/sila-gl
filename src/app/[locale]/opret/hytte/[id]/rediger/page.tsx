@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation"
-import Link from "next/link"
 import { ChevronLeft } from "lucide-react"
+import { getTranslations } from "next-intl/server"
+import { Link } from "@/i18n/navigation"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
@@ -24,6 +25,8 @@ export default async function RedigerHyttePage({ params, searchParams }: PagePro
   if (!user) redirect("/login")
 
   const navUser = await getNavUserForPage(supabase, user)
+  const t = await getTranslations("create")
+  const tDashboard = await getTranslations("dashboard")
 
   const { data: cabin, error } = await supabase
     .from("cabins")
@@ -55,23 +58,25 @@ export default async function RedigerHyttePage({ params, searchParams }: PagePro
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
         >
           <ChevronLeft className="w-4 h-4" />
-          Mine opslag
+          {tDashboard("tab_listings")}
         </Link>
 
         {isNewlySaved && (
           <div className="mb-6 rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
-            Hytten er gemt. Upload billeder herunder, og gå derefter til{" "}
-            <Link href={`/opret/opslag/hytte/${id}`} className="font-semibold underline">
-              Udlej nu
-            </Link>{" "}
-            for at publicere opslaget.
+            {t.rich("cabin_saved_info", {
+              link: (chunks) => (
+                <Link href={`/opret/opslag/hytte/${id}`} className="font-semibold underline">
+                  {chunks}
+                </Link>
+              ),
+            })}
           </div>
         )}
 
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground mb-2">Rediger hytte</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-2">{t("edit_cabin_title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Opdater oplysninger og billeder.
+            {t("edit_cabin_subtitle")}
           </p>
         </div>
 
@@ -98,7 +103,7 @@ export default async function RedigerHyttePage({ params, searchParams }: PagePro
             href={`/opret/hytte/${id}/tilgaengelighed`}
             className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
           >
-            Administrer tilgængelighed →
+            {t("manage_availability")}
           </Link>
         </div>
       </div>

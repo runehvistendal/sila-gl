@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Anchor } from "lucide-react"
+import { useTranslations } from "next-intl"
+import { Link } from "@/i18n/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -46,6 +47,8 @@ interface Props {
 }
 
 export default function OpretPageClient({ cabins, boats }: Props) {
+  const t = useTranslations("create")
+  const tCommon = useTranslations("common")
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [pendingId, setPendingId] = useState<string | null>(null)
@@ -64,7 +67,7 @@ export default function OpretPageClient({ cabins, boats }: Props) {
       const res = await publishCabin(cabinId)
       setPendingId(null)
       if (res.error) toast.error(res.error)
-      else { toast.success("Hytte publiceret"); router.refresh() }
+      else { toast.success(t("cabin_published")); router.refresh() }
     })
   }
 
@@ -74,7 +77,7 @@ export default function OpretPageClient({ cabins, boats }: Props) {
       const res = await unpublishCabin(cabinId)
       setPendingId(null)
       if (res.error) toast.error(res.error)
-      else { toast.success("Hytte afpubliceret"); router.refresh() }
+      else { toast.success(t("cabin_unpublished")); router.refresh() }
     })
   }
 
@@ -84,7 +87,7 @@ export default function OpretPageClient({ cabins, boats }: Props) {
       const res = await duplicateCabin(cabinId)
       setPendingId(null)
       if (res.error) toast.error(res.error)
-      else { toast.success("Hytte duplikeret — rediger og publicér den nye"); router.refresh() }
+      else { toast.success(t("cabin_duplicated")); router.refresh() }
     })
   }
 
@@ -94,16 +97,16 @@ export default function OpretPageClient({ cabins, boats }: Props) {
       const res = await deleteCabin(cabinId)
       setPendingId(null)
       if (res.error) toast.error(res.error)
-      else { toast.success("Hytte slettet"); router.refresh() }
+      else { toast.success(t("cabin_deleted")); router.refresh() }
     })
   }
 
   return (
     <div className="mx-auto max-w-2xl px-4 pt-10 pb-20">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-foreground mb-2">Hvad vil du tilbyde?</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-2">{t("offer_title")}</h1>
         <p className="text-sm text-muted-foreground">
-          Vælg hvad du vil tilbyde rejsende i Grønland
+          {t("offer_subtitle")}
         </p>
       </div>
 
@@ -117,9 +120,9 @@ export default function OpretPageClient({ cabins, boats }: Props) {
             🏠
           </div>
           <div>
-            <h2 className="font-bold text-foreground">Udlej en hytte</h2>
+            <h2 className="font-bold text-foreground">{t("cabin_card_title")}</h2>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Tilbyd din hytte til rejsende
+              {t("cabin_card_subtitle")}
             </p>
           </div>
         </button>
@@ -133,9 +136,9 @@ export default function OpretPageClient({ cabins, boats }: Props) {
             <Anchor className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h2 className="font-bold text-foreground">Tilbyd transport</h2>
+            <h2 className="font-bold text-foreground">{t("boat_card_title")}</h2>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Tilbyd pladser på din båd
+              {t("boat_card_subtitle")}
             </p>
           </div>
         </button>
@@ -166,20 +169,17 @@ export default function OpretPageClient({ cabins, boats }: Props) {
                           : "bg-gray-100 text-gray-600 border-0"
                       }
                     >
-                      {c.published ? "Aktiv" : "Kladde"}
+                      {c.published ? tCommon("active") : tCommon("draft")}
                     </Badge>
                     <div className="flex flex-wrap gap-2">
-                      {/* Rediger */}
                       <Button asChild size="sm" variant="outline" className="rounded-lg text-xs h-8">
-                        <Link href={`/opret/hytte/${c.id}/rediger`}>Rediger</Link>
+                        <Link href={`/opret/hytte/${c.id}/rediger`}>{tCommon("edit")}</Link>
                       </Button>
-                      {/* Tilgængelighed */}
                       <Button asChild size="sm" variant="outline" className="rounded-lg text-xs h-8">
-                        <Link href={`/opret/hytte/${c.id}/tilgaengelighed`}>Tilgængelighed</Link>
+                        <Link href={`/opret/hytte/${c.id}/tilgaengelighed`}>{t("availability")}</Link>
                       </Button>
 
                       {!c.published ? (
-                        /* Kladde → Publicér */
                         <Button
                           size="sm"
                           variant="outline"
@@ -187,10 +187,9 @@ export default function OpretPageClient({ cabins, boats }: Props) {
                           onClick={() => handlePublish(c.id)}
                           className="rounded-lg text-xs h-8 border-green-300 text-green-700 hover:bg-green-50"
                         >
-                          Publicér
+                          {tCommon("publish")}
                         </Button>
                       ) : (
-                        /* Aktiv → Afpublicér (med AlertDialog) + Dupliker */
                         <>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -200,23 +199,23 @@ export default function OpretPageClient({ cabins, boats }: Props) {
                                 disabled={busy}
                                 className="rounded-lg text-xs h-8 border-amber-300 text-amber-700 hover:bg-amber-50"
                               >
-                                Afpublicér
+                                {tCommon("unpublish")}
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Afpublicér hytte?</AlertDialogTitle>
+                                <AlertDialogTitle>{t("unpublish_dialog_title")}</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Hytten bliver usynlig for gæster og kan ikke bookes. Eksisterende bookinger påvirkes ikke.
+                                  {t("unpublish_dialog_description")}
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Annuller</AlertDialogCancel>
+                                <AlertDialogCancel>{tCommon("cancel")}</AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() => handleUnpublish(c.id)}
                                   className="bg-amber-600 hover:bg-amber-700 text-white"
                                 >
-                                  Afpublicér
+                                  {tCommon("unpublish")}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -228,23 +227,22 @@ export default function OpretPageClient({ cabins, boats }: Props) {
                             onClick={() => handleDuplicate(c.id)}
                             className="rounded-lg text-xs h-8 text-muted-foreground"
                           >
-                            Dupliker
+                            {tCommon("duplicate")}
                           </Button>
                         </>
                       )}
 
-                      {/* Slet */}
                       <Button
                         size="sm"
                         variant="ghost"
                         disabled={busy}
                         onClick={async () => {
-                          if (!confirm("Slet hytten? Den fjernes permanent efter 30 dage.")) return
+                          if (!confirm(t("delete_cabin_confirm"))) return
                           handleDelete(c.id)
                         }}
                         className="rounded-lg text-xs h-8 text-destructive hover:bg-destructive/10"
                       >
-                        Slet
+                        {tCommon("delete")}
                       </Button>
                     </div>
                   </div>
@@ -254,7 +252,7 @@ export default function OpretPageClient({ cabins, boats }: Props) {
           </ul>
           <div className="pt-3 border-t border-border mt-3">
             <Link href="/opret/hytte" className="text-sm font-medium text-primary hover:underline">
-              + Opret ny hytte
+              {t("add_new_cabin")}
             </Link>
           </div>
         </section>
@@ -271,7 +269,7 @@ export default function OpretPageClient({ cabins, boats }: Props) {
                 <div className="min-w-0">
                   <p className="font-semibold text-foreground break-words">{b.name}</p>
                   <p className="text-xs text-muted-foreground break-words">
-                    {b.boat_type ?? "Båd"} — {b.capacity} pladser
+                    {b.boat_type ?? t("boat_fallback_type")} — {b.capacity} {tCommon("seats")}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -281,23 +279,23 @@ export default function OpretPageClient({ cabins, boats }: Props) {
                     variant="outline"
                     className="rounded-lg text-xs h-8"
                   >
-                    <Link href={`/opret/baad/${b.id}/rediger`}>Rediger</Link>
+                    <Link href={`/opret/baad/${b.id}/rediger`}>{tCommon("edit")}</Link>
                   </Button>
                   <Button asChild size="sm" className="rounded-lg text-xs h-8">
-                    <Link href={`/opret/opslag/sejlads/${b.id}`}>Post tur</Link>
+                    <Link href={`/opret/opslag/sejlads/${b.id}`}>{t("post_trip")}</Link>
                   </Button>
                   <Button
                     size="sm"
                     variant="ghost"
                     onClick={async () => {
-                      if (!confirm("Slet båden? Den fjernes permanent efter 30 dage.")) return
+                      if (!confirm(t("delete_boat_confirm"))) return
                       const res = await deleteBoat(b.id)
                       if (res.error) toast.error(res.error)
-                      else { toast.success("Båd slettet"); router.refresh() }
+                      else { toast.success(t("boat_deleted")); router.refresh() }
                     }}
                     className="rounded-lg text-xs h-8 text-destructive hover:bg-destructive/10"
                   >
-                    Slet
+                    {tCommon("delete")}
                   </Button>
                 </div>
               </li>
@@ -305,7 +303,7 @@ export default function OpretPageClient({ cabins, boats }: Props) {
           </ul>
           <div className="pt-3 border-t border-border mt-3">
             <Link href="/opret/baad" className="text-sm font-medium text-primary hover:underline">
-              + Opret ny båd
+              {t("add_new_boat")}
             </Link>
           </div>
         </section>

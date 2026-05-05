@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { ChevronLeft, ChevronRight, Loader2, X } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,8 +15,6 @@ import {
 } from "@/components/ui/select"
 import { saveAvailability, saveCabinSettings, saveAll } from "./actions"
 import { toast } from "sonner"
-
-const DAY_LABELS = ["Ma", "Ti", "On", "To", "Fr", "Lø", "Sø"]
 
 function toYMD(d: Date): string {
   return d.toISOString().split("T")[0]
@@ -52,11 +51,6 @@ function buildMonthDays(year: number, month: number): (string | null)[] {
   return days
 }
 
-const MONTH_NAMES = [
-  "Januar", "Februar", "Marts", "April", "Maj", "Juni",
-  "Juli", "August", "September", "Oktober", "November", "December",
-]
-
 interface Props {
   cabinId: string
   initialBlocked: string[]
@@ -75,6 +69,9 @@ export default function AvailabilityCalendar({
   initialPreparationDays = 0,
   showPublishButton = true,
 }: Props) {
+  const t = useTranslations("create")
+  const tCommon = useTranslations("common")
+
   const today = toYMD(new Date())
   const [firstMonth, setFirstMonth] = useState<Date>(() => {
     const d = new Date()
@@ -87,17 +84,14 @@ export default function AvailabilityCalendar({
   )
   const bookedSet = new Set(bookedDates)
 
-  // Bookingindstillinger (fælles state med gem-knapperne)
   const [minNights, setMinNights] = useState(initialMinNights)
   const [preparationDays, setPreparationDays] = useState(initialPreparationDays)
 
-  // Periode-valg: første klik sætter start, andet klik fuldfører perioden
   const [pendingStart, setPendingStart] = useState<string | null>(null)
   const [hoveredDate, setHoveredDate] = useState<string | null>(null)
 
   const [isPending, startTransition] = useTransition()
 
-  // Preview-range (mellem pendingStart og hovered)
   const previewRange: Set<string> = new Set()
   if (pendingStart && hoveredDate && pendingStart !== hoveredDate) {
     eachDayOfRange(pendingStart, hoveredDate).forEach((d) => {
@@ -187,10 +181,13 @@ export default function AvailabilityCalendar({
     const month = monthDate.getMonth()
     const days = buildMonthDays(year, month)
 
+    const DAY_LABELS = Array.from({ length: 7 }, (_, i) => t(`day_${i}` as Parameters<typeof t>[0]))
+    const monthName = t(`month_${month}` as Parameters<typeof t>[0])
+
     return (
       <div key={`${year}-${month}`} className="flex-1 min-w-0">
         <p className="text-center text-sm font-semibold text-gray-700 mb-3">
-          {MONTH_NAMES[month]} {year}
+          {monthName} {year}
         </p>
         <div className="grid grid-cols-7 gap-0.5">
           {DAY_LABELS.map((l) => (
@@ -222,30 +219,27 @@ export default function AvailabilityCalendar({
     )
   }
 
-  // Gem kun tilgængelighed (ingen publicering, ingen settings)
   function handleSaveAvailability() {
     startTransition(async () => {
       const result = await saveAvailability(cabinId, [...blockedDates], false)
       if ("error" in result) { toast.error(result.error); return }
-      toast.success("Tilgængelighed gemt")
+      toast.success(t("availability_saved"))
     })
   }
 
-  // Gem kun indstillinger (hurtig-gem)
   function handleSaveSettings() {
     startTransition(async () => {
       const result = await saveCabinSettings(cabinId, minNights, preparationDays)
       if ("error" in result) { toast.error(result.error); return }
-      toast.success("Indstillinger gemt")
+      toast.success(t("settings_saved"))
     })
   }
 
-  // Gem ALT + publicér (kombineret ét kald)
   function handleSaveAll(publish: boolean) {
     startTransition(async () => {
       const result = await saveAll(cabinId, [...blockedDates], minNights, preparationDays, publish)
       if ("error" in result) { toast.error(result.error); return }
-      toast.success(publish ? "Hytte publiceret!" : "Kladde gemt")
+      toast.success(publish ? t("cabin_published") : t("draft_saved"))
       window.location.href = result.redirectTo
     })
   }
@@ -257,13 +251,13 @@ export default function AvailabilityCalendar({
 
       {/* ─── Bookingindstillinger ─── */}
       <div className="rounded-xl border border-border bg-gray-50/60 p-5">
-        <h3 className="text-sm font-semibold text-foreground mb-4">Bookingindstillinger</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-4">{t("booking_settings")}</h3>
         <div className="flex flex-col gap-5">
 
           {/* Minimum nætter */}
           <div className="space-y-1.5">
             <Label htmlFor="min-nights" className="text-sm font-medium text-foreground">
-              Minimum nætter
+              {t("min_nights_label")}
             </Label>
             <Input
               id="min-nights"
@@ -278,14 +272,14 @@ export default function AvailabilityCalendar({
               className="rounded-xl h-11"
             />
             <p className="text-xs text-muted-foreground">
-              Gæster skal booke minimum {minNights} {minNights === 1 ? "nat" : "nætter"}
+              {t("min_nights_hint", { count: minNights })}
             </p>
           </div>
 
           {/* Forberedelsestid */}
           <div className="space-y-1.5">
             <Label htmlFor="preparation-days" className="text-sm font-medium text-foreground">
-              Forberedelsestid mellem bookinger
+              {t("preparation_days_label")}
             </Label>
             <Select
               value={String(preparationDays)}
@@ -295,14 +289,14 @@ export default function AvailabilityCalendar({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="0">Ingen</SelectItem>
-                <SelectItem value="1">1 dag</SelectItem>
-                <SelectItem value="2">2 dage</SelectItem>
-                <SelectItem value="3">3 dage</SelectItem>
+                <SelectItem value="0">{t("prep_none")}</SelectItem>
+                <SelectItem value="1">{t("prep_1")}</SelectItem>
+                <SelectItem value="2">{t("prep_2")}</SelectItem>
+                <SelectItem value="3">{t("prep_3")}</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Datoer blokeres automatisk efter en booking
+              {t("preparation_days_hint")}
             </p>
           </div>
 
@@ -318,16 +312,16 @@ export default function AvailabilityCalendar({
             disabled={isPending}
             className="rounded-xl"
           >
-            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Gem indstillinger"}
+            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : t("save_settings")}
           </Button>
         </div>
       </div>
 
       {/* ─── Kalender-legende ─── */}
       <div className="flex flex-col gap-1 text-sm text-gray-600">
-        <span>🟢 <span className="font-medium">Ledig</span> — gæster kan booke</span>
-        <span>🔵 <span className="font-medium">Booket</span> — låst automatisk</span>
-        <span>⬜ <span className="font-medium">Blokeret af dig</span> — gæster kan ikke booke</span>
+        <span>🟢 {t("legend_available")}</span>
+        <span>🔵 {t("legend_booked")}</span>
+        <span>⬜ {t("legend_blocked")}</span>
       </div>
 
       {/* ─── Månedsnavigation ─── */}
@@ -336,20 +330,20 @@ export default function AvailabilityCalendar({
           type="button"
           onClick={() => setFirstMonth((m) => addMonths(m, -1))}
           className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-          aria-label="Forrige maaned"
+          aria-label={t("prev_month")}
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
         <span className="text-xs text-gray-400 text-center">
           {pendingStart
-            ? "Klik nu på en slutdato for at blokere perioden"
-            : "Klik én dato for at blokere/frigive"}
+            ? t("calendar_click_end")
+            : t("calendar_click_start")}
         </span>
         <button
           type="button"
           onClick={() => setFirstMonth((m) => addMonths(m, 1))}
           className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-          aria-label="Naeste maaned"
+          aria-label={t("next_month")}
         >
           <ChevronRight className="w-4 h-4" />
         </button>
@@ -359,14 +353,14 @@ export default function AvailabilityCalendar({
       {pendingStart && (
         <div className="flex items-center justify-between rounded-lg bg-[#1a5f7a]/8 border border-[#4A9CC7]/30 px-4 py-2 text-sm text-[#1a5f7a]">
           <span>
-            Startdato valgt: <strong>{pendingStart}</strong> — klik en slutdato
+            {t("start_date_selected", { date: pendingStart })}
           </span>
           <button
             type="button"
             className="text-xs underline ml-4 shrink-0"
             onClick={() => { setPendingStart(null); setHoveredDate(null) }}
           >
-            Annuller
+            {tCommon("cancel")}
           </button>
         </div>
       )}
@@ -379,8 +373,8 @@ export default function AvailabilityCalendar({
 
       <p className="text-xs text-gray-400">
         {blockedDates.size === 0
-          ? "Ingen datoer blokeret — alle fremtidige datoer er ledige."
-          : `${blockedDates.size} dato${blockedDates.size !== 1 ? "er" : ""} blokeret af dig.`}
+          ? t("no_dates_blocked")
+          : t("blocked_count", { count: blockedDates.size })}
       </p>
 
       {/* ─── Gem-knapper ─── */}
@@ -392,7 +386,7 @@ export default function AvailabilityCalendar({
           disabled={isPending}
           className="flex-1 rounded-xl h-12"
         >
-          {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Gem tilgængelighed"}
+          {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : t("save_availability")}
         </Button>
         {showPublishButton && (
           <Button
@@ -402,7 +396,7 @@ export default function AvailabilityCalendar({
             className="flex-1 rounded-xl h-12 font-semibold"
             style={{ backgroundColor: "#4A9CC7" }}
           >
-            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Gem og publicér hytte →"}
+            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : t("save_and_publish")}
           </Button>
         )}
         {!showPublishButton && (
@@ -413,7 +407,7 @@ export default function AvailabilityCalendar({
             className="flex-1 rounded-xl h-12 font-semibold"
             style={{ backgroundColor: "#4A9CC7" }}
           >
-            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Gem alt →"}
+            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : t("save_all")}
           </Button>
         )}
       </div>

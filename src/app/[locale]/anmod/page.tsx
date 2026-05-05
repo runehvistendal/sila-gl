@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
+import { useTranslations } from "next-intl"
+import { Link } from "@/i18n/navigation"
 import { ChevronLeft, Home, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,6 +14,8 @@ import { createCabinRequest } from "./actions"
 const CITIES = [...new Set(GREENLAND_LOCATIONS.map((l) => l.name_dk))].sort()
 
 export default function AnmodPage() {
+  const t = useTranslations("request")
+  const tCommon = useTranslations("common")
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -35,7 +38,7 @@ export default function AnmodPage() {
           href="/dashboard?tab=requests"
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6"
         >
-          <ChevronLeft className="w-4 h-4" /> Tilbage
+          <ChevronLeft className="w-4 h-4" /> {tCommon("back")}
         </Link>
 
         <div className="flex items-center gap-3 mb-6">
@@ -43,9 +46,9 @@ export default function AnmodPage() {
             <Home className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground">Anmod om hytte</h1>
+            <h1 className="text-xl font-bold text-foreground">{t("title")}</h1>
             <p className="text-sm text-muted-foreground">
-              Fortæl hvad du leder efter — udlejere vil kontakte dig
+              {t("subtitle")}
             </p>
           </div>
         </div>
@@ -56,14 +59,14 @@ export default function AnmodPage() {
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">
               <MapPin className="w-3.5 h-3.5 inline mr-1 text-muted-foreground" />
-              Destination <span className="text-destructive">*</span>
+              {t("destination")} <span className="text-destructive">*</span>
             </label>
             <select
               name="location"
               required
               className="w-full h-10 rounded-xl border border-input bg-transparent px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring text-foreground cursor-pointer"
             >
-              <option value="">Vælg by...</option>
+              <option value="">{t("select_city")}</option>
               {CITIES.map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
@@ -74,7 +77,7 @@ export default function AnmodPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Check-ind <span className="text-destructive">*</span>
+                {t("check_in")} <span className="text-destructive">*</span>
               </label>
               <Input
                 type="date"
@@ -86,7 +89,7 @@ export default function AnmodPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Check-ud <span className="text-destructive">*</span>
+                {t("check_out")} <span className="text-destructive">*</span>
               </label>
               <Input
                 type="date"
@@ -102,7 +105,7 @@ export default function AnmodPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Antal gæster <span className="text-destructive">*</span>
+                {t("guests")} <span className="text-destructive">*</span>
               </label>
               <Input
                 type="number"
@@ -116,13 +119,13 @@ export default function AnmodPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Maks. budget (kr/nat)
+                {t("budget_label")}
               </label>
               <Input
                 type="number"
                 name="max_price_kr"
                 min={0}
-                placeholder="Valgfrit"
+                placeholder={tCommon("optional")}
                 className="rounded-xl h-10"
               />
             </div>
@@ -131,11 +134,11 @@ export default function AnmodPage() {
           {/* Beskrivelse */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">
-              Beskrivelse
+              {t("description_label")}
             </label>
             <Textarea
               name="description"
-              placeholder="Beskriv gerne hvad I leder efter — antal senge, faciliteter, aktiviteter..."
+              placeholder={t("description_placeholder")}
               rows={3}
               className="rounded-xl resize-none"
             />
@@ -153,7 +156,7 @@ export default function AnmodPage() {
               disabled={isPending}
               className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl font-semibold"
             >
-              {isPending ? "Sender..." : "Send anmodning"}
+              {isPending ? tCommon("sending") : t("submit")}
             </Button>
             <Button
               type="button"
@@ -161,7 +164,7 @@ export default function AnmodPage() {
               className="rounded-xl"
               onClick={() => router.back()}
             >
-              Annuller
+              {tCommon("cancel")}
             </Button>
           </div>
         </form>

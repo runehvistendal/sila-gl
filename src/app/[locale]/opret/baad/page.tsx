@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation"
+import { getTranslations } from "next-intl/server"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
@@ -17,6 +18,7 @@ export default async function OpretBaadPage() {
   if (!user) redirect("/")
 
   const navUser = await getNavUserForPage(supabase, user)
+  const t = await getTranslations("create")
 
   return (
     <main className="min-h-screen bg-background">
@@ -25,10 +27,10 @@ export default async function OpretBaadPage() {
       <div className="mx-auto max-w-xl px-4 pt-20 pb-20">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-foreground mb-2">
-            Registrér båd
+            {t("register_boat")}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Udfyld oplysningerne om din båd. Du kan efterfølgende oprette en tur.
+            {t("register_boat_subtitle")}
           </p>
         </div>
 

@@ -7,6 +7,7 @@ import PhoneInput from "react-phone-number-input"
 import "react-phone-number-input/style.css"
 import { toast } from "sonner"
 import { MapPin, User, Home, Users, Star, Loader2 } from "lucide-react"
+import { useTranslations, useFormatter } from "next-intl"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
@@ -73,9 +74,9 @@ const OTHER_PLACES: GreenlandLocation[] = [...GREENLAND_LOCATIONS]
   .filter((l) => !l.is_major_hub)
   .sort((a, b) => a.name_dk.localeCompare(b.name_dk, "da"))
 
-function StarRow({ rating }: { rating: number }) {
+function StarRow({ rating, ariaLabel }: { rating: number; ariaLabel: string }) {
   return (
-    <div className="flex gap-0.5" aria-label={`${rating} af 5 stjerner`}>
+    <div className="flex gap-0.5" aria-label={ariaLabel}>
       {[1, 2, 3, 4, 5].map((n) => (
         <Star
           key={n}
@@ -125,6 +126,8 @@ export default function ProfileForm({
   email,
   stripeConnect,
 }: Props) {
+  const t = useTranslations("profile")
+  const formatter = useFormatter()
   const [isPending, startTransition] = useTransition()
   const [isEmailPending, startEmailTransition] = useTransition()
   const [locationId, setLocationId] = useState(
@@ -155,11 +158,11 @@ export default function ProfileForm({
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (locationId === "__none__") {
-      toast.error("Vælg by eller sted")
+      toast.error(t("select_location_error"))
       return
     }
     if (!phone || !isValidPhoneNumber(phone)) {
-      toast.error("Angiv et gyldigt telefonnummer")
+      toast.error(t("invalid_phone"))
       return
     }
     const fd = new FormData()
@@ -175,7 +178,7 @@ export default function ProfileForm({
         toast.error(r.error)
         return
       }
-      toast.success("Profil gemt")
+      toast.success(t("save_success"))
     })
   }
 
@@ -186,7 +189,7 @@ export default function ProfileForm({
         toast.error(r.error)
         return
       }
-      toast.success("Bekræftelsesmail sendt. Tjek din indbakke.")
+      toast.success(t("email_change_sent_inbox"))
     })
   }
 
@@ -196,7 +199,7 @@ export default function ProfileForm({
         className="text-2xl font-bold text-center text-gray-900 mb-6"
         style={{ fontFamily: "var(--font-jakarta, system-ui)" }}
       >
-        Min profil
+        {t("my_profile")}
       </h1>
 
       {/* Profilhoved */}
@@ -209,7 +212,7 @@ export default function ProfileForm({
               sizePx={80}
               showHelpText={false}
             />
-            <p className="text-xs text-gray-500 mt-2 text-center">Skift billede</p>
+            <p className="text-xs text-gray-500 mt-2 text-center">{t("change_avatar")}</p>
           </div>
           <div className="min-w-0 flex-1 space-y-2">
             <p className="text-xl font-semibold text-gray-900 truncate">
@@ -228,7 +231,7 @@ export default function ProfileForm({
             <div className="flex flex-wrap items-center gap-2 pt-1">
               {roleType === "traveler" && (
                 <span className="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-700">
-                  Rejsende
+                  {t("role_traveler")}
                 </span>
               )}
               {roleType === "provider" && (
@@ -236,12 +239,12 @@ export default function ProfileForm({
                   className="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium text-white"
                   style={{ backgroundColor: "#4A9CC7" }}
                 >
-                  Udbyder
+                  {t("role_provider")}
                 </span>
               )}
               {roleType === "both" && (
                 <span className="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-800">
-                  Begge — rejser og udbyder selv
+                  {t("role_both_badge")}
                 </span>
               )}
 
@@ -252,7 +255,7 @@ export default function ProfileForm({
                     {avgRating.toFixed(1)}
                   </span>
                   <span className="text-gray-500">
-                    ({reviews.length} bedømmelser)
+                    ({t("ratings_count", { count: reviews.length })})
                   </span>
                 </span>
               )}
@@ -266,7 +269,7 @@ export default function ProfileForm({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2 space-y-1.5">
               <label htmlFor="full_name" className="block">
-                <RequiredLabel>Fulde navn</RequiredLabel>
+                <RequiredLabel>{t("full_name")}</RequiredLabel>
               </label>
               <Input
                 id="full_name"
@@ -282,26 +285,26 @@ export default function ProfileForm({
 
             <div className="space-y-1.5">
               <div>
-                <RequiredLabel>By / sted</RequiredLabel>
+                <RequiredLabel>{t("location")}</RequiredLabel>
               </div>
               <Select value={locationId} onValueChange={setLocationId} required>
                 <SelectTrigger
                   className={`w-full h-11 ${inputClass} data-[placeholder]:text-gray-400`}
                 >
-                  <SelectValue placeholder="Vælg sted" />
+                  <SelectValue placeholder={t("select_location")} />
                 </SelectTrigger>
                 <SelectContent className="max-h-72">
-                  <SelectItem value="__none__">— Intet valgt —</SelectItem>
+                  <SelectItem value="__none__">{t("no_location")}</SelectItem>
                   <SelectGroup>
                     <SelectLabel className="text-xs font-normal text-gray-500">
-                      Større byer
+                      {t("major_cities")}
                     </SelectLabel>
                     <LocationSelectItems locations={MAJOR_HUBS} />
                   </SelectGroup>
                   <SelectSeparator />
                   <SelectGroup>
                     <SelectLabel className="text-xs font-normal text-gray-500">
-                      Øvrige steder
+                      {t("other_places")}
                     </SelectLabel>
                     <LocationSelectItems locations={OTHER_PLACES} />
                   </SelectGroup>
@@ -311,7 +314,7 @@ export default function ProfileForm({
 
             <div className="space-y-1.5 min-w-0">
               <label htmlFor="phone" className="block">
-                <RequiredLabel>Telefon</RequiredLabel>
+                <RequiredLabel>{t("phone")}</RequiredLabel>
               </label>
               <PhoneInput
                 defaultCountry="GL"
@@ -331,7 +334,7 @@ export default function ProfileForm({
 
             <div className="sm:col-span-2 space-y-1.5">
               <label htmlFor="profile_email" className="block">
-                <RequiredLabel>E-mail</RequiredLabel>
+                <RequiredLabel>{t("email")}</RequiredLabel>
               </label>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:gap-2">
                 <Input
@@ -354,21 +357,20 @@ export default function ProfileForm({
                   {isEmailPending ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin mr-1.5" aria-hidden />
-                      Sender…
+                      {t("saving_profile")}
                     </>
                   ) : (
-                    "Skift e-mail"
+                    t("change_email")
                   )}
                 </Button>
               </div>
               <p className="text-xs text-gray-500">
-                Hvis du ændrer din e-mail, sendes en bekræftelsesmail til den
-                nye adresse. Ændringen træder først i kraft når du bekræfter.
+                {t("email_change_hint")}
               </p>
             </div>
 
             <div className="space-y-1.5 sm:max-w-md">
-              <span className="text-sm font-medium text-gray-800">Visningssprog</span>
+              <span className="text-sm font-medium text-gray-800">{t("display_language")}</span>
               <Select
                 value={language}
                 onValueChange={(v) =>
@@ -390,7 +392,7 @@ export default function ProfileForm({
 
             <div className="sm:col-span-2 space-y-1.5">
               <label htmlFor="bio" className="text-sm font-medium text-gray-800">
-                Om mig
+                {t("about_me")}
               </label>
               <textarea
                 id="bio"
@@ -399,7 +401,7 @@ export default function ProfileForm({
                 onChange={(e) => setBio(e.target.value)}
                 maxLength={500}
                 rows={3}
-                placeholder="Fortæl lidt om dig selv…"
+                placeholder={t("bio_placeholder")}
                 className={`w-full min-h-[4.5rem] px-3 py-2 text-sm ${inputClass} resize-y`}
               />
             </div>
@@ -407,10 +409,9 @@ export default function ProfileForm({
 
           <hr className="w-full border-0 border-t border-gray-100 my-2" />
 
-          <h2 className="font-semibold text-gray-900">Jeg er…</h2>
+          <h2 className="font-semibold text-gray-900">{t("i_am")}</h2>
           <p className="text-sm text-gray-500 mt-1">
-            Vælg hvilke funktioner du vil se i dit dashboard. Du kan altid
-            skifte.
+            {t("role_select_hint")}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
             <button
@@ -427,9 +428,9 @@ export default function ProfileForm({
                 className="w-6 h-6 mb-2 text-gray-700"
                 strokeWidth={1.75}
               />
-              <p className="font-semibold text-gray-900">Rejsende</p>
+              <p className="font-semibold text-gray-900">{t("role_traveler")}</p>
               <p className="text-sm text-gray-500 mt-1">
-                Book hytter og sejlture. Se dine bookinger og anmodninger.
+                {t("role_traveler_desc")}
               </p>
             </button>
             <button
@@ -446,10 +447,9 @@ export default function ProfileForm({
                 className="w-6 h-6 mb-2 text-gray-700"
                 strokeWidth={1.75}
               />
-              <p className="font-semibold text-gray-900">Udbyder</p>
+              <p className="font-semibold text-gray-900">{t("role_provider")}</p>
               <p className="text-sm text-gray-500 mt-1">
-                Opret og udlej hytter og sejlture. Se dine annoncer og
-                indbakke.
+                {t("role_provider_desc")}
               </p>
             </button>
             <button
@@ -466,9 +466,9 @@ export default function ProfileForm({
                 className="w-6 h-6 mb-2 text-gray-700"
                 strokeWidth={1.75}
               />
-              <p className="font-semibold text-gray-900">Begge</p>
+              <p className="font-semibold text-gray-900">{t("role_both_short")}</p>
               <p className="text-sm text-gray-500 mt-1">
-                Fuld adgang — rejse og udbyde på samme tid.
+                {t("role_both_desc")}
               </p>
             </button>
           </div>
@@ -482,10 +482,10 @@ export default function ProfileForm({
             {isPending ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin mr-2 inline" />
-                Gemmer…
+                {t("saving_profile")}
               </>
             ) : (
-              "✓ Gem profil"
+              `✓ ${t("save_profile")}`
             )}
           </Button>
         </div>
@@ -501,21 +501,21 @@ export default function ProfileForm({
       {/* Anmeldelser */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mt-4">
         <div className="flex flex-row flex-wrap items-baseline justify-between gap-2">
-          <h2 className="font-semibold text-gray-900">Anmeldelser</h2>
+          <h2 className="font-semibold text-gray-900">{t("reviews")}</h2>
           {avgRating != null && reviews.length > 0 && (
             <p className="text-sm text-gray-500">
               <span aria-hidden>⭐</span>{" "}
               <span className="tabular-nums font-medium text-gray-700">
                 {avgRating.toFixed(1)}
               </span>{" "}
-              gennemsnit
+              {t("average_rating")}
             </p>
           )}
         </div>
 
         {reviews.length === 0 ? (
           <p className="text-gray-400 text-sm mt-3">
-            Du har endnu ingen anmeldelser.
+            {t("no_reviews_own")}
           </p>
         ) : (
           <ul className="divide-y divide-gray-100 mt-2">
@@ -523,12 +523,15 @@ export default function ProfileForm({
               <li key={rev.id} className="py-3 first:pt-0">
                 <div className="flex flex-col gap-1">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <StarRow rating={rev.rating} />
+                    <StarRow
+                      rating={rev.rating}
+                      ariaLabel={t("stars_aria", { rating: rev.rating })}
+                    />
                     <time
                       className="text-xs text-gray-400 tabular-nums"
                       dateTime={rev.created_at}
                     >
-                      {new Date(rev.created_at).toLocaleDateString("da-DK", {
+                      {formatter.dateTime(new Date(rev.created_at), {
                         day: "numeric",
                         month: "short",
                         year: "numeric",
@@ -536,7 +539,7 @@ export default function ProfileForm({
                     </time>
                   </div>
                   <p className="text-sm font-medium text-gray-900">
-                    {rev.reviewer?.full_name?.trim() || "Gæst"}
+                    {rev.reviewer?.full_name?.trim() || t("role_guest")}
                   </p>
                   {rev.comment && (
                     <p className="text-sm text-gray-600 mt-1">{rev.comment}</p>

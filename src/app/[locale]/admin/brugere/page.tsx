@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server"
 import { createServiceClient } from "@/lib/supabase-service"
 import {
   Table,
@@ -13,13 +14,8 @@ import AdminToggleAdmin from "./AdminToggleAdmin"
 export const metadata = { title: "Brugere — Admin" }
 export const dynamic = "force-dynamic"
 
-const rolleLabel: Record<string, string> = {
-  traveler: "Gæst",
-  provider: "Udbyder",
-  both: "Begge",
-}
-
 export default async function AdminBrugerePage() {
+  const t = await getTranslations("admin")
   const svc = createServiceClient()
 
   const [{ data: profiles }, { data: authData }] = await Promise.all([
@@ -44,22 +40,28 @@ export default async function AdminBrugerePage() {
     created_at: p.created_at as string,
   }))
 
+  const rolleLabel: Record<string, string> = {
+    traveler: t("role_traveler"),
+    provider: t("role_provider"),
+    both: t("role_both"),
+  }
+
   return (
     <div className="p-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Brugere</h1>
-        <p className="text-gray-500 mt-1">{users.length} registrerede brugere</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t("users")}</h1>
+        <p className="text-gray-500 mt-1">{t("registered_users", { count: users.length })}</p>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50">
-              <TableHead className="font-semibold">Navn</TableHead>
-              <TableHead className="font-semibold">E-mail</TableHead>
-              <TableHead className="font-semibold">Rolle</TableHead>
-              <TableHead className="font-semibold">Admin</TableHead>
-              <TableHead className="font-semibold">Oprettet</TableHead>
+              <TableHead className="font-semibold">{t("col_name")}</TableHead>
+              <TableHead className="font-semibold">{t("col_email")}</TableHead>
+              <TableHead className="font-semibold">{t("col_role")}</TableHead>
+              <TableHead className="font-semibold">{t("col_admin")}</TableHead>
+              <TableHead className="font-semibold">{t("col_created")}</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
@@ -68,7 +70,7 @@ export default async function AdminBrugerePage() {
               <TableRow key={u.id} className="hover:bg-gray-50">
                 <TableCell className="font-medium">
                   {u.full_name ?? (
-                    <span className="text-gray-400 italic">Sila-bruger</span>
+                    <span className="text-gray-400 italic">{t("unknown_user")}</span>
                   )}
                 </TableCell>
                 <TableCell className="text-gray-600 text-sm">
@@ -82,7 +84,7 @@ export default async function AdminBrugerePage() {
                 <TableCell>
                   {u.is_admin ? (
                     <Badge className="bg-violet-100 text-violet-800 border-violet-200 text-xs">
-                      Admin
+                      {t("col_admin")}
                     </Badge>
                   ) : (
                     <span className="text-gray-400 text-sm">—</span>

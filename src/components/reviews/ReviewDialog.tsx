@@ -10,13 +10,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { useTranslations } from "next-intl"
 import ReviewForm, { type ReviewFormProps } from "./ReviewForm"
 
 interface Props extends ReviewFormProps {
   label?: string
 }
 
-export default function ReviewDialog({ label = "Skriv anmeldelse", ...formProps }: Props) {
+export default function ReviewDialog({ label, ...formProps }: Props) {
+  const t = useTranslations("reviews")
   const [open, setOpen] = useState(false)
 
   return (
@@ -28,12 +30,12 @@ export default function ReviewDialog({ label = "Skriv anmeldelse", ...formProps 
           className="gap-1.5 rounded-lg border-amber-300 text-amber-700 hover:bg-amber-50"
         >
           <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-          {label}
+          {label ?? t("write_review")}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md rounded-2xl">
         <DialogHeader>
-          <DialogTitle className="text-base font-bold">Skriv en anmeldelse</DialogTitle>
+          <DialogTitle className="text-base font-bold">{t("dialog_title")}</DialogTitle>
         </DialogHeader>
         <ReviewForm {...formProps} onSuccess={() => setOpen(false)} />
       </DialogContent>

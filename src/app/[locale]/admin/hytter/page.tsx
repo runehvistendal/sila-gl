@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server"
 import { createServiceClient } from "@/lib/supabase-service"
 import {
   Table,
@@ -15,6 +16,7 @@ export const metadata = { title: "Hytter — Admin" }
 export const dynamic = "force-dynamic"
 
 export default async function AdminHytterPage() {
+  const t = await getTranslations("admin")
   const svc = createServiceClient()
 
   const { data: cabins } = await svc
@@ -39,20 +41,20 @@ export default async function AdminHytterPage() {
   return (
     <div className="p-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Hytter</h1>
-        <p className="text-gray-500 mt-1">{rows.length} hytter i alt</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t("cabins")}</h1>
+        <p className="text-gray-500 mt-1">{t("cabins_total", { count: rows.length })}</p>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50">
-              <TableHead className="font-semibold">Titel</TableHead>
-              <TableHead className="font-semibold">Ejer</TableHead>
-              <TableHead className="font-semibold">Sted</TableHead>
-              <TableHead className="font-semibold">Pris/nat</TableHead>
-              <TableHead className="font-semibold">Status</TableHead>
-              <TableHead className="font-semibold">Oprettet</TableHead>
+              <TableHead className="font-semibold">{t("col_title")}</TableHead>
+              <TableHead className="font-semibold">{t("col_owner")}</TableHead>
+              <TableHead className="font-semibold">{t("col_location")}</TableHead>
+              <TableHead className="font-semibold">{t("col_price_per_night")}</TableHead>
+              <TableHead className="font-semibold">{t("col_status")}</TableHead>
+              <TableHead className="font-semibold">{t("col_created")}</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
@@ -70,7 +72,7 @@ export default async function AdminHytterPage() {
                   </a>
                 </TableCell>
                 <TableCell className="text-gray-600 text-sm">
-                  {cabin.profiles?.full_name ?? <span className="text-gray-400 italic">Ukendt</span>}
+                  {cabin.profiles?.full_name ?? <span className="text-gray-400 italic">{t("unknown")}</span>}
                 </TableCell>
                 <TableCell className="text-gray-600 text-sm">
                   {cabin.location_hub ?? "—"}
@@ -80,9 +82,9 @@ export default async function AdminHytterPage() {
                 </TableCell>
                 <TableCell>
                   {cabin.published ? (
-                    <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-xs">Publiceret</Badge>
+                    <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-xs">{t("status_published")}</Badge>
                   ) : (
-                    <Badge variant="outline" className="text-xs text-gray-500">Kladde</Badge>
+                    <Badge variant="outline" className="text-xs text-gray-500">{t("status_draft")}</Badge>
                   )}
                 </TableCell>
                 <TableCell className="text-gray-500 text-sm">
