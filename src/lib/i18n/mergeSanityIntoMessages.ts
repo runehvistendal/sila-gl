@@ -27,8 +27,8 @@ export function setMessageAtPath(root: MessagesTree, dotPath: string, value: str
   parent[last] = value
 }
 
-/** Navngivne globalSettings-felter → eksisterende message-sti (bundled). */
-const SEMANTIC: { field: string; path: string }[] = [
+/** Synkroniseres med scripts/seed-sanity-content.ts — GlobalSettings → dot-sti i bundlet beskeder. */
+export const GLOBAL_SETTINGS_SEMANTIC_FIELDS: { field: string; path: string }[] = [
   { field: "navHytter", path: "nav.cabins" },
   { field: "navTransport", path: "nav.transport" },
   { field: "navLogoText", path: "nav.logoText" },
@@ -107,7 +107,7 @@ export function mergeSanityIntoMessages(
 ): MessagesTree {
   const out = clone(baseMessages)
 
-  for (const { field, path } of SEMANTIC) {
+  for (const { field, path } of GLOBAL_SETTINGS_SEMANTIC_FIELDS) {
     const text = pickLocale(settings as any, field, locale)
     if (text) setMessageAtPath(out, path, text)
   }
