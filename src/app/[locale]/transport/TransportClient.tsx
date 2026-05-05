@@ -153,8 +153,8 @@ export default function TransportClient({ rideShares, openRequests }: Props) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-foreground mb-1">{t("metaTitle").replace(" — Sila.gl", "")}</h1>
-              <p className="text-muted-foreground">{t("metaDescription")}</p>
+              <h1 className="text-3xl font-bold text-foreground mb-1">{t("pageTitle")}</h1>
+              <p className="text-muted-foreground">{t("pageSubtitle")}</p>
             </div>
             <div className="flex gap-1 bg-muted rounded-xl p-1">
               <button
@@ -194,12 +194,12 @@ export default function TransportClient({ rideShares, openRequests }: Props) {
           <div className="text-center py-24">
             <Anchor className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
             <p className="text-lg font-medium text-foreground mb-1">{t("noResults")}</p>
-            <p className="text-muted-foreground text-sm">{t("clearFilters")}</p>
+            <p className="text-muted-foreground text-sm">{t("tryNewSearch")}</p>
           </div>
         ) : (
           <>
             <p className="text-sm text-muted-foreground mb-6">
-              {filtered.length} rute{filtered.length !== 1 ? "r" : ""} fundet
+              {t(filtered.length === 1 ? "routesFound_one" : "routesFound_other", { count: filtered.length })}
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {visible.map((rs) => (
@@ -213,7 +213,7 @@ export default function TransportClient({ rideShares, openRequests }: Props) {
                   className="rounded-xl px-6"
                   onClick={() => setShowAll(true)}
                 >
-                  Vis alle ruter ({filtered.length})
+                  {t("showAllRoutes", { count: filtered.length })}
                 </Button>
               </div>
             )}
@@ -226,14 +226,14 @@ export default function TransportClient({ rideShares, openRequests }: Props) {
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 border-t border-border">
           <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
             <div>
-              <h2 className="text-xl font-bold text-foreground">Åbne transportanmodninger</h2>
-              <p className="text-sm text-muted-foreground">Gæster der søger transport — byd ind med et tilbud</p>
+              <h2 className="text-xl font-bold text-foreground">{t("openRequestsTitle")}</h2>
+              <p className="text-sm text-muted-foreground">{t("openRequestsSubtitle")}</p>
             </div>
             <Link
               href="/transport/anmod"
               className="text-sm text-primary font-semibold hover:text-primary/80 flex items-center gap-1"
             >
-              Opret ny <ArrowRight className="w-3.5 h-3.5" />
+              {t("createNew")} <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
@@ -249,7 +249,7 @@ export default function TransportClient({ rideShares, openRequests }: Props) {
                     <Anchor className="w-4 h-4 text-primary" />
                   </div>
                   <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                    Åben
+                    {t("statusOpen")}
                   </span>
                 </div>
                 <p className="font-semibold text-sm text-foreground">
@@ -257,12 +257,12 @@ export default function TransportClient({ rideShares, openRequests }: Props) {
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {format(new Date(r.desired_date), "d. MMM yyyy", { locale: dateFnsLocale })}
-                  {" · "}{r.num_passengers} passager{r.num_passengers !== 1 ? "er" : ""}
+                  {" · "}{t(r.num_passengers === 1 ? "passenger_one" : "passenger_other", { count: r.num_passengers })}
                   {" · "}{t(`tripTypes.${r.trip_type as "one_way" | "round_trip" | "return"}` as const) ?? r.trip_type}
                 </p>
                 <div className="flex items-center gap-1 mt-3 text-primary text-xs font-semibold">
                   <MessageSquare className="w-3 h-3" />
-                  Se anmodning
+                  {t("seeRequest")}
                 </div>
               </Link>
             ))}
@@ -276,15 +276,15 @@ export default function TransportClient({ rideShares, openRequests }: Props) {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
             <div>
               <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
-                Kan du ikke finde den rute du søger?
+                {t("ctaTitle")}
               </h2>
               <p className="text-muted-foreground text-sm sm:text-base max-w-md">
-                Anmod om transport — lokale sejlere svarer
+                {t("ctaSubtitle")}
               </p>
             </div>
             <Button asChild size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl px-6 font-semibold gap-2 whitespace-nowrap">
               <Link href="/transport/anmod">
-                Anmod om transport <ArrowRight className="w-4 h-4" />
+                {t("ctaButton")} <ArrowRight className="w-4 h-4" />
               </Link>
             </Button>
           </div>

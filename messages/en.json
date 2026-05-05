@@ -92,6 +92,14 @@
       ]
     },
     "cabinsSection": {
+      "demo": {
+        "cabin1": "Cabin by the Icefjord",
+        "cabin2": "Fjord View Cabin",
+        "cabin3": "Arctic Cabin Life",
+        "cabin4": "Solitude by the Coast",
+        "cabin5": "Midnight Sun Retreat",
+        "cabin6": "Coastal Adventure"
+      },
       "title": "Cabins in the wild",
       "subtitle": "Handpicked adventures from local guides in Greenland",
       "seeAll": "See all",
@@ -120,6 +128,11 @@
         { "value": "Direct booking", "sub": "Travelers" },
         { "value": "Arctic-focused", "sub": "Visibility" }
       ]
+    },
+    "heroImageAlt": "Northern lights over Greenland",
+    "cabinBadges": {
+      "superhytte": "Top cabin",
+      "topvurderet": "Top rated"
     },
     "for_guests": "For guests",
     "for_providers": "For providers",
@@ -181,6 +194,8 @@
   "transport": {
     "metaTitle": "Sailing in Greenland — Sila.gl",
     "metaDescription": "Find local sailors offering seats along Greenland's coast.",
+    "pageTitle": "Sailing in Greenland",
+    "pageSubtitle": "Local sailors offer seats along the coast",
     "loading": "Loading map...",
     "tripTypes": {
       "one_way": "One way",
@@ -191,10 +206,24 @@
       "grid": "List",
       "map": "Map"
     },
+    "routesFound_one": "{count} trip found",
+    "routesFound_other": "{count} trips found",
+    "showAllRoutes": "Show all trips ({count})",
     "noResults": "No trips match your filters.",
+    "tryNewSearch": "Try a different search",
     "clearFilters": "Clear filters",
+    "openRequestsTitle": "Open transport requests",
+    "openRequestsSubtitle": "Guests looking for transport — submit an offer",
+    "createNew": "Create new",
     "openRequests": "Open requests",
     "offerTrip": "Offer a trip",
+    "statusOpen": "Open",
+    "passenger_one": "{count} passenger",
+    "passenger_other": "{count} passengers",
+    "seeRequest": "View request",
+    "ctaTitle": "Can't find the route you're looking for?",
+    "ctaSubtitle": "Request transport — local sailors respond",
+    "ctaButton": "Request transport",
     "title": "Transport",
     "search_title": "Find sailing",
     "no_results": "No trips found",

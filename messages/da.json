@@ -92,6 +92,14 @@
       ]
     },
     "cabinsSection": {
+      "demo": {
+        "cabin1": "Hytte ved Icefjord",
+        "cabin2": "Fjordkig",
+        "cabin3": "Arktisk Hytteliv",
+        "cabin4": "Ensomhed ved kysten",
+        "cabin5": "Midnatssol Retreat",
+        "cabin6": "Kyst Eventyr"
+      },
       "title": "Hytter i naturen",
       "subtitle": "Håndplukkede eventyr fra lokale guider i Grønland",
       "seeAll": "Se alle",
@@ -120,6 +128,11 @@
         { "value": "Direkte booking", "sub": "Rejsende" },
         { "value": "Arktisk fokus", "sub": "Synlighed" }
       ]
+    },
+    "heroImageAlt": "Nordlys over Grønland",
+    "cabinBadges": {
+      "superhytte": "Superhytte",
+      "topvurderet": "Topvurderet"
     },
     "for_guests": "For gæster",
     "for_providers": "For udbydere",
@@ -181,6 +194,8 @@
   "transport": {
     "metaTitle": "Samsejlads i Grønland — Sila.gl",
     "metaDescription": "Find lokale sejlere der tilbyder pladser langs Grønlands kyst.",
+    "pageTitle": "Samsejlads i Grønland",
+    "pageSubtitle": "Lokale sejlere tilbyder pladser langs kysten",
     "loading": "Indlæser kort...",
     "tripTypes": {
       "one_way": "Enkelttur",
@@ -191,10 +206,24 @@
       "grid": "Liste",
       "map": "Kort"
     },
+    "routesFound_one": "{count} rute fundet",
+    "routesFound_other": "{count} ruter fundet",
+    "showAllRoutes": "Vis alle ruter ({count})",
     "noResults": "Ingen ture matcher dine filtre.",
+    "tryNewSearch": "Prøv en anden søgning",
     "clearFilters": "Ryd filtre",
+    "openRequestsTitle": "Åbne transportanmodninger",
+    "openRequestsSubtitle": "Gæster der søger transport — byd ind med et tilbud",
+    "createNew": "Opret ny",
     "openRequests": "Åbne forespørgsler",
     "offerTrip": "Tilbyd tur",
+    "statusOpen": "Åben",
+    "passenger_one": "{count} passager",
+    "passenger_other": "{count} passagerer",
+    "seeRequest": "Se anmodning",
+    "ctaTitle": "Kan du ikke finde den rute du søger?",
+    "ctaSubtitle": "Anmod om transport — lokale sejlere svarer",
+    "ctaButton": "Anmod om transport",
     "title": "Transport",
     "search_title": "Find samsejlads",
     "no_results": "Ingen ture fundet",

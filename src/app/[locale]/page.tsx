@@ -13,12 +13,12 @@ const FEATURE_ICONS = [Users, Anchor]
 const STAT_ICONS = [HomeIcon, Anchor, Users, Search]
 
 const CABINS = [
-  { id: 1, title: "Hytte ved Icefjord",  location: "Ilulissat", region: "Qeqertalik", price: 1200, rating: 4.9, host: "Niels A.",  badge: "Superhytte" },
-  { id: 2, title: "Fjordkig Cabin",       location: "Nuuk",      region: "Sermersooq", price: 950,  rating: 4.7, host: "Sara M." },
-  { id: 3, title: "Arktisk Hytteliv",     location: "Sisimiut",  region: "Qeqertalik", price: 1450, rating: 5.0, host: "Malik P.", badge: "Topvurderet" },
-  { id: 4, title: "Ensomhed ved kysten",  location: "Qaqortoq",  region: "Kujalleq",   price: 800,  rating: 4.8, host: "Ane K." },
-  { id: 5, title: "Midnatssol Retreat",   location: "Tasiilaq",  region: "Sermersooq", price: 1100, rating: 4.6, host: "Peter T." },
-  { id: 6, title: "Kyst Eventyr",         location: "Aasiaat",   region: "Qeqertalik", price: 750,  rating: 4.9, host: "Nuka Q." },
+  { id: 1, titleKey: "cabinsSection.demo.cabin1", location: "Ilulissat", region: "Qeqertalik", price: 1200, rating: 4.9, host: "Niels A.",  badgeKey: "cabinBadges.superhytte" },
+  { id: 2, titleKey: "cabinsSection.demo.cabin2", location: "Nuuk",      region: "Sermersooq", price: 950,  rating: 4.7, host: "Sara M." },
+  { id: 3, titleKey: "cabinsSection.demo.cabin3", location: "Sisimiut",  region: "Qeqertalik", price: 1450, rating: 5.0, host: "Malik P.", badgeKey: "cabinBadges.topvurderet" },
+  { id: 4, titleKey: "cabinsSection.demo.cabin4", location: "Qaqortoq",  region: "Kujalleq",   price: 800,  rating: 4.8, host: "Ane K." },
+  { id: 5, titleKey: "cabinsSection.demo.cabin5", location: "Tasiilaq",  region: "Sermersooq", price: 1100, rating: 4.6, host: "Peter T." },
+  { id: 6, titleKey: "cabinsSection.demo.cabin6", location: "Aasiaat",   region: "Qeqertalik", price: 750,  rating: 4.9, host: "Nuka Q." },
 ]
 
 type Props = {
@@ -50,7 +50,7 @@ export default async function Home({ params }: Props) {
       <section className="relative min-h-[90vh] flex items-center overflow-hidden">
         <Image
           src="https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=1920&h=1080&fit=crop&q=85"
-          alt="Nordlys over Grønland"
+          alt={t("heroImageAlt")}
           fill priority
           style={{ objectFit: "cover" }}
         />
@@ -122,9 +122,9 @@ export default async function Home({ params }: Props) {
                 className="bg-card rounded-2xl overflow-hidden shadow-card hover:shadow-card-hover transition-shadow cursor-pointer border border-border"
               >
                 <div className="relative h-48 bg-secondary">
-                  {c.badge && (
+                  {c.badgeKey && (
                     <span className="absolute top-3 left-3 text-xs font-semibold px-2.5 py-1 rounded-full bg-card/90 text-foreground">
-                      {c.badge}
+                      {t(c.badgeKey as Parameters<typeof t>[0])}
                     </span>
                   )}
                   <button className="absolute top-3 right-3 w-7 h-7 bg-card/80 rounded-full flex items-center justify-center hover:bg-card transition-colors">
@@ -133,7 +133,7 @@ export default async function Home({ params }: Props) {
                 </div>
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-2 mb-0.5">
-                    <p className="text-sm font-semibold text-foreground leading-snug">{c.title}</p>
+                    <p className="text-sm font-semibold text-foreground leading-snug">{t(c.titleKey as Parameters<typeof t>[0])}</p>
                     <div className="flex items-center gap-0.5 shrink-0">
                       <Star size={11} fill="#FBBF24" className="text-amber-400" />
                       <span className="text-xs text-muted-foreground">{c.rating}</span>
