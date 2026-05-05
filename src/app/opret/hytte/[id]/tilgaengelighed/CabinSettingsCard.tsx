@@ -45,7 +45,7 @@ export default function CabinSettingsCard({
     <div className="bg-white rounded-2xl border border-border shadow-sm p-6 mb-6">
       <h2 className="text-base font-semibold text-foreground mb-4">Bookingindstillinger</h2>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+      <div className="flex flex-col gap-5">
         {/* Minimum nætter */}
         <div className="space-y-2">
           <Label htmlFor="min-nights" className="text-sm font-medium text-foreground">

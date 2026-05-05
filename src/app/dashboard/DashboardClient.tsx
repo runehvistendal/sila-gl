@@ -527,6 +527,9 @@ export default function DashboardClient({
                             <Button size="sm" variant="outline" asChild className="rounded-lg">
                               <Link href={`/opret/hytte/${c.id}/rediger`}>Rediger</Link>
                             </Button>
+                            <Button size="sm" variant="outline" asChild className="rounded-lg">
+                              <Link href={`/opret/hytte/${c.id}/tilgaengelighed`}>Tilgængelighed</Link>
+                            </Button>
                             <Button
                               size="sm"
                               variant="ghost"

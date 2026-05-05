@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react"
+import { useState, useTransition } from "react"
 import { ChevronLeft, ChevronRight, Loader2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { saveAvailability } from "./actions"
@@ -66,173 +66,180 @@ export default function AvailabilityCalendar({
     return d
   })
 
-  // blockedDates = datoer udlejeren IKKE vil udleje (graa med X)
   const [blockedDates, setBlockedDates] = useState<Set<string>>(
     () => new Set(initialBlocked),
   )
   const bookedSet = new Set(bookedDates)
 
-  // Drag state
-  const isDragging = useRef(false)
-  const dragStart = useRef<string | null>(null)
-  const [dragEnd, setDragEnd] = useState<string | null>(null)
-  // Track whether drag is blocking or unblocking
-  const dragAction = useRef<"block" | "unblock">("block")
+  // Periode-valg: første klik sætter start, andet klik fuldfører perioden
+  const [pendingStart, setPendingStart] = useState<string | null>(null)
+  // Hover-dato til preview af periodevalg
+  const [hoveredDate, setHoveredDate] = useState<string | null>(null)
 
   const [isPending, startTransition] = useTransition()
 
-  // Dates in current drag range (excluding booked + past)
-  const dragRange: Set<string> = new Set()
-  if (isDragging.current && dragStart.current && dragEnd) {
-    eachDayOfRange(dragStart.current, dragEnd).forEach((d) => {
-      if (!bookedSet.has(d) && d >= today) dragRange.add(d)
+  // Beregn preview-range (mellem pendingStart og hovered)
+  const previewRange: Set<string> = new Set()
+  if (pendingStart && hoveredDate && pendingStart !== hoveredDate) {
+    eachDayOfRange(pendingStart, hoveredDate).forEach((d) => {
+      if (!bookedSet.has(d) && d >= today) previewRange.add(d)
     })
-  }
-
-  function commitDrag() {
-    if (!isDragging.current || !dragStart.current) return
-    const rangeDates = dragEnd
-      ? eachDayOfRange(dragStart.current, dragEnd).filter(
-          (d) => !bookedSet.has(d) && d >= today,
-        )
-      : [dragStart.current].filter((d) => !bookedSet.has(d) && d >= today)
-
-    if (rangeDates.length > 0) {
-      setBlockedDates((prev) => {
-        const next = new Set(prev)
-        if (dragAction.current === "block") {
-          rangeDates.forEach((d) => next.add(d))
-        } else {
-          rangeDates.forEach((d) => next.delete(d))
-        }
-        return next
-      })
-    }
-
-    isDragging.current = false
-    dragStart.current = null
-    setDragEnd(null)
-  }
-
-  useEffect(() => {
-    function onMouseUp() {
-      if (isDragging.current) commitDrag()
-    }
-    window.addEventListener("mouseup", onMouseUp)
-    return () => window.removeEventListener("mouseup", onMouseUp)
-  })
-
-  function handleDayMouseDown(date: string) {
-    if (bookedSet.has(date) || date < today) return
-    isDragging.current = true
-    dragStart.current = date
-    setDragEnd(date)
-    // If date is already blocked -> drag will unblock; otherwise -> block
-    dragAction.current = blockedDates.has(date) ? "unblock" : "block"
-  }
-
-  function handleDayMouseEnter(date: string) {
-    if (!isDragging.current) return
-    setDragEnd(date)
   }
 
   function handleDayClick(date: string) {
     if (bookedSet.has(date) || date < today) return
-    setBlockedDates((prev) => {
-      const next = new Set(prev)
-      if (next.has(date)) next.delete(date)
-      else next.add(date)
-      return next
-    })
+
+    if (pendingStart === null) {
+      // Første klik: sæt som periodestart
+      setPendingStart(date)
+    } else if (pendingStart === date) {
+      // Klik på samme dato: toggle den og nulstil periodevalg
+      setBlockedDates((prev) => {
+        const next = new Set(prev)
+        if (next.has(date)) next.delete(date)
+        else next.add(date)
+        return next
+      })
+      setPendingStart(null)
+    } else {
+      // Andet klik (anden dato): blokér/frigiv hele perioden
+      const range = eachDayOfRange(pendingStart, date).filter(
+        (d) => !bookedSet.has(d) && d >= today,
+      )
+      const shouldBlock = !blockedDates.has(pendingStart)
+      setBlockedDates((prev) => {
+        const next = new Set(prev)
+        range.forEach((d) => {
+          if (shouldBlock) next.add(d)
+          else next.delete(d)
+        })
+        return next
+      })
+      setPendingStart(null)
+    }
+    setHoveredDate(null)
   }
 
-  function getDayStyle(date: string): {
-    className: string
-    showX: boolean
-  } {
+  function getDayStyle(date: string): { style: React.CSSProperties; showX: boolean } {
     const isBooked = bookedSet.has(date)
     const isPast = date < today
-    const isInDrag = dragRange.has(date)
+    const isPendingStart = date === pendingStart
+    const isInPreview = previewRange.has(date)
     const isBlocked = blockedDates.has(date)
 
     if (isBooked) {
       return {
-        className: "bg-[#4A9CC7] text-white cursor-not-allowed opacity-90 rounded-md",
+        style: {
+          backgroundColor: "#4A9CC7",
+          color: "white",
+          cursor: "not-allowed",
+          opacity: 0.9,
+          borderRadius: "6px",
+        },
         showX: false,
       }
     }
     if (isPast) {
       return {
-        className: "text-gray-300 cursor-not-allowed",
+        style: { color: "#d1d5db", cursor: "not-allowed" },
         showX: false,
       }
     }
-    if (isInDrag) {
-      const willBlock = dragAction.current === "block"
+    if (isPendingStart) {
       return {
-        className: willBlock
-          ? "bg-gray-200 text-gray-500 cursor-pointer rounded-md"
-          : "bg-green-200 text-green-800 cursor-pointer rounded-md",
+        style: {
+          backgroundColor: "#1a5f7a",
+          color: "white",
+          cursor: "pointer",
+          borderRadius: "6px",
+          fontWeight: 600,
+        },
+        showX: false,
+      }
+    }
+    if (isInPreview) {
+      const willBlock = !blockedDates.has(pendingStart ?? "")
+      return {
+        style: {
+          backgroundColor: willBlock ? "#e5e7eb" : "#dcfce7",
+          color: willBlock ? "#6b7280" : "#166534",
+          cursor: "pointer",
+          borderRadius: "6px",
+        },
         showX: false,
       }
     }
     if (isBlocked) {
       return {
-        className:
-          "bg-gray-100 text-gray-400 cursor-pointer rounded-md hover:bg-gray-200 relative",
+        style: {
+          backgroundColor: "#f3f4f6",
+          color: "#9ca3af",
+          cursor: "pointer",
+          borderRadius: "6px",
+          position: "relative",
+        },
         showX: true,
       }
     }
-    // Available (default for all future dates)
+    // Ledig (default for alle fremtidige datoer)
     return {
-      className:
-        "bg-green-50 text-green-800 cursor-pointer rounded-md hover:bg-green-100 border border-green-200",
+      style: {
+        backgroundColor: "#f0fdf4",
+        color: "#166534",
+        cursor: "pointer",
+        borderRadius: "6px",
+        border: "1px solid #bbf7d0",
+      },
       showX: false,
     }
   }
 
-  const renderMonth = useCallback(
-    (monthDate: Date) => {
-      const year = monthDate.getFullYear()
-      const month = monthDate.getMonth()
-      const days = buildMonthDays(year, month)
+  function renderMonth(monthDate: Date) {
+    const year = monthDate.getFullYear()
+    const month = monthDate.getMonth()
+    const days = buildMonthDays(year, month)
 
-      return (
-        <div key={`${year}-${month}`} className="flex-1 min-w-0">
-          <p className="text-center text-sm font-semibold text-gray-700 mb-3">
-            {MONTH_NAMES[month]} {year}
-          </p>
-          <div className="grid grid-cols-7 gap-0.5">
-            {DAY_LABELS.map((l) => (
-              <div key={l} className="text-center text-xs text-gray-400 font-medium py-1">
-                {l}
+    return (
+      <div key={`${year}-${month}`} className="flex-1 min-w-0">
+        <p className="text-center text-sm font-semibold text-gray-700 mb-3">
+          {MONTH_NAMES[month]} {year}
+        </p>
+        <div className="grid grid-cols-7 gap-0.5">
+          {DAY_LABELS.map((l) => (
+            <div key={l} className="text-center text-xs text-gray-400 font-medium py-1">
+              {l}
+            </div>
+          ))}
+          {days.map((date, i) =>
+            date === null ? (
+              <div key={`empty-${i}`} />
+            ) : (
+              <div
+                key={date}
+                className="relative text-center text-xs py-1.5 transition-colors"
+                style={getDayStyle(date).style}
+                onClick={() => handleDayClick(date)}
+                onMouseEnter={() => {
+                  if (pendingStart) setHoveredDate(date)
+                }}
+                onMouseLeave={() => {
+                  if (pendingStart) setHoveredDate(null)
+                }}
+              >
+                {parseInt(date.split("-")[2])}
+                {getDayStyle(date).showX && (
+                  <X
+                    className="absolute top-0 right-0 w-2.5 h-2.5 text-gray-400"
+                    strokeWidth={2.5}
+                  />
+                )}
               </div>
-            ))}
-            {days.map((date, i) =>
-              date === null ? (
-                <div key={`empty-${i}`} />
-              ) : (
-                <div
-                  key={date}
-                  className={`relative text-center text-xs py-1.5 select-none transition-colors ${getDayStyle(date).className}`}
-                  onMouseDown={() => handleDayMouseDown(date)}
-                  onMouseEnter={() => handleDayMouseEnter(date)}
-                  onClick={() => handleDayClick(date)}
-                >
-                  {parseInt(date.split("-")[2])}
-                  {getDayStyle(date).showX && (
-                    <X className="absolute top-0 right-0 w-2.5 h-2.5 text-gray-400" strokeWidth={2.5} />
-                  )}
-                </div>
-              ),
-            )}
-          </div>
+            ),
+          )}
         </div>
-      )
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [blockedDates, bookedSet, today, dragRange],
-  )
+      </div>
+    )
+  }
 
   function handleSave(publish: boolean) {
     startTransition(async () => {
@@ -268,7 +275,9 @@ export default function AvailabilityCalendar({
           <ChevronLeft className="w-4 h-4" />
         </button>
         <span className="text-xs text-gray-400 text-center">
-          Klik én dato eller klik+træk for at blokere/frigive en periode
+          {pendingStart
+            ? "Klik nu på en slutdato for at blokere perioden"
+            : "Klik én dato for at blokere/frigive"}
         </span>
         <button
           type="button"
@@ -280,13 +289,24 @@ export default function AvailabilityCalendar({
         </button>
       </div>
 
-      {/* Two-month grid */}
-      <div
-        className="flex flex-col sm:flex-row gap-6 sm:gap-8 select-none"
-        onMouseLeave={() => {
-          if (isDragging.current) commitDrag()
-        }}
-      >
+      {/* Periode-valg annuller-knap */}
+      {pendingStart && (
+        <div className="flex items-center justify-between rounded-lg bg-[#1a5f7a]/8 border border-[#4A9CC7]/30 px-4 py-2 text-sm text-[#1a5f7a]">
+          <span>
+            Startdato valgt: <strong>{pendingStart}</strong> — klik en slutdato
+          </span>
+          <button
+            type="button"
+            className="text-xs underline ml-4 shrink-0"
+            onClick={() => { setPendingStart(null); setHoveredDate(null) }}
+          >
+            Annuller
+          </button>
+        </div>
+      )}
+
+      {/* To-måneds grid */}
+      <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
         {renderMonth(firstMonth)}
         {renderMonth(secondMonth)}
       </div>
@@ -297,7 +317,7 @@ export default function AvailabilityCalendar({
           : `${blockedDates.size} dato${blockedDates.size !== 1 ? "er" : ""} blokeret af dig.`}
       </p>
 
-      {/* Action buttons */}
+      {/* Gem-knapper */}
       <div className="flex flex-col sm:flex-row gap-3 pt-2">
         <Button
           type="button"

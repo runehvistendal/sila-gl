@@ -138,6 +138,14 @@ export default async function RedigerHyttePage({ params, searchParams }: PagePro
               bookedDates={bookedDates}
             />
           </div>
+          <div className="mt-4 flex justify-end">
+            <Link
+              href={`/opret/hytte/${id}/tilgaengelighed`}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+            >
+              Gå til tilgængelighed (fuld side) →
+            </Link>
+          </div>
         </section>
       </div>
     </main>
