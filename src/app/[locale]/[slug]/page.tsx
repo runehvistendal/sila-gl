@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { setRequestLocale } from "next-intl/server"
+import { setRequestLocale, getTranslations } from "next-intl/server"
 import Navbar from "@/components/layout/Navbar"
 import SectionRenderer from "@/components/sanity/SectionRenderer"
 import { buildMetadata } from "@/lib/metadata"
@@ -18,6 +18,7 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params
   const page = await getPageBySlug(slug)
+  const tStatic = await getTranslations({ locale, namespace: "staticPage" })
   if (!page) {
     return {}
   }
@@ -32,7 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description =
     page[`seoDescription_${locale}`] ??
     page.seoDescription_da ??
-    "Grønlands platform for hytteudlejning og samsejlads"
+    tStatic("page_fallback_description")
 
   return buildMetadata({ title, description, locale, path: `/${slug}` })
 }

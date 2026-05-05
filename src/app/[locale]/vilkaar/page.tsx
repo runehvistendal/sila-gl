@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { setRequestLocale } from "next-intl/server"
+import { setRequestLocale, getTranslations } from "next-intl/server"
 import { getPage } from "@/lib/sanity.queries"
 import { buildMetadata } from "@/lib/metadata"
 import { PortableTextRenderer } from "@/components/sanity/PortableTextRenderer"
@@ -18,16 +18,15 @@ type Props = { params: Promise<{ locale: string }> }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params
   const content = await getPage("vilkaar")
+  const tStatic = await getTranslations({ locale, namespace: "staticPage" })
   const title =
     content?.[`seoTitle_${locale}`] ??
     content?.seoTitle_da ??
     content?.[`title_${locale}`] ??
     content?.title_da ??
-    "Vilkår og betingelser"
+    tStatic("fallback_title_vilkaar")
   const description =
-    content?.[`seoDescription_${locale}`] ??
-    content?.seoDescription_da ??
-    "Sila.gl's vilkår og betingelser for brug af platformen"
+    content?.[`seoDescription_${locale}`] ?? content?.seoDescription_da ?? tStatic("vilkaar_meta_description")
   return buildMetadata({ locale, title, description, path: "/vilkaar" })
 }
 
@@ -35,12 +34,17 @@ export default async function VilkaarPage({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
 
+  const tStatic = await getTranslations({ locale, namespace: "staticPage" })
+
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   const navUser = user ? await getNavUserForPage(supabase, user) : null
 
   const content = await getPage("vilkaar")
-  const title = content?.[`title_${locale}`] ?? content?.title_da ?? "Vilkår og betingelser"
+  const title =
+    content?.[`title_${locale}`] ?? content?.title_da ?? tStatic("fallback_title_vilkaar")
   const body = content?.[`body_${locale}`] ?? content?.body_da ?? null
 
   return (
@@ -52,9 +56,9 @@ export default async function VilkaarPage({ params }: Props) {
           <PortableTextRenderer value={body} />
         ) : (
           <div className="text-center py-16">
-            <p className="text-muted-foreground mb-6">Indhold kommer snart.</p>
+            <p className="text-muted-foreground mb-6">{tStatic("coming_soon")}</p>
             <Link href="/" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-              Tilbage til forsiden <ArrowRight className="w-4 h-4" />
+              {tStatic("back_home")} <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         )}

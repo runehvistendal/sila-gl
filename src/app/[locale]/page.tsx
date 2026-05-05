@@ -10,11 +10,17 @@ import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import { buildMetadata } from "@/lib/metadata"
 import { JsonLd } from "@/components/seo/JsonLd"
-import { getHomePage } from "@/lib/sanity.queries"
+import { getGlobalSettings, getHomePage } from "@/lib/sanity.queries"
+import { sanityImage } from "@/lib/sanity"
 import SectionRenderer from "@/components/sanity/SectionRenderer"
 import type { Locale } from "@/i18n/routing"
 
 export const revalidate = 3600
+
+const FALLBACK_HERO_SRC =
+  "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=1920&h=1080&fit=crop&q=85"
+const FALLBACK_OG_IMAGE =
+  "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=1200&h=630&fit=crop&q=85"
 
 const STEP_ICONS = [Search, Anchor, HomeIcon] as const
 const FEATURE_ICONS = [Users, Anchor] as const
@@ -35,13 +41,19 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params
-  const t = await getTranslations({ locale, namespace: "home" })
+  const tHome = await getTranslations({ locale, namespace: "home" })
+  const tFooter = await getTranslations({ locale, namespace: "footer" })
+  const settings = await getGlobalSettings().catch(() => null)
+  const ogImage =
+    settings?.heroImage != null
+      ? sanityImage(settings.heroImage).width(1200).height(630).fit("crop").quality(85).url()
+      : FALLBACK_OG_IMAGE
   return buildMetadata({
     locale,
-    title: "Sila.gl",
-    description: t("subheadline"),
+    title: tFooter("brandName"),
+    description: tHome("subheadline"),
     path: "",
-    image: "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=1200&h=630&fit=crop&q=85",
+    image: ogImage,
   })
 }
 
@@ -49,9 +61,10 @@ export default async function Home({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
 
-  const [t, sanityHome] = await Promise.all([
+  const [t, sanityHome, globalSettings] = await Promise.all([
     getTranslations("home"),
     getHomePage(locale),
+    getGlobalSettings().catch(() => null),
   ])
 
   const supabase = await createClient()
@@ -79,14 +92,18 @@ export default async function Home({ params }: Props) {
     sub:   t(`cta.stats.${i}.sub`),
   }))
 
+  const tFooter = await getTranslations({ locale, namespace: "footer" })
+  const heroBgSrc =
+    globalSettings?.heroImage != null
+      ? sanityImage(globalSettings.heroImage).width(1920).height(1080).fit("crop").quality(85).url()
+      : FALLBACK_HERO_SRC
+
   const websiteSchema = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "Sila.gl",
+    name: tFooter("brandName"),
     url: "https://sila.gl",
-    description: locale === "da"
-      ? "Grønlands marketplace for hytteudlejning og samsejlads"
-      : "Greenland's marketplace for cabin rentals and sailing",
+    description: t("subheadline"),
     potentialAction: {
       "@type": "SearchAction",
       target: `https://sila.gl/${locale}/hytter?q={search_term_string}`,
@@ -102,7 +119,7 @@ export default async function Home({ params }: Props) {
       {/* ── Hero ── */}
       <section className="relative min-h-[90vh] flex items-center overflow-hidden">
         <Image
-          src="https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=1920&h=1080&fit=crop&q=85"
+          src={heroBgSrc}
           alt={t("heroImageAlt")}
           fill priority
           style={{ objectFit: "cover" }}

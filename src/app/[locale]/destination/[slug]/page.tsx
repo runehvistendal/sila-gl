@@ -133,7 +133,7 @@ export default async function DestinationPage({ params }: Props) {
       <section className={`${heroImgUrl ? "pt-10" : "pt-28"} pb-12 px-4 sm:px-6 max-w-5xl mx-auto`}>
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
           <MapPin className="w-4 h-4" />
-          <span>Grønland</span>
+          <span>{t("breadcrumb_country")}</span>
           <span>/</span>
           <span className="text-foreground font-medium">{name}</span>
         </div>

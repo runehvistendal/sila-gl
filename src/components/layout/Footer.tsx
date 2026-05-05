@@ -23,7 +23,7 @@ export default async function Footer({ locale }: FooterProps) {
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
           <div>
             <span className="text-base font-semibold block mb-3 text-primary-foreground">
-              Sila.gl
+              {t("brandName")}
             </span>
             <p className="text-xs leading-relaxed text-primary-foreground/50">
               {tagline}
@@ -49,7 +49,7 @@ export default async function Footer({ locale }: FooterProps) {
             <div className="flex flex-col gap-2.5 text-sm text-primary-foreground/60">
               <Link href="/privatlivspolitik" className="hover:text-primary-foreground transition-colors">{t("privacy")}</Link>
               <Link href="/vilkaar"           className="hover:text-primary-foreground transition-colors">{t("terms")}</Link>
-              <Link href="/blog"              className="hover:text-primary-foreground transition-colors">Blog</Link>
+              <Link href="/blog"              className="hover:text-primary-foreground transition-colors">{t("blog")}</Link>
             </div>
           </div>
         </div>

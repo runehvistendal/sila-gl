@@ -1,4 +1,5 @@
 import { sanityFetchClient } from "./sanity"
+import { cache } from "react"
 
 /** Del af GROQ for page builder-sektioner (felter matcher SectionRenderer). */
 export const SANITY_SECTIONS_PROJECTION = `sections[]{
@@ -79,6 +80,8 @@ export async function getPost(slug: string) {
   )
 }
 
-export async function getGlobalSettings() {
-  return safeFetch(`*[_type == "globalSettings"][0]`)
+async function loadGlobalSettings() {
+  return safeFetch(`*[_type == "globalSettings"][0]{ ... }`, {})
 }
+
+export const getGlobalSettings = cache(loadGlobalSettings)

@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { setRequestLocale } from "next-intl/server"
+import { setRequestLocale, getTranslations } from "next-intl/server"
 import { getPage } from "@/lib/sanity.queries"
 import { buildMetadata } from "@/lib/metadata"
 import { PortableTextRenderer } from "@/components/sanity/PortableTextRenderer"
@@ -18,16 +18,15 @@ type Props = { params: Promise<{ locale: string }> }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params
   const content = await getPage("udbyderguide")
+  const tStatic = await getTranslations({ locale, namespace: "staticPage" })
   const title =
     content?.[`seoTitle_${locale}`] ??
     content?.seoTitle_da ??
     content?.[`title_${locale}`] ??
     content?.title_da ??
-    "Udbyderguide"
+    tStatic("fallback_title_guide")
   const description =
-    content?.[`seoDescription_${locale}`] ??
-    content?.seoDescription_da ??
-    "Kom i gang som udbyder på Sila.gl — hytteejer eller sejler"
+    content?.[`seoDescription_${locale}`] ?? content?.seoDescription_da ?? tStatic("guide_meta_description")
   return buildMetadata({ locale, title, description, path: "/udbyderguide" })
 }
 
@@ -35,12 +34,17 @@ export default async function UdbyderGuidePage({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
 
+  const tStatic = await getTranslations({ locale, namespace: "staticPage" })
+
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   const navUser = user ? await getNavUserForPage(supabase, user) : null
 
   const content = await getPage("udbyderguide")
-  const title = content?.[`title_${locale}`] ?? content?.title_da ?? "Udbyderguide"
+  const title =
+    content?.[`title_${locale}`] ?? content?.title_da ?? tStatic("fallback_title_guide")
   const body = content?.[`body_${locale}`] ?? content?.body_da ?? null
 
   return (
@@ -52,9 +56,9 @@ export default async function UdbyderGuidePage({ params }: Props) {
           <PortableTextRenderer value={body} />
         ) : (
           <div className="text-center py-16">
-            <p className="text-muted-foreground mb-6">Guide til udbydere kommer snart.</p>
+            <p className="text-muted-foreground mb-6">{tStatic("provider_guide_soon")}</p>
             <Link href="/opret" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-              Kom i gang som udbyder <ArrowRight className="w-4 h-4" />
+              {tStatic("provider_guide_cta")} <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         )}

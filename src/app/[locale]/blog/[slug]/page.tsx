@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { setRequestLocale } from "next-intl/server"
+import { setRequestLocale, getTranslations } from "next-intl/server"
 import { getPost, getAllPosts } from "@/lib/sanity.queries"
 import { buildMetadata } from "@/lib/metadata"
 import { sanityImage } from "@/lib/sanity"
@@ -31,8 +31,11 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params
+  const tStatic = await getTranslations({ locale, namespace: "staticPage" })
   const post = await getPost(slug)
-  if (!post) return { title: "Sila.gl" }
+  if (!post) {
+    return { title: `${tStatic("meta_fallback_title")}` }
+  }
 
   const title =
     post[`seoTitle_${locale}`] ??
@@ -49,6 +52,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function BlogPostPage({ params }: Props) {
   const { locale, slug } = await params
   setRequestLocale(locale)
+
+  const tStatic = await getTranslations({ locale, namespace: "staticPage" })
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -70,7 +75,7 @@ export default async function BlogPostPage({ params }: Props) {
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
         >
           <ChevronLeft className="w-4 h-4" />
-          {locale === "da" ? "Alle indlæg" : "All posts"}
+          {tStatic("blog_all_posts")}
         </Link>
 
         {imgUrl && (
@@ -94,7 +99,7 @@ export default async function BlogPostPage({ params }: Props) {
         {body ? (
           <PortableTextRenderer value={body} />
         ) : (
-          <p className="text-muted-foreground">{locale === "da" ? "Indhold mangler." : "Content missing."}</p>
+          <p className="text-muted-foreground">{tStatic("blog_content_missing")}</p>
         )}
       </div>
 
