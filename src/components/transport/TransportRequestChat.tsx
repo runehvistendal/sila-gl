@@ -13,7 +13,7 @@ import {
   sendTransportMessage,
   submitTransportOffer,
   acceptTransportOffer,
-} from "@/app/transport/anmodninger/[id]/actions"
+} from "@/app/[locale]/transport/anmodninger/[id]/actions"
 
 interface Message {
   id: string

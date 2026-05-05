@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import Link from "next/link"
-import { useRouter, usePathname } from "next/navigation"
+import { useTranslations, useLocale } from "next-intl"
+import { useRouter, usePathname, Link } from "@/i18n/navigation"
 import {
   Globe, ChevronDown, Menu, X, Anchor, LogIn,
   Plus, Home, Waves, Inbox,
@@ -62,17 +62,17 @@ function NavAvatarCircle({
 }
 
 export default function Navbar({ user }: { user?: NavUser | null }) {
-  const router   = useRouter()
+  const t = useTranslations("nav")
+  const locale = useLocale()
+  const router = useRouter()
   const pathname = usePathname()
-  const isHome   = pathname === "/"
+  const isHome = pathname === "/"
 
   /* ── Scroll state ── */
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
-    // Non-home pages are always "scrolled" (solid bg)
     if (!isHome) { setScrolled(true); return }
-
     function onScroll() { setScrolled(window.scrollY > 40) }
     onScroll()
     window.addEventListener("scroll", onScroll, { passive: true })
@@ -81,7 +81,7 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
 
   const solid = scrolled || !isHome
 
-  /* ── Role type (fetch once on mount when logged in) ── */
+  /* ── Role type ── */
   const [roleType, setRoleType] = useState<string | null>(null)
 
   useEffect(() => {
@@ -125,9 +125,25 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
     router.refresh()
   }
 
+  /* ── Locale switching ── */
+  async function handleLocaleSwitch(newLocale: "da" | "en") {
+    if (newLocale === locale) return
+
+    // Update profiles.language in DB if user is logged in
+    if (user) {
+      const supabase = createClient()
+      await supabase
+        .from("profiles")
+        .update({ language: newLocale })
+        .eq("id", user.id)
+    }
+
+    // Navigate to same path with new locale
+    router.replace(pathname, { locale: newLocale })
+  }
+
   const displayName = user?.fullName ?? null
 
-  /* Dynamic classes that depend on solid/transparent */
   const navBg    = solid ? "bg-white/95 backdrop-blur-md border-b border-border shadow-sm" : "bg-transparent"
   const textMain = solid ? "text-foreground"     : "text-white"
   const textMuted= solid ? "text-foreground/60"  : "text-white/80"
@@ -146,16 +162,15 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
 
           {/* ── Nav links — desktop ── */}
           <div className={`hidden md:flex items-center gap-8 text-sm font-medium ${textNav}`}>
-            <Link href="/hytter"    className="transition-colors">Hytter</Link>
-            <Link href="/transport" className="transition-colors">Transport</Link>
+            <Link href="/hytter"    className="transition-colors">{t("cabins")}</Link>
+            <Link href="/transport" className="transition-colors">{t("transport")}</Link>
 
-            {/* ── Plus button (logged in only) ── */}
             {user && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
                     className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 transition-colors shadow-sm"
-                    aria-label="Opret eller anmod"
+                    aria-label={t("createListing")}
                   >
                     <Plus size={18} />
                   </button>
@@ -165,7 +180,7 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                     <DropdownMenuItem asChild>
                       <Link href="/opret" className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer">
                         <Plus size={15} className="text-primary" />
-                        <span>Opret opslag</span>
+                        <span>{t("createListing")}</span>
                       </Link>
                     </DropdownMenuItem>
                   )}
@@ -175,13 +190,13 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                       <DropdownMenuItem asChild>
                         <Link href="/anmod?type=cabin" className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer">
                           <Home size={15} className="text-muted-foreground" />
-                          <span>Anmod om hytte</span>
+                          <span>{t("requestCabin")}</span>
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link href="/anmod?type=transport" className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer">
                           <Waves size={15} className="text-muted-foreground" />
-                          <span>Anmod om transport</span>
+                          <span>{t("requestTransport")}</span>
                         </Link>
                       </DropdownMenuItem>
                     </>
@@ -192,7 +207,7 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                       <DropdownMenuItem asChild>
                         <Link href="/dashboard?tab=open-requests" className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer">
                           <Inbox size={15} className="text-muted-foreground" />
-                          <span>Gæsteønsker</span>
+                          <span>{t("guestRequests")}</span>
                         </Link>
                       </DropdownMenuItem>
                     </>
@@ -205,18 +220,38 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
           {/* ── Right side — desktop ── */}
           <div className={`hidden md:flex items-center gap-4 text-sm ${textMuted}`}>
             <button className="flex items-center gap-1 transition-colors hover:text-foreground">
-              DKK (kr) <ChevronDown size={13} />
-            </button>
-            <button
-              type="button"
-              className="flex items-center gap-1.5 transition-colors hover:text-foreground"
-            >
-              <Globe size={14} />
-              {LANG_LABEL[user?.language ?? "da"]}
+              {t("currency")} <ChevronDown size={13} />
             </button>
 
+            {/* ── Locale switcher ── */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 transition-colors hover:text-foreground"
+                >
+                  <Globe size={14} />
+                  {LANG_LABEL[(locale as "da" | "en" | "kl") ?? "da"]}
+                  <ChevronDown size={11} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-36 rounded-2xl p-1.5">
+                <DropdownMenuItem
+                  onClick={() => handleLocaleSwitch("da")}
+                  className={`rounded-xl px-3 py-2.5 cursor-pointer ${locale === "da" ? "font-semibold text-primary" : ""}`}
+                >
+                  🇩🇰 Dansk
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleLocaleSwitch("en")}
+                  className={`rounded-xl px-3 py-2.5 cursor-pointer ${locale === "en" ? "font-semibold text-primary" : ""}`}
+                >
+                  🇬🇧 English
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {user ? (
-              /* ── User dropdown ── */
               <div className="relative" ref={userMenuRef}>
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
@@ -232,7 +267,7 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                 {userMenuOpen && (
                   <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 py-1">
                     <div className="px-4 py-3 border-b border-gray-100">
-                      <p className="text-xs text-gray-400">Logget ind som</p>
+                      <p className="text-xs text-gray-400">{t("loggedInAs")}</p>
                       {user.fullName ? (
                         <p className="text-sm font-semibold text-gray-800 truncate">
                           {user.fullName}
@@ -244,27 +279,26 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                       onClick={() => setUserMenuOpen(false)}
                       className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                     >
-                      Dashboard
+                      {t("dashboard")}
                     </Link>
                     <Link
                       href="/profil"
                       onClick={() => setUserMenuOpen(false)}
                       className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                     >
-                      Profil
+                      {t("profile")}
                     </Link>
                     <button
                       type="button"
                       onClick={handleSignOut}
                       className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition-colors border-t border-gray-100 text-destructive font-medium"
                     >
-                      Log ud
+                      {t("signOut")}
                     </button>
                   </div>
                 )}
               </div>
             ) : (
-              /* ── Log ind-knap ── */
               <button
                 onClick={() => setLoginOpen(true)}
                 className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
@@ -274,7 +308,7 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                 }`}
               >
                 <LogIn size={14} />
-                Log ind
+                {t("signIn")}
               </button>
             )}
           </div>
@@ -331,18 +365,18 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
 
           {/* Nav links */}
           <div className="flex-1 flex flex-col items-center justify-center">
-            <Link href="/hytter"    onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">Hytter</Link>
-            <Link href="/transport" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">Transport</Link>
+            <Link href="/hytter"    onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">{t("cabins")}</Link>
+            <Link href="/transport" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">{t("transport")}</Link>
 
             {user ? (
               <>
-                <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">Dashboard</Link>
-                <Link href="/profil" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">Profil</Link>
+                <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">{t("dashboard")}</Link>
+                <Link href="/profil" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">{t("profile")}</Link>
                 {isTraveler && (
-                  <Link href="/anmod?type=cabin" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">Anmod om hytte</Link>
+                  <Link href="/anmod?type=cabin" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">{t("requestCabin")}</Link>
                 )}
                 <button onClick={handleSignOut} className="mt-6 px-8 py-3 rounded-full text-sm font-medium border border-white/20 text-white/60 hover:text-white hover:border-white/40 transition-colors">
-                  Log ud
+                  {t("signOut")}
                 </button>
               </>
             ) : (
@@ -350,7 +384,7 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                 onClick={() => { setMobileOpen(false); setLoginOpen(true) }}
                 className="mt-6 px-8 py-3 rounded-full text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
               >
-                Log ind
+                {t("signIn")}
               </button>
             )}
           </div>
@@ -358,15 +392,24 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
           {/* Sprog + valuta */}
           <div className="pb-12 flex items-center justify-center gap-8 text-sm text-white/50">
             <button className="flex items-center gap-1 hover:text-white/80 transition-colors">
-              DKK (kr) <ChevronDown size={12} />
+              {t("currency")} <ChevronDown size={12} />
             </button>
-            <button
-              type="button"
-              className="flex items-center gap-1.5 hover:text-white/80 transition-colors"
-            >
-              <Globe size={13} />
-              {LANG_LABEL[user?.language ?? "da"]}
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => handleLocaleSwitch("da")}
+                className={`flex items-center gap-1 hover:text-white/80 transition-colors ${locale === "da" ? "text-white font-semibold" : ""}`}
+              >
+                <Globe size={13} />
+                DA
+              </button>
+              <span className="text-white/20">|</span>
+              <button
+                onClick={() => handleLocaleSwitch("en")}
+                className={`flex items-center gap-1 hover:text-white/80 transition-colors ${locale === "en" ? "text-white font-semibold" : ""}`}
+              >
+                EN
+              </button>
+            </div>
           </div>
         </div>
       )}

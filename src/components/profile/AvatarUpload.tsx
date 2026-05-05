@@ -4,7 +4,7 @@ import { useRef, useState } from "react"
 import { Camera, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { fetchCloudinarySignature, uploadImageToCloudinary } from "@/lib/cloudinaryClientUpload"
-import { updateAvatar } from "@/app/profil/actions"
+import { updateAvatar } from "@/app/[locale]/profil/actions"
 
 const MAX_BYTES = 5 * 1024 * 1024
 const DEFAULT_SIZE_PX = 96

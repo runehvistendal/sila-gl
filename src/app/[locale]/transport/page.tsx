@@ -1,3 +1,4 @@
+import { getTranslations, setRequestLocale } from "next-intl/server"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
@@ -5,14 +6,25 @@ import TransportClient from "./TransportClient"
 import type { RideShareCardData } from "./components/TransportCard"
 import type { OpenTransportRequest } from "./TransportClient"
 
-export const metadata = {
-  title: "Samsejlads i Grønland — Sila.gl",
-  description: "Find lokale sejlere der tilbyder pladser langs Grønlands kyst.",
-}
-
 export const dynamic = "force-dynamic"
 
-export default async function TransportPage() {
+type Props = {
+  params: Promise<{ locale: string }>
+}
+
+export async function generateMetadata({ params }: Props) {
+  const { locale } = await params
+  const t = await getTranslations({ locale, namespace: "transport" })
+  return {
+    title: t("metaTitle"),
+    description: t("metaDescription"),
+  }
+}
+
+export default async function TransportPage({ params }: Props) {
+  const { locale } = await params
+  setRequestLocale(locale)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()

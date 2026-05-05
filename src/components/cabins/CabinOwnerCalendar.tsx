@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { nightsFromBookings } from "@/lib/cabinBookingDates"
-import { toggleCabinAvailability } from "@/app/opret/hytte/availability-actions"
+import { toggleCabinAvailability } from "@/app/[locale]/opret/hytte/availability-actions"
 import { cn } from "@/lib/utils"
 import "react-day-picker/style.css"
 

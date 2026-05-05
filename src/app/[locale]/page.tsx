@@ -1,46 +1,46 @@
 import Image from "next/image"
-import Link from "next/link"
 import { Search, Anchor, Star, Heart, Users, Home as HomeIcon, ArrowRight } from "lucide-react"
+import { getTranslations, setRequestLocale } from "next-intl/server"
+import { Link } from "@/i18n/navigation"
 import Navbar from "@/components/layout/Navbar"
 import HeroContent from "./components/HeroContent"
 import MapWrapper from "./components/MapWrapper"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 
+const STEP_ICONS = [Search, Anchor, HomeIcon]
+const FEATURE_ICONS = [Users, Anchor]
+const STAT_ICONS = [HomeIcon, Anchor, Users, Search]
+
 const CABINS = [
-  { id: 1, title: "Hytte ved Icefjord",   location: "Ilulissat", region: "Qeqertalik", price: 1200, rating: 4.9, reviews: 28, host: "Niels A.",  badge: "Superhytte" },
-  { id: 2, title: "Fjordkig Cabin",        location: "Nuuk",      region: "Sermersooq", price: 950,  rating: 4.7, reviews: 14, host: "Sara M." },
-  { id: 3, title: "Arktisk Hytteliv",      location: "Sisimiut",  region: "Qeqertalik", price: 1450, rating: 5.0, reviews: 31, host: "Malik P.",  badge: "Topvurderet" },
-  { id: 4, title: "Ensomhed ved kysten",   location: "Qaqortoq",  region: "Kujalleq",   price: 800,  rating: 4.8, reviews: 9,  host: "Ane K." },
-  { id: 5, title: "Midnatssol Retreat",    location: "Tasiilaq",  region: "Sermersooq", price: 1100, rating: 4.6, reviews: 17, host: "Peter T." },
-  { id: 6, title: "Kyst Eventyr",          location: "Aasiaat",   region: "Qeqertalik", price: 750,  rating: 4.9, reviews: 22, host: "Nuka Q." },
+  { id: 1, title: "Hytte ved Icefjord",  location: "Ilulissat", region: "Qeqertalik", price: 1200, rating: 4.9, host: "Niels A.",  badge: "Superhytte" },
+  { id: 2, title: "Fjordkig Cabin",       location: "Nuuk",      region: "Sermersooq", price: 950,  rating: 4.7, host: "Sara M." },
+  { id: 3, title: "Arktisk Hytteliv",     location: "Sisimiut",  region: "Qeqertalik", price: 1450, rating: 5.0, host: "Malik P.", badge: "Topvurderet" },
+  { id: 4, title: "Ensomhed ved kysten",  location: "Qaqortoq",  region: "Kujalleq",   price: 800,  rating: 4.8, host: "Ane K." },
+  { id: 5, title: "Midnatssol Retreat",   location: "Tasiilaq",  region: "Sermersooq", price: 1100, rating: 4.6, host: "Peter T." },
+  { id: 6, title: "Kyst Eventyr",         location: "Aasiaat",   region: "Qeqertalik", price: 750,  rating: 4.9, host: "Nuka Q." },
 ]
 
-const STEPS = [
-  { num: "01", Icon: Search,   title: "Opdag",        desc: "Find autentiske oplevelser fra lokale grønlændere" },
-  { num: "02", Icon: Anchor,   title: "Book direkte", desc: "Reserver din plads med øjeblikkelig bekræftelse" },
-  { num: "03", Icon: HomeIcon, title: "Oplev",        desc: "Oplev Arktis på lokale vilkår — guider beholder 85% af hver booking" },
-]
+type Props = {
+  params: Promise<{ locale: string }>
+}
 
-const FEATURES = [
-  { label: "Delte pladser",   desc: "Betal per plads",        Icon: Users },
-  { label: "Drevet af lokale", desc: "Autentiske oplevelser", Icon: Anchor },
-]
+export default async function Home({ params }: Props) {
+  const { locale } = await params
+  setRequestLocale(locale)
 
-const STATS = [
-  { value: "Free to list",     sub: "Cabins listed",    Icon: HomeIcon },
-  { value: "You set the price", sub: "Transport routes", Icon: Anchor },
-  { value: "Direct booking",   sub: "Travelers",        Icon: Users },
-  { value: "Arctic-focused",   sub: "Visibility",       Icon: Search },
-]
+  const t = await getTranslations("home")
 
-export default async function Home() {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
   const navUser = user ? await getNavUserForPage(supabase, user) : null
+
+  const steps = t.raw("howItWorks.steps") as { title: string; desc: string }[]
+  const features = t.raw("sailSection.features") as { label: string; desc: string }[]
+  const stats = t.raw("cta.stats") as { value: string; sub: string }[]
 
   return (
     <main>
@@ -68,25 +68,29 @@ export default async function Home() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
-              Sådan virker Sila
+              {t("howItWorks.title")}
             </h2>
             <p className="text-muted-foreground text-lg max-w-md mx-auto">
-              Reserver din plads med øjeblikkelig bekræftelse
+              {t("howItWorks.subtitle")}
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-10">
-            {STEPS.map(({ num, Icon, title, desc }) => (
-              <div key={num} className="text-center">
-                <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-5">
-                  <Icon size={22} className="text-primary" />
+            {steps.map((step, i) => {
+              const Icon = STEP_ICONS[i]
+              const num = String(i + 1).padStart(2, "0")
+              return (
+                <div key={num} className="text-center">
+                  <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                    <Icon size={22} className="text-primary" />
+                  </div>
+                  <p className="text-xs font-bold text-primary/50 tracking-widest uppercase mb-1">
+                    {t("howItWorks.step")} {num}
+                  </p>
+                  <h3 className="text-lg font-bold text-foreground mb-2">{step.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
                 </div>
-                <p className="text-xs font-bold text-primary/50 tracking-widest uppercase mb-1">
-                  Step {num}
-                </p>
-                <h3 className="text-lg font-bold text-foreground mb-2">{title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </section>
@@ -97,17 +101,17 @@ export default async function Home() {
           <div className="flex items-end justify-between mb-2">
             <div>
               <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">
-                Hytter i naturen
+                {t("cabinsSection.title")}
               </h2>
               <p className="text-muted-foreground text-sm">
-                Håndplukkede eventyr fra lokale guider i Grønland
+                {t("cabinsSection.subtitle")}
               </p>
             </div>
             <Link
               href="/hytter"
               className="hidden sm:flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary/80 group"
             >
-              Se alle <ArrowRight size={15} className="group-hover:translate-x-0.5 transition-transform" />
+              {t("cabinsSection.seeAll")} <ArrowRight size={15} className="group-hover:translate-x-0.5 transition-transform" />
             </Link>
           </div>
 
@@ -138,8 +142,8 @@ export default async function Home() {
                   <p className="text-xs text-muted-foreground mb-3">{c.location}, {c.region}</p>
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-foreground">
-                      {c.price.toLocaleString("da-DK")} kr
-                      <span className="font-normal text-muted-foreground text-xs"> / nat</span>
+                      {c.price.toLocaleString(locale === "en" ? "en-GB" : "da-DK")} kr
+                      <span className="font-normal text-muted-foreground text-xs"> {t("cabinsSection.perNight")}</span>
                     </p>
                     <p className="text-xs text-muted-foreground">{c.host}</p>
                   </div>
@@ -153,7 +157,7 @@ export default async function Home() {
               href="/hytter"
               className="inline-flex items-center gap-1 px-6 py-2.5 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
             >
-              Se alle hytter
+              {t("cabinsSection.seeAllCabins")}
             </Link>
           </div>
         </div>
@@ -165,37 +169,38 @@ export default async function Home() {
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
               <div className="inline-flex items-center gap-2 text-primary/70 text-xs font-bold tracking-widest uppercase mb-5">
-                <Anchor size={14} /> Unikt for Sila
+                <Anchor size={14} /> {t("sailSection.uniqueLabel")}
               </div>
               <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4 leading-tight">
-                Lokale sejlture —{" "}
-                <em className="font-normal text-primary">del båden</em>
+                {t("sailSection.title")}{" "}
+                <em className="font-normal text-primary">{t("sailSection.titleHighlight")}</em>
               </h2>
               <p className="text-muted-foreground text-lg leading-relaxed mb-8">
-                En grønlænder på vej til sin hytte tilbyder en ledig plads i sin båd.
-                Det er sådan, folk her altid har bevæget sig — og nu kan besøgende
-                rejse med. Autentisk, overkommeligt og den eneste rigtige måde at se det ægte Grønland.
+                {t("sailSection.desc")}
               </p>
 
               <div className="flex flex-col gap-3 mb-8">
-                {FEATURES.map(({ label, desc, Icon }) => (
-                  <div key={label} className="flex items-center gap-4 rounded-2xl p-4 bg-card shadow-card border border-border">
-                    <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
-                      <Icon size={18} className="text-primary" />
+                {features.map((f, i) => {
+                  const Icon = FEATURE_ICONS[i]
+                  return (
+                    <div key={f.label} className="flex items-center gap-4 rounded-2xl p-4 bg-card shadow-card border border-border">
+                      <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+                        <Icon size={18} className="text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{f.label}</p>
+                        <p className="text-xs text-muted-foreground">{f.desc}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{label}</p>
-                      <p className="text-xs text-muted-foreground">{desc}</p>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
 
               <Link
                 href="/transport"
                 className="inline-flex items-center gap-2 px-8 py-3 rounded-full text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
               >
-                Find en bådtur <ArrowRight size={15} />
+                {t("sailSection.findBoat")} <ArrowRight size={15} />
               </Link>
             </div>
 
@@ -212,40 +217,42 @@ export default async function Home() {
           <div className="grid md:grid-cols-2 gap-16 items-center">
             <div>
               <h2 className="text-3xl sm:text-4xl font-bold text-primary-foreground mb-4">
-                Grønland på lokale vilkår
+                {t("cta.title")}
               </h2>
               <p className="mb-8 text-primary-foreground/70 text-lg leading-relaxed">
-                Autentiske arktiske oplevelser fra dem, der kalder det hjem
+                {t("cta.subtitle")}
               </p>
               <div className="flex flex-wrap gap-3">
                 <Link
                   href="/opret-konto"
                   className="inline-flex items-center px-8 py-3 rounded-full text-sm font-semibold bg-primary-foreground text-primary hover:bg-primary-foreground/90 transition-colors"
                 >
-                  Opret din oplevelse
+                  {t("cta.createExperience")}
                 </Link>
                 <Link
                   href="/transport"
                   className="inline-flex items-center px-8 py-3 rounded-full text-sm font-semibold border border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10 transition-colors"
                 >
-                  Transport
+                  {t("cta.transport")}
                 </Link>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              {STATS.map(({ value, sub, Icon }) => (
-                <div key={value} className="bg-primary-foreground/10 rounded-2xl p-5 backdrop-blur-sm">
-                  <Icon size={22} className="text-primary-foreground/60 mb-3" />
-                  <p className="text-base font-bold text-primary-foreground">{value}</p>
-                  <p className="text-xs mt-0.5 text-primary-foreground/50">{sub}</p>
-                </div>
-              ))}
+              {stats.map((stat, i) => {
+                const Icon = STAT_ICONS[i]
+                return (
+                  <div key={i} className="bg-primary-foreground/10 rounded-2xl p-5 backdrop-blur-sm">
+                    <Icon size={22} className="text-primary-foreground/60 mb-3" />
+                    <p className="text-base font-bold text-primary-foreground">{stat.value}</p>
+                    <p className="text-xs mt-0.5 text-primary-foreground/50">{stat.sub}</p>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>
       </section>
-
     </main>
   )
 }

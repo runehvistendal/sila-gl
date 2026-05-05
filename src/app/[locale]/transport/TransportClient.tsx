@@ -2,25 +2,31 @@
 
 import { useState, useMemo } from "react"
 import dynamic from "next/dynamic"
-import Link from "next/link"
 import { Anchor, Grid, Map, ArrowRight, MessageSquare } from "lucide-react"
 import { format } from "date-fns"
-import { da } from "date-fns/locale"
+import { da, enUS } from "date-fns/locale"
+import { useLocale, useTranslations } from "next-intl"
+import { Link } from "@/i18n/navigation"
 import { Button } from "@/components/ui/button"
 import TransportCard, { type RideShareCardData } from "./components/TransportCard"
 import TransportFilters, { type TransportFilterValues } from "./components/TransportFilters"
 import type { TransportMapRoute } from "@/components/map/TransportMap"
 
-const TransportMap = dynamic(() => import("@/components/map/TransportMap"), {
-  ssr: false,
-  loading: () => (
+function MapLoading() {
+  const t = useTranslations("transport")
+  return (
     <div className="h-72 rounded-xl border border-border bg-muted flex items-center justify-center">
       <div className="flex items-center gap-2 text-muted-foreground text-sm">
         <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-        Indlæser kort...
+        {t("loading")}
       </div>
     </div>
-  ),
+  )
+}
+
+const TransportMap = dynamic(() => import("@/components/map/TransportMap"), {
+  ssr: false,
+  loading: () => <MapLoading />,
 })
 
 export interface OpenTransportRequest {
@@ -44,11 +50,7 @@ const DEFAULT_FILTERS: TransportFilterValues = {
   showPanel:     false,
 }
 
-const TRIP_TYPE_SHORT: Record<string, string> = {
-  one_way:    "Enkelttur",
-  round_trip: "Tur-retur",
-  return:     "Kun retur",
-}
+// Trip type labels come from translations (see tripTypes in messages)
 
 interface Props {
   rideShares:   RideShareCardData[]
@@ -56,6 +58,9 @@ interface Props {
 }
 
 export default function TransportClient({ rideShares, openRequests }: Props) {
+  const t = useTranslations("transport")
+  const locale = useLocale()
+  const dateFnsLocale = locale === "en" ? enUS : da
   const [filters, setFilters]   = useState<TransportFilterValues>(DEFAULT_FILTERS)
   const [view, setView]         = useState<"grid" | "map">("grid")
   const [showAll, setShowAll]   = useState(false)
@@ -148,21 +153,21 @@ export default function TransportClient({ rideShares, openRequests }: Props) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-foreground mb-1">Samsejlads i Grønland</h1>
-              <p className="text-muted-foreground">Lokale sejlere tilbyder pladser langs kysten</p>
+              <h1 className="text-3xl font-bold text-foreground mb-1">{t("metaTitle").replace(" — Sila.gl", "")}</h1>
+              <p className="text-muted-foreground">{t("metaDescription")}</p>
             </div>
             <div className="flex gap-1 bg-muted rounded-xl p-1">
               <button
                 onClick={() => setView("grid")}
                 className={`p-2 rounded-lg transition-colors ${view === "grid" ? "bg-white shadow-sm text-foreground" : "text-muted-foreground"}`}
-                aria-label="Gittervisning"
+                aria-label={t("views.grid")}
               >
                 <Grid className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setView("map")}
                 className={`p-2 rounded-lg transition-colors ${view === "map" ? "bg-white shadow-sm text-foreground" : "text-muted-foreground"}`}
-                aria-label="Kortvisning"
+                aria-label={t("views.map")}
               >
                 <Map className="w-4 h-4" />
               </button>
@@ -188,8 +193,8 @@ export default function TransportClient({ rideShares, openRequests }: Props) {
         ) : filtered.length === 0 ? (
           <div className="text-center py-24">
             <Anchor className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-            <p className="text-lg font-medium text-foreground mb-1">Ingen ruter fundet</p>
-            <p className="text-muted-foreground text-sm">Prøv en anden søgning</p>
+            <p className="text-lg font-medium text-foreground mb-1">{t("noResults")}</p>
+            <p className="text-muted-foreground text-sm">{t("clearFilters")}</p>
           </div>
         ) : (
           <>
@@ -251,9 +256,9 @@ export default function TransportClient({ rideShares, openRequests }: Props) {
                   {r.from_location} → {r.to_location}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {format(new Date(r.desired_date), "d. MMM yyyy", { locale: da })}
+                  {format(new Date(r.desired_date), "d. MMM yyyy", { locale: dateFnsLocale })}
                   {" · "}{r.num_passengers} passager{r.num_passengers !== 1 ? "er" : ""}
-                  {" · "}{TRIP_TYPE_SHORT[r.trip_type] ?? r.trip_type}
+                  {" · "}{t(`tripTypes.${r.trip_type as "one_way" | "round_trip" | "return"}` as const) ?? r.trip_type}
                 </p>
                 <div className="flex items-center gap-1 mt-3 text-primary text-xs font-semibold">
                   <MessageSquare className="w-3 h-3" />

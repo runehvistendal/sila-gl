@@ -4,7 +4,7 @@ import { ChevronLeft } from "lucide-react"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
-import HytteForm from "@/app/opret/hytte/HytteForm"
+import HytteForm from "@/app/[locale]/opret/hytte/HytteForm"
 
 export const metadata = {
   title: "Rediger hytte — Sila.gl",

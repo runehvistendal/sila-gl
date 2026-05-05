@@ -36,11 +36,23 @@
 - Primær testkonto: rune.runesen@gmail.com
 
 ## Næste trin
-1. i18n — dansk + engelsk med next-intl
+1. ~~i18n — dansk + engelsk med next-intl~~ ✅ FÆRDIG — se detaljer nedenfor
 2. SEO — metadata, sitemap, landingssider pr. destination
 3. Stripe live-test end-to-end — kritisk inden lancering
 4. PostHog analytics — installer inden lancering
 5. Lancering — første 20 udbydere
+
+## i18n — dansk + engelsk (færdig 5.5.2026)
+- **next-intl** installeret og konfigureret
+- **Routing:** `localePrefix: "always"` → /da/... og /en/...
+- **Filer:** `src/i18n/routing.ts`, `src/i18n/request.ts`, `src/i18n/navigation.ts`
+- **Messages:** `messages/da.json` + `messages/en.json` (comprehensive, alle namespaces)
+- **proxy.ts:** Erstatter middleware.ts — combinerer next-intl + Supabase auth middleware
+- **App-struktur:** Alle sider under `src/app/[locale]/`; api/, auth/, stripe/ forbliver på rodniveau
+- **Oversat (fase 1):** Landingpage, /hytter, /transport, Navbar, Footer
+- **Navbar:** Fungerende locale-skifter (dropdown med 🇩🇰 Dansk / 🇬🇧 English) + opdaterer profiles.language i DB
+- **Import-fix:** Alle shared components opdateret til `@/app/[locale]/...` paths
+- **Ikke oversat (fase 2):** Dashboard, /opret, /admin, /profil — bruger hardkodet dansk for nu
 
 ## Sikkerhed
 - Stripe end-to-end IKKE testet live — kritisk før lancering

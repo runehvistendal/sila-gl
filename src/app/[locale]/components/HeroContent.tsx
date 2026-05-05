@@ -1,15 +1,17 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { Search } from "lucide-react"
+import { useTranslations } from "next-intl"
+import { useRouter } from "@/i18n/navigation"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 import type { GreenlandLocation } from "@/lib/greenlandLocations"
 
 const majorHubs = GREENLAND_LOCATIONS.filter((l) => l.is_major_hub)
 
 export default function HeroContent() {
+  const t = useTranslations("home")
   const router = useRouter()
   const [query, setQuery] = useState("")
   const [open, setOpen] = useState(false)
@@ -54,7 +56,7 @@ export default function HeroContent() {
         transition={{ duration: 0.5 }}
       >
         <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
-        Greenland&#39;s cabin &amp; boat marketplace
+        {t("badge")}
       </motion.div>
 
       {/* Headline */}
@@ -65,7 +67,7 @@ export default function HeroContent() {
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.7, delay: 0.1 }}
       >
-        Grønland på lokale vilkår
+        {t("headline")}
       </motion.h1>
 
       <motion.p
@@ -74,7 +76,7 @@ export default function HeroContent() {
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.7, delay: 0.2 }}
       >
-        Autentiske arktiske oplevelser fra dem, der kalder det hjem
+        {t("subheadline")}
       </motion.p>
 
       {/* Søgefelt + separat Søg-knap */}
@@ -94,7 +96,7 @@ export default function HeroContent() {
               value={query}
               onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
               onFocus={() => setOpen(true)}
-              placeholder="Søg i Grønland..."
+              placeholder={t("searchPlaceholder")}
               className="flex-1 text-sm text-gray-700 outline-none placeholder:text-gray-400 bg-transparent min-w-0"
             />
             {query && (
@@ -108,7 +110,7 @@ export default function HeroContent() {
           <button
             className="px-5 py-4 md:py-3.5 rounded-2xl text-sm font-semibold text-primary-foreground bg-primary shrink-0 hover:bg-primary/90 transition-colors shadow-2xl whitespace-nowrap"
           >
-            Søg
+            {t("searchButton")}
           </button>
         </div>
 

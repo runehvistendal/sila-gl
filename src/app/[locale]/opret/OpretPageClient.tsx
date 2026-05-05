@@ -24,7 +24,7 @@ import {
   duplicateCabin,
   publishCabin,
   unpublishCabin,
-} from "@/app/dashboard/actions"
+} from "@/app/[locale]/dashboard/actions"
 
 export interface CabinRow {
   id: string

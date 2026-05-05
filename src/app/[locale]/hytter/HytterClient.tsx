@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { useTranslations } from "next-intl"
 import CabinFilters, { type FilterValues } from "@/components/cabins/CabinFilters"
 import CabinGrid from "@/components/cabins/CabinGrid"
 import type { CabinCardData } from "@/components/cabins/CabinCard"
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function HytterClient({ cabins, initialFilters }: Props) {
+  const t = useTranslations("cabins")
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([])
 
   const filteredCabins = useMemo(() => {
@@ -26,7 +28,7 @@ export default function HytterClient({ cabins, initialFilters }: Props) {
       <div className="bg-card border-b border-border pt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-3">
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-            Hytter i Grønland
+            {t("pageTitle")}
           </h1>
           <CabinFilters
             initialFilters={initialFilters}
@@ -41,13 +43,13 @@ export default function HytterClient({ cabins, initialFilters }: Props) {
         <CabinGrid cabins={filteredCabins} total={filteredCabins.length} />
         {selectedAmenities.length > 0 && filteredCabins.length === 0 && (
           <p className="text-center text-muted-foreground text-sm mt-8">
-            Ingen hytter matcher de valgte faciliteter.{" "}
+            {t("noMatch")}{" "}
             <button
               type="button"
               onClick={() => setSelectedAmenities([])}
               className="text-primary hover:underline"
             >
-              Ryd filtre
+              {t("clearFilters")}
             </button>
           </p>
         )}

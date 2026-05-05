@@ -7,7 +7,7 @@ import {
   fetchCloudinarySignature,
   uploadImageToCloudinary,
 } from "@/lib/cloudinaryClientUpload"
-import { updateCabinImages } from "@/app/opret/hytte/actions"
+import { updateCabinImages } from "@/app/[locale]/opret/hytte/actions"
 
 const MAX_BYTES = 5 * 1024 * 1024
 const MAX_IMAGES = 8
