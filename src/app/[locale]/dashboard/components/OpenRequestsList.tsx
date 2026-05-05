@@ -1,6 +1,8 @@
+"use client"
+
 import Link from "next/link"
 import { Anchor, Home, Inbox } from "lucide-react"
-import { format } from "date-fns"
+import { useFormatter } from "next-intl"
 import { Badge } from "@/components/ui/badge"
 
 export interface TransportRequestData {
@@ -21,7 +23,7 @@ interface Props {
   type: "transport"
 }
 
-function RequestCard({ r, highlight }: { r: TransportRequestData; highlight?: boolean }) {
+function RequestCard({ r, highlight, fmtDate }: { r: TransportRequestData; highlight?: boolean; fmtDate: (d: Date) => string }) {
   return (
     <Link
       href={`/transport/anmodninger/${r.id}`}
@@ -42,7 +44,7 @@ function RequestCard({ r, highlight }: { r: TransportRequestData; highlight?: bo
               <p className="text-xs text-muted-foreground mt-0.5">{r.profiles.full_name}</p>
             )}
             <p className="text-xs text-muted-foreground">
-              {r.desired_date ? format(new Date(r.desired_date), "d. MMM yyyy") : "—"}
+              {r.desired_date ? fmtDate(new Date(r.desired_date)) : "—"}
               {r.num_passengers ? ` · ${r.num_passengers} passager${r.num_passengers !== 1 ? "er" : ""}` : ""}
             </p>
           </div>
@@ -56,6 +58,8 @@ function RequestCard({ r, highlight }: { r: TransportRequestData; highlight?: bo
 }
 
 export default function OpenRequestsList({ nearby, others, userHomeCity, type }: Props) {
+  const fmt = useFormatter()
+  const fmtDate = (d: Date) => fmt.dateTime(d, { day: "numeric", month: "short", year: "numeric" })
   const total = nearby.length + others.length
 
   if (total === 0) {
@@ -76,7 +80,7 @@ export default function OpenRequestsList({ nearby, others, userHomeCity, type }:
             Nær dig — {userHomeCity}
           </p>
           <div className="space-y-3">
-            {nearby.map((r) => <RequestCard key={r.id} r={r} highlight />)}
+            {nearby.map((r) => <RequestCard key={r.id} r={r} highlight fmtDate={fmtDate} />)}
           </div>
         </div>
       )}
@@ -89,14 +93,14 @@ export default function OpenRequestsList({ nearby, others, userHomeCity, type }:
             </p>
           )}
           <div className="space-y-3">
-            {others.map((r) => <RequestCard key={r.id} r={r} />)}
+            {others.map((r) => <RequestCard key={r.id} r={r} fmtDate={fmtDate} />)}
           </div>
         </div>
       )}
 
       {!userHomeCity && (
         <div className="space-y-3">
-          {[...nearby, ...others].map((r) => <RequestCard key={r.id} r={r} />)}
+          {[...nearby, ...others].map((r) => <RequestCard key={r.id} r={r} fmtDate={fmtDate} />)}
         </div>
       )}
     </div>

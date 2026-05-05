@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import Link from "next/link"
 import { DayPicker, type DateRange } from "react-day-picker"
-import { da } from "date-fns/locale"
+import { da, enUS } from "date-fns/locale"
+import { useLocale } from "next-intl"
 import {
   format as formatDate,
   isBefore,
@@ -70,6 +71,8 @@ export default function CabinBookingWidget({
   onGuestsChange,
 }: Props) {
   const router = useRouter()
+  const locale = useLocale()
+  const dayPickerLocale = locale === "en" ? enUS : da
   const [pending, start] = useTransition()
   const today = startOfDay(new Date())
 
@@ -267,7 +270,7 @@ export default function CabinBookingWidget({
                 mode="range"
                 numberOfMonths={1}
                 pagedNavigation
-                locale={da}
+                locale={dayPickerLocale}
                 selected={range}
                 onSelect={setRange}
                 disabled={disabledMatch}

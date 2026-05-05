@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useTransition } from "react"
-import { format } from "date-fns"
-import { da } from "date-fns/locale"
+import { useFormatter } from "next-intl"
 import { Send, Package, Check, Loader2, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -63,6 +62,7 @@ export default function TransportRequestChat({
   const [messages,     setMessages]     = useState<Message[]>(initialMessages)
   const [offers,       setOffers]       = useState<Offer[]>(initialOffers)
   const [msgText,      setMsgText]      = useState("")
+  const fmt = useFormatter()
   const [sendError,    setSendError]    = useState<string | null>(null)
   const [showOffer,    setShowOffer]    = useState(false)
   const [offerPrice,   setOfferPrice]   = useState("")
@@ -208,7 +208,7 @@ export default function TransportRequestChat({
                     <div>
                       <p className="font-semibold text-sm text-foreground">{skipperName}</p>
                       <p className="text-xs text-muted-foreground">
-                        {format(new Date(offer.created_at), "d. MMM, HH:mm", { locale: da })}
+                        {fmt.dateTime(new Date(offer.created_at), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                       </p>
                     </div>
                     <div className="text-right">
@@ -374,7 +374,7 @@ export default function TransportRequestChat({
                       )}
                       <p className="leading-snug whitespace-pre-wrap break-words">{m.content}</p>
                       <p className={`text-[10px] mt-1 opacity-60 ${isMine ? "text-right" : ""}`}>
-                        {format(new Date(m.created_at), "HH:mm", { locale: da })}
+                        {fmt.dateTime(new Date(m.created_at), { hour: "2-digit", minute: "2-digit" })}
                       </p>
                     </div>
                   </div>

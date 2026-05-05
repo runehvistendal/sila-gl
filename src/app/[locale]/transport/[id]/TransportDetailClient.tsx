@@ -7,7 +7,7 @@ import {
   ArrowRight, ChevronLeft, Calendar, Clock, Users, Anchor,
   RefreshCw, MessageSquare, User, Star,
 } from "lucide-react"
-import { formatNuukDate, formatNuukTime } from "@/lib/nuukTime"
+import { useFormatter } from "next-intl"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
@@ -86,8 +86,18 @@ function StarRow({ rating }: { rating: number }) {
   )
 }
 
+const NUUK_TZ = "America/Godthab"
+
 export default function TransportDetailClient({ rideShare, returnTrips, alternativeReturnTrips, reviews, isLoggedIn }: Props) {
   const router = useRouter()
+  const fmt = useFormatter()
+
+  const formatNuukDate = (iso: string) =>
+    fmt.dateTime(new Date(iso), { timeZone: NUUK_TZ, day: "numeric", month: "short", year: "numeric" })
+  const formatNuukTime = (iso: string): string | null => {
+    const t = fmt.dateTime(new Date(iso), { timeZone: NUUK_TZ, hour: "2-digit", minute: "2-digit" })
+    return t === "00:00" ? null : t
+  }
 
   const [seats,          setSeats]          = useState(1)
   const [message,        setMessage]        = useState("")

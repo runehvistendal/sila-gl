@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Star, User, Loader2 } from "lucide-react"
-import { format } from "date-fns"
-import { da } from "date-fns/locale"
+import { useFormatter } from "next-intl"
 import ReviewForm from "@/components/reviews/ReviewForm"
 import { createClient } from "@/lib/supabase"
 
@@ -45,6 +44,7 @@ export default function CabinReviews({ cabinId, ownerId, currentUserId }: Props)
   const [reviews, setReviews]                 = useState<Review[]>([])
   const [loading, setLoading]                 = useState(true)
   const [canReview, setCanReview]             = useState(false)
+  const fmt = useFormatter()
   const [reviewBookingId, setReviewBookingId] = useState<string | null>(null)
   const [alreadyReviewed, setAlreadyReviewed] = useState(false)
   const [submitted, setSubmitted]             = useState(false)
@@ -232,7 +232,7 @@ export default function CabinReviews({ cabinId, ownerId, currentUserId }: Props)
                       {r.profiles?.full_name ?? "Sila-gæst"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {format(new Date(r.created_at), "d. MMM yyyy", { locale: da })}
+                      {fmt.dateTime(new Date(r.created_at), { day: "numeric", month: "short", year: "numeric" })}
                     </p>
                   </div>
                   <StarBar stars={r.rating} />

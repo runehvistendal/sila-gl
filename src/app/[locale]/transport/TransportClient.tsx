@@ -3,9 +3,7 @@
 import { useState, useMemo } from "react"
 import dynamic from "next/dynamic"
 import { Anchor, Grid, Map, ArrowRight, MessageSquare } from "lucide-react"
-import { format } from "date-fns"
-import { da, enUS } from "date-fns/locale"
-import { useLocale, useTranslations } from "next-intl"
+import { useFormatter, useTranslations } from "next-intl"
 import { Link } from "@/i18n/navigation"
 import { Button } from "@/components/ui/button"
 import TransportCard, { type RideShareCardData } from "./components/TransportCard"
@@ -59,8 +57,7 @@ interface Props {
 
 export default function TransportClient({ rideShares, openRequests }: Props) {
   const t = useTranslations("transport")
-  const locale = useLocale()
-  const dateFnsLocale = locale === "en" ? enUS : da
+  const fmt = useFormatter()
   const [filters, setFilters]   = useState<TransportFilterValues>(DEFAULT_FILTERS)
   const [view, setView]         = useState<"grid" | "map">("grid")
   const [showAll, setShowAll]   = useState(false)
@@ -256,7 +253,7 @@ export default function TransportClient({ rideShares, openRequests }: Props) {
                   {r.from_location} → {r.to_location}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {format(new Date(r.desired_date), "d. MMM yyyy", { locale: dateFnsLocale })}
+                  {fmt.dateTime(new Date(r.desired_date), { day: "numeric", month: "short", year: "numeric" })}
                   {" · "}{t(r.num_passengers === 1 ? "passenger_one" : "passenger_other", { count: r.num_passengers })}
                   {" · "}{t(`tripTypes.${r.trip_type as "one_way" | "round_trip" | "return"}` as const) ?? r.trip_type}
                 </p>

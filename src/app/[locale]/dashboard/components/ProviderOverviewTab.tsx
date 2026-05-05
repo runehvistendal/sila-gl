@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import { Anchor, Home, Filter, X } from "lucide-react"
-import { format } from "date-fns"
+import { useFormatter } from "next-intl"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -200,6 +200,7 @@ export default function ProviderOverviewTab({ transportRequests, hostBookings }:
 }
 
 function ItemCard({ item }: { item: NormItem }) {
+  const fmt = useFormatter()
   const isRequest = item.type === "transport-request"
   const statusColor = isRequest
     ? (REQUEST_STATUS[item.status] ?? "bg-gray-100 text-gray-500")
@@ -227,7 +228,7 @@ function ItemCard({ item }: { item: NormItem }) {
             <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mt-1">
               <span>{item.guestName}</span>
               <span>•</span>
-              <span>{format(new Date(item.date), "d. MMM yyyy")}</span>
+              <span>{fmt.dateTime(new Date(item.date), { day: "numeric", month: "short", year: "numeric" })}</span>
               {item.priceOre > 0 && (
                 <span className="text-primary font-medium">• {formatKr(item.priceOre)}</span>
               )}

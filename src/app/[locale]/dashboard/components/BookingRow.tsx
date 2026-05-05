@@ -6,7 +6,7 @@ import {
   Home, Calendar, Users, ChevronDown, Check, X,
   CreditCard, ArrowRight, User,
 } from "lucide-react"
-import { format } from "date-fns"
+import { useFormatter } from "next-intl"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatKr } from "@/lib/money"
@@ -60,6 +60,7 @@ interface Props {
 export default function BookingRow({ booking, isHost, alreadyReviewed = false }: Props) {
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const fmt = useFormatter()
 
   function handleConfirm() {
     startTransition(async () => { await confirmBooking(booking.id) })
@@ -110,7 +111,7 @@ export default function BookingRow({ booking, isHost, alreadyReviewed = false }:
           <p className="text-xs text-muted-foreground mt-0.5">
             {isHost
               ? `Fra: ${personName}`
-              : `Booket ${format(new Date(booking.created_at), "d. MMM yyyy")}`}
+              : `Booket ${fmt.dateTime(new Date(booking.created_at), { day: "numeric", month: "short", year: "numeric" })}`}
           </p>
         </div>
 
@@ -179,9 +180,9 @@ export default function BookingRow({ booking, isHost, alreadyReviewed = false }:
           <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5" />
-              {format(new Date(booking.check_in), "d. MMM")}
+              {fmt.dateTime(new Date(booking.check_in), { day: "numeric", month: "short" })}
               {" – "}
-              {format(new Date(booking.check_out), "d. MMM yyyy")}
+              {fmt.dateTime(new Date(booking.check_out), { day: "numeric", month: "short", year: "numeric" })}
             </span>
             <span className="flex items-center gap-1">
               <Users className="w-3.5 h-3.5" />
