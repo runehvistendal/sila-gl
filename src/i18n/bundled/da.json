@@ -123,6 +123,21 @@
       },
       "findBoat": "Find en bådtur"
     },
+    "sailMapTabs": {
+      "aria": "Sektionstype",
+      "samsejlads": "Samsejlads",
+      "hytter": "Hytter"
+    },
+    "cabinMapSection": {
+      "badge": "HYTTEUDLEJNING",
+      "title": "Autentiske hytter — på lokale vilkår",
+      "desc": "Fra enkle bjergshytter til hyggelige fjordhytter — book direkte hos lokale ejere.",
+      "features": {
+        "0": { "label": "Direkte fra ejeren", "desc": "Ingen mellemled" },
+        "1": { "label": "Hele Grønland", "desc": "Fra Nuuk til Qaanaaq" }
+      },
+      "seeAll": "Se alle hytter"
+    },
     "cta": {
       "title": "Grønland på lokale vilkår",
       "subtitle": "Autentiske arktiske oplevelser fra dem, der kalder det hjem",
@@ -170,6 +185,8 @@
     "card_provider": "Udbyder: {name}",
     "carousel_prev_image": "Forrige billede",
     "carousel_next_image": "Næste billede",
+    "view_on_map": "Vis på kort",
+    "view_list": "Vis liste",
     "filter_title": "Filtrer hytter",
     "show_results": "Vis resultater",
     "sort_by": "Sorter efter",

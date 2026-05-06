@@ -11,6 +11,8 @@ import HytterClient from "./HytterClient"
 import type { FilterValues } from "@/components/cabins/CabinFilters"
 import type { CabinCardData } from "@/components/cabins/CabinCard"
 
+import type { CabinMapPin } from "@/lib/cabinMapRoutes"
+
 interface SearchParams {
   hub?: string
   guests?: string
@@ -121,6 +123,12 @@ export default async function HytterPage({ params, searchParams }: Props) {
     search:    search    ?? "",
   }
 
+  const cabinMapPins: CabinMapPin[] = cabins.map((c) => ({
+    id: c.id,
+    title: c.title,
+    location_hub: c.location_hub,
+  }))
+
   const t = await getTranslations("cabins")
 
   return (
@@ -128,7 +136,7 @@ export default async function HytterPage({ params, searchParams }: Props) {
       <Navbar user={navUser} />
 
       <Suspense fallback={null}>
-        <HytterClient cabins={cabins} initialFilters={initialFilters} />
+        <HytterClient cabins={cabins} cabinMapPins={cabinMapPins} initialFilters={initialFilters} />
       </Suspense>
 
       {/* ── CTA ── */}

@@ -19,6 +19,8 @@ export interface TransportMapRoute {
     seatsAvailable?: number
     priceOre?: number
     skipperName?: string
+    /** Punkt uden rute (fx hytte); skjuler transport-linje og forenkler popup */
+    isCabin?: boolean
   }
 }
 
@@ -247,12 +249,17 @@ export default function TransportMap({
     for (const r of routes) {
       const from: [number, number] = [r.fromLng, r.fromLat]
       const to: [number, number] = [r.toLng, r.toLat]
+      const degenerate =
+        Math.abs(from[0] - to[0]) < 1e-7 && Math.abs(from[1] - to[1]) < 1e-7
+      const isCabin = Boolean(r.meta?.isCabin || degenerate)
 
-      lineFeatures.push({
-        type: "Feature",
-        properties: { id: r.id },
-        geometry: { type: "LineString", coordinates: [from, to] },
-      })
+      if (!isCabin) {
+        lineFeatures.push({
+          type: "Feature",
+          properties: { id: r.id },
+          geometry: { type: "LineString", coordinates: [from, to] },
+        })
+      }
 
       dotFeatures.push({
         type: "Feature",
@@ -264,20 +271,23 @@ export default function TransportMap({
           seats:         r.meta?.seatsAvailable ?? 0,
           price:         r.meta?.priceOre ?? 0,
           skipperName:   r.meta?.skipperName ?? "Sila-sejler",
+          isCabin:       isCabin ? "1" : "0",
         },
         geometry: { type: "Point", coordinates: to },
       })
     }
 
-    map.addSource("routes", {
-      type: "geojson",
-      data: { type: "FeatureCollection", features: lineFeatures },
-    })
-    map.addLayer({
-      id: "routes-line", type: "line", source: "routes",
-      paint: { "line-color": "#4A9CC7", "line-width": 2, "line-opacity": 0.55 },
-      layout: { "line-cap": "round", "line-join": "round" },
-    })
+    if (lineFeatures.length > 0) {
+      map.addSource("routes", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: lineFeatures },
+      })
+      map.addLayer({
+        id: "routes-line", type: "line", source: "routes",
+        paint: { "line-color": "#4A9CC7", "line-width": 2, "line-opacity": 0.55 },
+        layout: { "line-cap": "round", "line-join": "round" },
+      })
+    }
 
     map.addSource("route-dots", {
       type: "geojson",
@@ -299,21 +309,32 @@ export default function TransportMap({
       const p = f.properties as {
         id: string; fromName: string; toName: string
         departure: string; seats: number; price: number; skipperName: string
+        isCabin?: string | number | boolean
       }
+      const isCabinPt = p.isCabin === "1" || p.isCabin === 1 || p.isCabin === true
       const depLabel = p.departure
         ? new Date(p.departure).toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric" })
         : ""
 
-      hoverPopup = new mapboxgl.Popup({ closeButton: false, offset: 12, maxWidth: "220px" })
-        .setLngLat(e.lngLat)
-        .setHTML(`
+      const body = isCabinPt
+        ? `
+          <div style="font-family:system-ui;padding:2px 0">
+            <p style="font-weight:700;font-size:13px;margin:0 0 4px">${p.fromName}</p>
+            <p style="color:#6b7280;font-size:12px;margin:0">${p.toName}</p>
+          </div>
+        `
+        : `
           <div style="font-family:system-ui;padding:2px 0">
             <p style="font-weight:700;font-size:13px;margin:0 0 3px">${p.fromName} → ${p.toName}</p>
             ${depLabel ? `<p style="color:#6b7280;font-size:11px;margin:0 0 2px">${depLabel}</p>` : ""}
             <p style="font-size:11px;margin:0 0 2px">${p.seats} plads${p.seats !== 1 ? "er" : ""} · ${p.price ? formatKrLocal(p.price) + "/plads" : ""}</p>
             <p style="color:#6b7280;font-size:11px;margin:0">Sejler: ${p.skipperName}</p>
           </div>
-        `)
+        `
+
+      hoverPopup = new mapboxgl.Popup({ closeButton: false, offset: 12, maxWidth: "220px" })
+        .setLngLat(e.lngLat)
+        .setHTML(body)
         .addTo(map)
     })
 

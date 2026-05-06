@@ -123,6 +123,21 @@
       },
       "findBoat": "Find a boat trip"
     },
+    "sailMapTabs": {
+      "aria": "Section type",
+      "samsejlads": "Boat-sharing",
+      "hytter": "Cabins"
+    },
+    "cabinMapSection": {
+      "badge": "CABIN RENTALS",
+      "title": "Authentic cabins — on local terms",
+      "desc": "From simple mountain cabins to cosy fjord cabins — book directly with local owners.",
+      "features": {
+        "0": { "label": "Direct from the owner", "desc": "No middlemen" },
+        "1": { "label": "Across Greenland", "desc": "From Nuuk to Qaanaaq" }
+      },
+      "seeAll": "See all cabins"
+    },
     "cta": {
       "title": "Greenland on local terms",
       "subtitle": "Authentic Arctic experiences from those who call it home",
@@ -170,6 +185,8 @@
     "card_provider": "Host: {name}",
     "carousel_prev_image": "Previous image",
     "carousel_next_image": "Next image",
+    "view_on_map": "Show on map",
+    "view_list": "Show list",
     "filter_title": "Filter cabins",
     "show_results": "Show results",
     "sort_by": "Sort by",

@@ -5,7 +5,8 @@ import { getTranslations, setRequestLocale } from "next-intl/server"
 import { Link } from "@/i18n/navigation"
 import Navbar from "@/components/layout/Navbar"
 import HeroContent from "./components/HeroContent"
-import MapWrapper from "./components/MapWrapper"
+import SailSection from "./components/SailSection"
+import type { HomeRideShareMapRow } from "./components/SailSection"
 import CabinCard, { type CabinCardData } from "@/components/cabins/CabinCard"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
@@ -24,7 +25,6 @@ const FALLBACK_OG_IMAGE =
   "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=1200&h=630&fit=crop&q=85"
 
 const STEP_ICONS = [Search, Anchor, HomeIcon] as const
-const FEATURE_ICONS = [Users, Anchor] as const
 const STAT_ICONS = [HomeIcon, Anchor, Users, Search] as const
 
 type Props = {
@@ -58,7 +58,8 @@ export default async function Home({ params }: Props) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const [t, tCabins, sanityHome, globalSettings, cabinsResult] = await Promise.all([
+  const [t, tCabins, sanityHome, globalSettings, cabinsResult, mapRidesResult, mapCabinsResult] =
+    await Promise.all([
     getTranslations({ locale, namespace: "home" }),
     getTranslations({ locale, namespace: "cabins" }),
     getHomePage(locale),
@@ -84,6 +85,32 @@ export default async function Home({ params }: Props) {
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(3),
+    supabase
+      .from("ride_shares")
+      .select(
+        `
+        id,
+        from_location,
+        to_location,
+        from_latitude,
+        from_longitude,
+        to_latitude,
+        to_longitude,
+        departure_at,
+        seats_available,
+        price_per_seat_ore,
+        profiles!skipper_id ( full_name )
+      `,
+      )
+      .eq("status", "active")
+      .gt("seats_available", 0)
+      .limit(20),
+    supabase
+      .from("cabins")
+      .select("id, title, location_hub")
+      .eq("published", true)
+      .is("deleted_at", null)
+      .limit(20),
   ])
 
   const navUser = user ? await getNavUserForPage(supabase, user) : null
@@ -101,13 +128,16 @@ export default async function Home({ params }: Props) {
     host_name: (row.profiles as { full_name?: string } | null)?.full_name ?? null,
   }))
 
+  const sailRideShares = (mapRidesResult.data ?? []) as HomeRideShareMapRow[]
+  const sailCabins = (mapCabinsResult.data ?? []) as {
+    id: string
+    title: string
+    location_hub: string
+  }[]
+
   const steps = ([0, 1, 2] as const).map((i) => ({
     title: t(`howItWorks.steps.${i}.title`),
     desc: t(`howItWorks.steps.${i}.desc`),
-  }))
-  const features = ([0, 1] as const).map((i) => ({
-    label: t(`sailSection.features.${i}.label`),
-    desc: t(`sailSection.features.${i}.desc`),
   }))
   const stats = ([0, 1, 2, 3] as const).map((i) => ({
     value: t(`cta.stats.${i}.value`),
@@ -223,49 +253,7 @@ export default async function Home({ params }: Props) {
         </div>
       </section>
 
-      <section className="py-20 bg-background">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div>
-              <div className="inline-flex items-center gap-2 text-primary/70 text-xs font-bold tracking-widest uppercase mb-5">
-                <Anchor size={14} /> {t("sailSection.uniqueLabel")}
-              </div>
-              <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4 leading-tight">
-                {t("sailSection.title")} <em className="font-normal text-primary">{t("sailSection.titleHighlight")}</em>
-              </h2>
-              <p className="text-muted-foreground text-lg leading-relaxed mb-8">{t("sailSection.desc")}</p>
-
-              <div className="flex flex-col gap-3 mb-8">
-                {features.map((f, i) => {
-                  const Icon = FEATURE_ICONS[i]
-                  return (
-                    <div key={f.label} className="flex items-center gap-4 rounded-2xl p-4 bg-card shadow-card border border-border">
-                      <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
-                        <Icon size={18} className="text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">{f.label}</p>
-                        <p className="text-xs text-muted-foreground">{f.desc}</p>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              <Link
-                href="/transport"
-                className="inline-flex items-center gap-2 px-8 py-3 rounded-full text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
-                {t("sailSection.findBoat")} <ArrowRight size={15} />
-              </Link>
-            </div>
-
-            <div className="relative rounded-2xl overflow-hidden h-80 lg:h-96 shadow-card-hover">
-              <MapWrapper />
-            </div>
-          </div>
-        </div>
-      </section>
+      <SailSection rideShares={sailRideShares} cabinPins={sailCabins} />
 
       <section className="py-20 bg-primary">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
