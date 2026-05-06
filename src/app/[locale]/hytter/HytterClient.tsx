@@ -18,7 +18,7 @@ const REGION_CHIPS = [
   "Nuuk & omegn",
   "Diskobugten",
   "Sydgrønland",
-  "Midtgrønland",
+  "Vestgrønland",
   "Østgrønland",
   "Nordgrønland",
   "Diskoøen",

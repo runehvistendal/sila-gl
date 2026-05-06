@@ -141,6 +141,7 @@ export default function CabinFilters({
           placeholder="Alle destinationer"
           className="w-full sm:w-[min(100%,14rem)]"
           aria-label="Destination"
+          showOptionMeta={false}
         />
 
         {/* Sort */}

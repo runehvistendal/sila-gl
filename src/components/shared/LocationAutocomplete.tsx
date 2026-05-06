@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useId, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import { ChevronDown, Search, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -26,6 +27,8 @@ interface LocationAutocompleteProps {
   listClassName?: string
   id?: string
   "aria-label"?: string
+  /** false: kun bynavn i forslag (hytte-/transportfiltre). Hero m.m. bruger true. */
+  showOptionMeta?: boolean
 }
 
 export default function LocationAutocomplete({
@@ -38,6 +41,7 @@ export default function LocationAutocomplete({
   listClassName,
   id: idProp,
   "aria-label": ariaLabel,
+  showOptionMeta = true,
 }: LocationAutocompleteProps) {
   const autoId = useId()
   const listId = `${autoId}-listbox`
@@ -49,7 +53,15 @@ export default function LocationAutocomplete({
   const [prevCommittedValue, setPrevCommittedValue] = useState(value)
 
   const wrapRef = useRef<HTMLDivElement>(null)
+  const portalLayerRef = useRef<HTMLDivElement>(null)
   const rowRefs = useRef<(HTMLLIElement | null)[]>([])
+
+  const [mounted, setMounted] = useState(false)
+  const [portalBox, setPortalBox] = useState({ top: 0, left: 0, width: 0 })
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   if (value !== prevCommittedValue) {
     setPrevCommittedValue(value)
@@ -57,6 +69,31 @@ export default function LocationAutocomplete({
   }
 
   const suggestions = open ? searchLocations(draft) : []
+
+  const isHero = variant === "hero"
+
+  const updatePortalPosition = useCallback(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const gap = isHero ? 8 : 4
+    setPortalBox({
+      left: rect.left + window.scrollX,
+      top: rect.bottom + window.scrollY + gap,
+      width: rect.width,
+    })
+  }, [isHero])
+
+  useEffect(() => {
+    if (!open) return
+    updatePortalPosition()
+    window.addEventListener("resize", updatePortalPosition)
+    window.addEventListener("scroll", updatePortalPosition, true)
+    return () => {
+      window.removeEventListener("resize", updatePortalPosition)
+      window.removeEventListener("scroll", updatePortalPosition, true)
+    }
+  }, [open, updatePortalPosition])
 
   const close = useCallback(() => {
     setOpen(false)
@@ -76,7 +113,10 @@ export default function LocationAutocomplete({
 
   useEffect(() => {
     function onPointerDown(e: MouseEvent) {
-      if (!wrapRef.current?.contains(e.target as Node)) close()
+      const t = e.target as Node
+      if (wrapRef.current?.contains(t)) return
+      if (portalLayerRef.current?.contains(t)) return
+      close()
     }
     document.addEventListener("mousedown", onPointerDown)
     return () => document.removeEventListener("mousedown", onPointerDown)
@@ -132,8 +172,6 @@ export default function LocationAutocomplete({
     }
   }
 
-  const isHero = variant === "hero"
-
   return (
     <div
       ref={wrapRef}
@@ -175,11 +213,16 @@ export default function LocationAutocomplete({
             }}
             onBlur={() => {
               window.setTimeout(() => {
-                if (!wrapRef.current?.contains(document.activeElement)) {
-                  setDraft(value)
-                  setOpen(false)
-                  setHighlighted(-1)
+                const a = document.activeElement
+                if (
+                  wrapRef.current?.contains(a) ||
+                  portalLayerRef.current?.contains(a)
+                ) {
+                  return
                 }
+                setDraft(value)
+                setOpen(false)
+                setHighlighted(-1)
               }, 120)
             }}
             onKeyDown={onKeyDown}
@@ -222,95 +265,116 @@ export default function LocationAutocomplete({
         </div>
       </div>
 
-      {open && suggestions.length > 0 ? (
-        <ul
-          id={listId}
-          role="listbox"
-          className={cn(
-            "absolute left-0 right-0 top-full z-50 max-h-[min(18rem,50vh)] overflow-auto py-1",
-            isHero ? "mt-2" : "mt-1",
-            isHero
-              ? "rounded-2xl border border-gray-100 bg-white text-gray-800 shadow-2xl"
-              : "rounded-xl border border-border bg-popover text-popover-foreground shadow-md",
-            listClassName,
-          )}
-        >
-          {suggestions.map((loc, i) => {
-            const active = i === highlighted
-            return (
-              <li
-                key={`${loc.postal_code}-${loc.name_dk}`}
-                ref={(el) => {
-                  rowRefs.current[i] = el
-                }}
-                role="option"
-                aria-selected={active}
+      {mounted &&
+        open &&
+        (suggestions.length > 0 ||
+          (draft.trim() !== "" && suggestions.length === 0)) &&
+        createPortal(
+          <div
+            ref={portalLayerRef}
+            style={{
+              position: "absolute",
+              left: portalBox.left,
+              top: portalBox.top,
+              width: portalBox.width,
+              zIndex: 60,
+            }}
+          >
+            {suggestions.length > 0 ? (
+              <ul
+                id={listId}
+                role="listbox"
                 className={cn(
-                  "flex cursor-pointer flex-col gap-0.5 px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-2",
+                  "max-h-[min(18rem,50vh)] overflow-auto py-1",
                   isHero
-                    ? active
-                      ? "bg-gray-100"
-                      : "hover:bg-gray-50"
-                    : active
-                      ? "bg-primary/10"
-                      : "hover:bg-muted",
+                    ? "rounded-2xl border border-gray-100 bg-white text-gray-800 shadow-2xl"
+                    : "rounded-xl border border-border bg-popover text-popover-foreground shadow-md",
+                  listClassName,
                 )}
-                onMouseEnter={() => setHighlighted(i)}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => commit(loc)}
               >
-                <span
-                  className={cn(
-                    "font-medium",
-                    isHero ? "text-gray-800" : "text-foreground",
-                  )}
-                >
-                  {loc.name_dk}
-                </span>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span
-                    className={cn(
-                      "inline-flex shrink-0 rounded-md border px-1.5 py-0 text-[10px] font-semibold uppercase tracking-wide",
-                      isHero
-                        ? active
-                          ? "border-gray-300 text-gray-600"
-                          : "border-gray-200 text-gray-500"
-                        : cn(
-                            "border-border text-muted-foreground",
-                            active && "border-primary/40 bg-primary/5 text-primary",
-                          ),
-                    )}
-                  >
-                    {TYPE_LABEL[loc.type]}
-                  </span>
-                  <span
-                    className={cn(
-                      "text-xs",
-                      isHero ? "text-gray-400" : "text-muted-foreground",
-                    )}
-                  >
-                    {loc.region_label}
-                  </span>
-                </div>
-              </li>
-            )
-          })}
-        </ul>
-      ) : null}
-      {open && draft.trim() !== "" && suggestions.length === 0 ? (
-        <div
-          className={cn(
-            "absolute left-0 right-0 top-full z-50 px-3 py-2 text-sm shadow-md",
-            isHero ? "mt-2" : "mt-1",
-            isHero
-              ? "rounded-2xl border border-gray-100 bg-white text-gray-500 shadow-2xl"
-              : "rounded-xl border border-border bg-popover text-muted-foreground shadow-md",
-          )}
-          role="status"
-        >
-          Ingen resultater
-        </div>
-      ) : null}
+                {suggestions.map((loc, i) => {
+                  const active = i === highlighted
+                  return (
+                    <li
+                      key={`${loc.postal_code}-${loc.name_dk}`}
+                      ref={(el) => {
+                        rowRefs.current[i] = el
+                      }}
+                      role="option"
+                      aria-selected={active}
+                      className={cn(
+                        "flex cursor-pointer px-3 py-2 text-sm",
+                        showOptionMeta &&
+                          "flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2",
+                        isHero
+                          ? active
+                            ? "bg-gray-100"
+                            : "hover:bg-gray-50"
+                          : active
+                            ? "bg-primary/10"
+                            : "hover:bg-muted",
+                      )}
+                      onMouseEnter={() => setHighlighted(i)}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => commit(loc)}
+                    >
+                      <span
+                        className={cn(
+                          "font-medium",
+                          isHero ? "text-gray-800" : "text-foreground",
+                        )}
+                      >
+                        {loc.name_dk}
+                      </span>
+                      {showOptionMeta ? (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span
+                            className={cn(
+                              "inline-flex shrink-0 rounded-md border px-1.5 py-0 text-[10px] font-semibold uppercase tracking-wide",
+                              isHero
+                                ? active
+                                  ? "border-gray-300 text-gray-600"
+                                  : "border-gray-200 text-gray-500"
+                                : cn(
+                                    "border-border text-muted-foreground",
+                                    active &&
+                                      "border-primary/40 bg-primary/5 text-primary",
+                                  ),
+                            )}
+                          >
+                            {TYPE_LABEL[loc.type]}
+                          </span>
+                          <span
+                            className={cn(
+                              "text-xs",
+                              isHero ? "text-gray-400" : "text-muted-foreground",
+                            )}
+                          >
+                            {loc.region_label}
+                          </span>
+                        </div>
+                      ) : null}
+                    </li>
+                  )
+                })}
+              </ul>
+            ) : null}
+            {draft.trim() !== "" && suggestions.length === 0 ? (
+              <div
+                className={cn(
+                  "px-3 py-2 text-sm shadow-md",
+                  isHero
+                    ? "rounded-2xl border border-gray-100 bg-white text-gray-500 shadow-2xl"
+                    : "rounded-xl border border-border bg-popover text-muted-foreground shadow-md",
+                )}
+                role="status"
+              >
+                Ingen resultater
+              </div>
+            ) : null}
+          </div>,
+          document.body,
+        )}
     </div>
   )
 }

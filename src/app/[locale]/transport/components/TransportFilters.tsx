@@ -96,6 +96,7 @@ export default function TransportFilters({ filters, onChange, onFilterApplied }:
           placeholder="Alle afgange"
           className="w-full min-w-0 sm:w-[min(100%,11rem)]"
           aria-label="Afgangsted"
+          showOptionMeta={false}
         />
 
         <LocationAutocomplete
@@ -104,6 +105,7 @@ export default function TransportFilters({ filters, onChange, onFilterApplied }:
           placeholder="Alle destinationer"
           className="w-full min-w-0 sm:w-[min(100%,11rem)]"
           aria-label="Destination"
+          showOptionMeta={false}
         />
 
         {/* Filtrer-knap */}

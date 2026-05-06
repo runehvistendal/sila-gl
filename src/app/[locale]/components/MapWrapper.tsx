@@ -5,5 +5,9 @@ import dynamic from "next/dynamic"
 const GreenlandMap = dynamic(() => import("@/components/shared/GreenlandMap"), { ssr: false })
 
 export default function MapWrapper() {
-  return <GreenlandMap />
+  return (
+    <div className="h-full w-full" style={{ isolation: "isolate" }}>
+      <GreenlandMap />
+    </div>
+  )
 }

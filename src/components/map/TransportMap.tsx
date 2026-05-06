@@ -45,6 +45,10 @@ function midpoint(a: [number, number], b: [number, number]): [number, number] {
   return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
 }
 
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
 /** Buet linje der buer vestover (ud over havet langs Grønlands kyst) */
 function createArc(
   from: [number, number],
@@ -203,8 +207,8 @@ export default function TransportMap({
       data: {
         type: "FeatureCollection",
         features: [
-          { type: "Feature", properties: { label: route.fromName }, geometry: { type: "Point", coordinates: from } },
-          { type: "Feature", properties: { label: route.toName },   geometry: { type: "Point", coordinates: to } },
+          { type: "Feature", properties: { label: capitalize(route.fromName) }, geometry: { type: "Point", coordinates: from } },
+          { type: "Feature", properties: { label: capitalize(route.toName) },   geometry: { type: "Point", coordinates: to } },
         ],
       },
     })
@@ -242,8 +246,7 @@ export default function TransportMap({
 
     for (const r of routes) {
       const from: [number, number] = [r.fromLng, r.fromLat]
-      const to:   [number, number] = [r.toLng,   r.toLat]
-      const mid = midpoint(from, to)
+      const to: [number, number] = [r.toLng, r.toLat]
 
       lineFeatures.push({
         type: "Feature",
@@ -255,14 +258,14 @@ export default function TransportMap({
         type: "Feature",
         properties: {
           id:            r.id,
-          fromName:      r.fromName,
-          toName:        r.toName,
+          fromName:      capitalize(r.fromName),
+          toName:        capitalize(r.toName),
           departure:     r.meta?.departure ?? "",
           seats:         r.meta?.seatsAvailable ?? 0,
           price:         r.meta?.priceOre ?? 0,
           skipperName:   r.meta?.skipperName ?? "Sila-sejler",
         },
-        geometry: { type: "Point", coordinates: mid },
+        geometry: { type: "Point", coordinates: to },
       })
     }
 
@@ -339,7 +342,10 @@ export default function TransportMap({
   }
 
   return (
-    <div className={`relative rounded-xl overflow-hidden border border-border ${className}`}>
+    <div
+      className={`relative rounded-xl overflow-hidden border border-border ${className}`}
+      style={{ isolation: "isolate" }}
+    >
       {!loaded && (
         <div className="absolute inset-0 bg-muted flex items-center justify-center z-10">
           <div className="flex items-center gap-2 text-muted-foreground text-sm">
@@ -348,7 +354,9 @@ export default function TransportMap({
           </div>
         </div>
       )}
-      <div ref={containerRef} className="w-full h-full" />
+      <div className="relative z-0 w-full h-full">
+        <div ref={containerRef} className="w-full h-full" />
+      </div>
     </div>
   )
 }
