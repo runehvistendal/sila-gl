@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
+import { captureEvent } from "@/lib/analytics/posthog-events"
 
 export interface TransportMapRoute {
   id: string
@@ -27,6 +28,8 @@ export interface TransportMapProps {
   onSelect?: (id: string) => void
   mode: "overview" | "detail"
   className?: string
+  /** PostHog map_interacted (transport | cabin) */
+  analyticsType?: "transport" | "cabin"
 }
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ""
@@ -80,6 +83,7 @@ export default function TransportMap({
   onSelect,
   mode,
   className = "",
+  analyticsType,
 }: TransportMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef       = useRef<mapboxgl.Map | null>(null)
@@ -109,6 +113,19 @@ export default function TransportMap({
       if (mode === "detail") renderDetail(map)
       else renderOverview(map)
       setLoaded(true)
+
+      if (analyticsType) {
+        let zoomTimer: ReturnType<typeof setTimeout> | null = null
+        map.on("zoomend", () => {
+          if (zoomTimer) clearTimeout(zoomTimer)
+          zoomTimer = setTimeout(() => {
+            captureEvent("map_interacted", {
+              type: analyticsType,
+              action: "zoom",
+            })
+          }, 600)
+        })
+      }
     })
   }
 
@@ -308,6 +325,9 @@ export default function TransportMap({
       const f = e.features?.[0]
       if (!f) return
       const p = f.properties as { id: string; fromName: string; toName: string }
+      if (analyticsType) {
+        captureEvent("map_interacted", { type: analyticsType, action: "click_marker" })
+      }
       const route = routes.find((r) => r.id === p.id)
       if (!route) return
 

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { XCircle } from "lucide-react"
 import { cancelPendingBooking } from "@/app/actions/bookings"
+import { BookingCancelledTracker } from "@/components/analytics/BookingCancelledTracker"
 
 export const metadata = { title: "Booking annulleret — Sila.gl" }
 
@@ -54,6 +55,7 @@ export default async function BookingCancelledPage({ searchParams }: Props) {
       className="min-h-screen flex flex-col items-center justify-center px-4 bg-background"
       style={{ fontFamily: "var(--font-jakarta, system-ui)" }}
     >
+      <BookingCancelledTracker cabinId={cabinId || undefined} />
       <div className="max-w-md w-full text-center space-y-6">
         <div className="flex justify-center">
           <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">

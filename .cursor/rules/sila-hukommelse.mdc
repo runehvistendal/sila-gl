@@ -7,7 +7,19 @@ alwaysApply: true
 
 Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort status til sessioner.
 
-## Status (5.5.2026)
+## Status (6.5.2026)
+
+- **3 % servicegebyr (gæst):** `service_fee_ore` på `cabin_bookings`, `ride_share_bookings`, `transport_offers` · migration **`20260506000000_service_fee.sql`** · `calcServiceFee()` i `money.ts` · checkout: `createCabinBooking`, `/api/transport/checkout`, `acceptTransportOffer`; `application_fee_amount` = kommission **+** servicegebyr · UI: CabinBookingWidget, TransportDetailClient, Drawer; bundlet `cabins.*` / `transport.*` for servicetekst · **immutable** `service_fee_ore` på cabin_bookings via trigger
+- **`/udbyderguide`:** lokalt på `src/app/[locale]/udbyderguide/page.tsx` — hero-flow (Megaphone / Users / Banknote), CTA+nederst i økonomi, **mobile-first** hele siden · betaling-afsnit fjernet tidligere
+- Øvrigt uændret ift. huske-liste nedenfor (5.5-basis)
+
+## Bygget og komplet
+
+- **PostHog analytics** ✅ — `posthog-js`; `PostHogProvider.tsx` init kun med `NEXT_PUBLIC_POSTHOG_KEY` + `NEXT_PUBLIC_POSTHOG_HOST`; `[locale]/layout.tsx`; events i `posthog-events.ts`; `.env.local` + Vercel før lancering
+
+---
+
+## Status (5.5.2026 — udvidet med 6.5 ovenfor)
 
 - `/admin`: dashboard, brugere, hytter, bookinger, anmodninger — `is_admin` + `proxy.ts` + service_role
 - **`/studio`:** Sanity Studio (`is_admin`; håndteres i `proxy.ts` før next-intl — intet `/da`-prefix)
@@ -41,7 +53,7 @@ Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort 
 
 ## Næste fokus
 
-- **Stripe live-test end-to-end** · derefter PostHog → se **Påmindelser inden lancering** i `hukommelse.md`
+- **Stripe live-test end-to-end** (**inkl. 3 %-linje**) · derefter lancering — se `hukommelse.md`
 
 ## Vigtige beslutninger (gældende)
 

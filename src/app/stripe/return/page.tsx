@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { checkOnboardingStatus } from "@/app/actions/stripe"
 import { Loader2 } from "lucide-react"
+import { captureEvent } from "@/lib/analytics/posthog-events"
 
 export default function StripeReturnPage() {
   const router = useRouter()
@@ -18,6 +19,9 @@ export default function StripeReturnPage() {
           setLabel(r.error)
           router.replace("/profil?stripe=error")
           return
+        }
+        if (r.complete) {
+          captureEvent("stripe_onboarding_completed", {})
         }
         router.replace("/profil" + (r.complete ? "?stripe=ok" : ""))
       })

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { requireSession } from "@/lib/requireSession"
 import { getAppBaseUrl } from "@/lib/appUrl"
 import { stripe } from "@/lib/stripe"
-import { krToOre } from "@/lib/money"
+import { krToOre, calcServiceFee } from "@/lib/money"
 import {
   notifyNewTransportOffer,
   notifyTransportOfferAccepted,
@@ -226,28 +226,48 @@ export async function acceptTransportOffer(offerId: string): Promise<AcceptOffer
   }
 
   const platformFee = Math.round(offer.price_ore * 0.15)
+  const serviceFeeOre = calcServiceFee(offer.price_ore)
   const base        = getAppBaseUrl()
   const requestId   = offer.request_id
 
   try {
+    const lineItems: Array<{
+      quantity: number
+      price_data: {
+        currency: "dkk"
+        unit_amount: number
+        product_data: { name: string; description?: string }
+      }
+    }> = [
+      {
+        quantity: 1,
+        price_data: {
+          currency: "dkk",
+          unit_amount: offer.price_ore,
+          product_data: {
+            name: `Transport: ${offer.transport_requests.from_location} → ${offer.transport_requests.to_location}`,
+            description: offer.message ?? undefined,
+          },
+        },
+      },
+    ]
+    if (serviceFeeOre > 0) {
+      lineItems.push({
+        quantity: 1,
+        price_data: {
+          currency: "dkk",
+          unit_amount: serviceFeeOre,
+          product_data: { name: "Servicegebyr (3%)" },
+        },
+      })
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
-      line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency:     "dkk",
-            unit_amount:  offer.price_ore,
-            product_data: {
-              name: `Transport: ${offer.transport_requests.from_location} → ${offer.transport_requests.to_location}`,
-              description: offer.message ?? undefined,
-            },
-          },
-        },
-      ],
+      line_items: lineItems,
       payment_intent_data: {
-        application_fee_amount: platformFee,
+        application_fee_amount: platformFee + serviceFeeOre,
         transfer_data:          { destination: s.stripe_account_id },
         metadata: {
           transport_offer_id:   offerId,
@@ -269,7 +289,11 @@ export async function acceptTransportOffer(offerId: string): Promise<AcceptOffer
     // Save stripe session id on the offer
     await supabase
       .from("transport_offers")
-      .update({ stripe_session_id: session.id, updated_at: new Date().toISOString() })
+      .update({
+        stripe_session_id: session.id,
+        service_fee_ore: serviceFeeOre,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", offerId)
       .eq("skipper_id", offer.skipper_id)
 

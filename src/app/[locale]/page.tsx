@@ -172,7 +172,7 @@ export default async function Home({ params }: Props) {
                   <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-5">
                     <Icon size={22} className="text-primary" />
                   </div>
-                  <p className="text-xs font-bold text-primary/50 tracking-widest uppercase mb-1">
+                  <p className="text-xs font-bold text-primary/70 tracking-widest uppercase mb-1">
                     {t("howItWorks.step")} {num}
                   </p>
                   <h3 className="text-lg font-bold text-foreground mb-2">{step.title}</h3>

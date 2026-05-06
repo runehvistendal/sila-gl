@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Mail, Lock, Loader2 } from "lucide-react"
 import { createClient } from "@/lib/supabase"
+import { captureEvent } from "@/lib/analytics/posthog-events"
+import { clearPendingOAuthIntent, setPendingOAuthIntent } from "@/components/analytics/OAuthReturnTracker"
 
 export default function LoginForm() {
   const router = useRouter()
@@ -21,6 +23,7 @@ export default function LoginForm() {
   async function handleOAuth(provider: "google") {
     setLoading(true)
     setError(null)
+    setPendingOAuthIntent("login_google")
     const origin = window.location.origin
     const { error: oErr } = await supabase.auth.signInWithOAuth({
       provider,
@@ -29,6 +32,7 @@ export default function LoginForm() {
       },
     })
     if (oErr) {
+      clearPendingOAuthIntent()
       setError(oErr.message)
       setLoading(false)
     }
@@ -54,6 +58,8 @@ export default function LoginForm() {
       return
     }
 
+    clearPendingOAuthIntent()
+    captureEvent("login", { method: "email" })
     router.push(next)
     router.refresh()
   }

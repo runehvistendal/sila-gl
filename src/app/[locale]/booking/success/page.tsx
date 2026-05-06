@@ -1,5 +1,7 @@
 import Link from "next/link"
+import { Suspense } from "react"
 import { CheckCircle2 } from "lucide-react"
+import { BookingSuccessTracker } from "@/components/analytics/BookingSuccessTracker"
 
 export const metadata = { title: "Booking bekræftet — Sila.gl" }
 
@@ -9,6 +11,9 @@ export default function BookingSuccessPage() {
       className="min-h-screen flex flex-col items-center justify-center px-4 bg-background"
       style={{ fontFamily: "var(--font-jakarta, system-ui)" }}
     >
+      <Suspense fallback={null}>
+        <BookingSuccessTracker />
+      </Suspense>
       <div className="max-w-md w-full text-center space-y-6">
         <div className="flex justify-center">
           <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center">

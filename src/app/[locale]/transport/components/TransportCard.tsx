@@ -1,11 +1,12 @@
 "use client"
 
-import Link from "next/link"
+import { Link } from "@/i18n/navigation"
 import { ArrowRight, ArrowLeft, Calendar, Users, Anchor, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { formatNuukDate, formatNuukDateShort } from "@/lib/nuukTime"
 import { formatKr, oreToKr } from "@/lib/money"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
+import { captureEvent } from "@/lib/analytics/posthog-events"
 
 const FALLBACK_BOAT = "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600&h=400&fit=crop&q=80"
 
@@ -49,9 +50,14 @@ export interface RideShareCardData {
 interface Props {
   rideShare: RideShareCardData
   returnTrip?: RideShareCardData | null
+  resultIndex?: number
 }
 
-export default function TransportCard({ rideShare, returnTrip: returnTripProp = null }: Props) {
+export default function TransportCard({
+  rideShare,
+  returnTrip: returnTripProp = null,
+  resultIndex = 0,
+}: Props) {
   // Prefer explicit DB-linked return trip, fall back to heuristically found one
   const returnTrip: ReturnTripData | null = rideShare.return_trip ?? returnTripProp ?? null
   const skipper = rideShare.profiles
@@ -150,7 +156,18 @@ export default function TransportCard({ rideShare, returnTrip: returnTripProp = 
           asChild
           className="w-full rounded-xl border-primary/30 text-primary hover:bg-primary hover:text-white transition-colors"
         >
-          <Link href={`/transport/${rideShare.id}`}>Se og book</Link>
+          <Link
+            href={`/transport/${rideShare.id}`}
+            onClick={() =>
+              captureEvent("search_result_clicked", {
+                type: "transport",
+                listing_id: rideShare.id,
+                position_in_results: resultIndex,
+              })
+            }
+          >
+            Se og book
+          </Link>
         </Button>
       </div>
     </div>

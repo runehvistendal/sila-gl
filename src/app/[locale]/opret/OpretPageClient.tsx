@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useTransition, useEffect, useRef } from "react"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { Anchor } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { Link } from "@/i18n/navigation"
@@ -26,6 +26,7 @@ import {
   publishCabin,
   unpublishCabin,
 } from "@/app/[locale]/dashboard/actions"
+import { captureEvent } from "@/lib/analytics/posthog-events"
 
 export interface CabinRow {
   id: string
@@ -50,8 +51,23 @@ export default function OpretPageClient({ cabins, boats }: Props) {
   const t = useTranslations("create")
   const tCommon = useTranslations("common")
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const pathname = usePathname()
   const [isPending, startTransition] = useTransition()
   const [pendingId, setPendingId] = useState<string | null>(null)
+  const phBoat = useRef(false)
+
+  useEffect(() => {
+    if (phBoat.current) return
+    const bid = searchParams.get("boat_created")
+    if (!bid) return
+    phBoat.current = true
+    captureEvent("boat_created", { boat_id: bid })
+    const sp = new URLSearchParams(searchParams.toString())
+    sp.delete("boat_created")
+    const qs = sp.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }, [searchParams, router, pathname])
 
   function onHytteCardClick() {
     if (cabins.length === 0) router.push("/opret/hytte")
@@ -67,7 +83,14 @@ export default function OpretPageClient({ cabins, boats }: Props) {
       const res = await publishCabin(cabinId)
       setPendingId(null)
       if (res.error) toast.error(res.error)
-      else { toast.success(t("cabin_published")); router.refresh() }
+      else {
+        const c = cabins.find((x) => x.id === cabinId)
+        if (c) {
+          captureEvent("cabin_published", { cabin_id: c.id, location: c.location_hub })
+        }
+        toast.success(t("cabin_published"))
+        router.refresh()
+      }
     })
   }
 
@@ -77,7 +100,11 @@ export default function OpretPageClient({ cabins, boats }: Props) {
       const res = await unpublishCabin(cabinId)
       setPendingId(null)
       if (res.error) toast.error(res.error)
-      else { toast.success(t("cabin_unpublished")); router.refresh() }
+      else {
+        captureEvent("cabin_unpublished", { cabin_id: cabinId })
+        toast.success(t("cabin_unpublished"))
+        router.refresh()
+      }
     })
   }
 

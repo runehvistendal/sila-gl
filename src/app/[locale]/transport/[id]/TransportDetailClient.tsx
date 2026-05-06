@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useEffect } from "react"
 import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import {
   ArrowRight, ChevronLeft, Calendar, Clock, Users, Anchor,
-  RefreshCw, MessageSquare, User, Star,
+  RefreshCw, MessageSquare, User, Star, CircleHelp,
 } from "lucide-react"
-import { useFormatter } from "next-intl"
+import { useFormatter, useTranslations } from "next-intl"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
@@ -15,9 +15,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { formatKr, oreToKr } from "@/lib/money"
+import { formatKr, oreToKr, calcServiceFee } from "@/lib/money"
 import { createTransportRequest } from "./actions"
 import TransportDrawer from "@/components/transport/TransportDrawer"
+import { captureEvent, PH_STORE } from "@/lib/analytics/posthog-events"
 
 const getLocationName = (id: string) =>
   GREENLAND_LOCATIONS.find((l) => l.name_dk.toLowerCase() === id.toLowerCase())?.name_dk ??
@@ -91,6 +92,17 @@ const NUUK_TZ = "America/Godthab"
 export default function TransportDetailClient({ rideShare, returnTrips, alternativeReturnTrips, reviews, isLoggedIn }: Props) {
   const router = useRouter()
   const fmt = useFormatter()
+  const tBooking = useTranslations("booking")
+  const tTransport = useTranslations("transport")
+
+  useEffect(() => {
+    captureEvent("transport_viewed", {
+      ride_share_id: rideShare.id,
+      from_location: rideShare.from_location,
+      to_location: rideShare.to_location,
+      price_per_seat: Math.round(rideShare.price_per_seat_ore / 100),
+    })
+  }, [rideShare.id, rideShare.from_location, rideShare.to_location, rideShare.price_per_seat_ore])
 
   const formatNuukDate = (iso: string) =>
     fmt.dateTime(new Date(iso), { timeZone: NUUK_TZ, day: "numeric", month: "short", year: "numeric" })
@@ -117,6 +129,8 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
 
   const priceOre      = rideShare.price_per_seat_ore
   const outboundTotal = seats * priceOre
+  const outboundServiceFee = outboundTotal > 0 ? calcServiceFee(outboundTotal) : 0
+  const outboundGuestTotal = outboundTotal + outboundServiceFee
 
   const [bookPending, setBookPending] = useState(false)
   const [returnDrawerId, setReturnDrawerId] = useState<string | null>(null)
@@ -135,6 +149,27 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
         toast.error(json.error ?? "Noget gik galt. Prøv igen.")
         return
       }
+      try {
+        sessionStorage.setItem(
+          PH_STORE.transportCheckout,
+          JSON.stringify({
+            ride_share_id: rideShare.id,
+            seats,
+            total_price_ore: outboundTotal,
+            service_fee_ore: outboundServiceFee,
+            guest_total_ore: outboundGuestTotal,
+          }),
+        )
+      } catch {
+        /* ignore */
+      }
+      captureEvent("transport_booking_started", {
+        ride_share_id: rideShare.id,
+        from_location: rideShare.from_location,
+        to_location: rideShare.to_location,
+        seats,
+        roundtrip: ticketType === "return",
+      })
       router.push(json.url)
     } catch {
       toast.error("Forbindelsesfejl. Prøv igen.")
@@ -157,6 +192,11 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
         departure_date: reqForm.departure_date,
         num_guests:     reqForm.num_guests,
         notes:          reqForm.notes || undefined,
+      })
+      captureEvent("transport_request_created", {
+        from_location: reqForm.from_location,
+        to_location: reqForm.to_location,
+        num_guests: reqForm.num_guests,
       })
       setReqSent(true)
       setShowReqForm(false)
@@ -205,6 +245,7 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
               toLat:    rideShare.to_latitude,
               toLng:    rideShare.to_longitude ?? 0,
             }]}
+            analyticsType="transport"
             className="w-full h-64 md:h-80 mb-6"
           />
         ) : (
@@ -361,6 +402,8 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
                         const isSelected = selectedReturn?.id === rt.id
                         const rtPriceOre = rt.price_per_seat_ore
                         const combinedOre = seats * (priceOre + rtPriceOre)
+                        const combinedServiceFee = calcServiceFee(combinedOre)
+                        const combinedGuestTotal = combinedOre + combinedServiceFee
 
                         return (
                           <div key={rt.id}>
@@ -425,9 +468,25 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
                                         </span>
                                         <span>{formatKr(seats * rtPriceOre)}</span>
                                       </div>
+                                      {combinedServiceFee > 0 && (
+                                        <div className="flex justify-between text-muted-foreground items-center gap-2 pt-1">
+                                          <span className="inline-flex items-center gap-1.5 min-w-0">
+                                            {tTransport("booking_service_fee_3")}
+                                            <button
+                                              type="button"
+                                              className="inline-flex shrink-0 text-muted-foreground hover:text-foreground touch-manipulation rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                              title={tTransport("booking_service_fee_hint")}
+                                              aria-label={tTransport("booking_service_fee_hint")}
+                                            >
+                                              <CircleHelp className="w-3.5 h-3.5" />
+                                            </button>
+                                          </span>
+                                          <span className="tabular-nums">{formatKr(combinedServiceFee)}</span>
+                                        </div>
+                                      )}
                                       <div className="flex justify-between font-bold text-foreground pt-1.5 border-t border-border">
-                                        <span>Total</span>
-                                        <span>{formatKr(combinedOre)}</span>
+                                        <span>{tBooking("total")}</span>
+                                        <span className="tabular-nums">{formatKr(combinedGuestTotal)}</span>
                                       </div>
                                     </div>
 
@@ -448,7 +507,7 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
                                         onClick={() => handleBookBoth(rtPriceOre)}
                                         className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl font-semibold"
                                       >
-                                        Book begge — {formatKr(combinedOre)}
+                                        Book begge — {formatKr(combinedGuestTotal)}
                                       </Button>
                                     )}
                                   </div>
@@ -671,11 +730,28 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
                       <span>
                         {oreToKr(priceOre).toLocaleString("da-DK")} kr. × {seats} plads{seats !== 1 ? "er" : ""}
                       </span>
-                      <span>{formatKr(outboundTotal)}</span>
+                      <span className="tabular-nums">{formatKr(outboundTotal)}</span>
                     </div>
+                    <div className="my-2 border-t border-border" aria-hidden />
+                    {outboundServiceFee > 0 && (
+                      <div className="flex justify-between text-muted-foreground items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 min-w-0">
+                          {tTransport("booking_service_fee_3")}
+                          <button
+                            type="button"
+                            className="inline-flex shrink-0 text-muted-foreground hover:text-foreground touch-manipulation rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            title={tTransport("booking_service_fee_hint")}
+                            aria-label={tTransport("booking_service_fee_hint")}
+                          >
+                            <CircleHelp className="w-3.5 h-3.5" />
+                          </button>
+                        </span>
+                        <span className="tabular-nums">{formatKr(outboundServiceFee)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between font-bold text-foreground pt-1 border-t border-border">
-                      <span>Total</span>
-                      <span>{formatKr(outboundTotal)}</span>
+                      <span>{tBooking("total")}</span>
+                      <span className="tabular-nums">{formatKr(outboundGuestTotal)}</span>
                     </div>
                   </div>
 
@@ -697,7 +773,7 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
                       disabled={bookPending}
                       className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl font-semibold"
                     >
-                      {bookPending ? "Åbner betaling…" : `Gå til betaling — ${formatKr(outboundTotal)}`}
+                      {bookPending ? "Åbner betaling…" : `Gå til betaling — ${formatKr(outboundGuestTotal)}`}
                     </Button>
                   )}
                 </div>

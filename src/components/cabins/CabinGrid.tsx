@@ -33,8 +33,8 @@ export default function CabinGrid({
     <>
       <p className="text-sm text-muted-foreground mb-6">{t("grid_result_count", { count: total })}</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {cabins.map((cabin) => (
-          <CabinCard key={cabin.id} cabin={cabin} />
+        {cabins.map((cabin, index) => (
+          <CabinCard key={cabin.id} cabin={cabin} resultIndex={index} />
         ))}
       </div>
     </>

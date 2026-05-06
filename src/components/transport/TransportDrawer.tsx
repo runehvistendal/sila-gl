@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowRight, Calendar, Clock, Users, Anchor, User, X } from "lucide-react"
+import { ArrowRight, Calendar, Clock, Users, Anchor, User, X, CircleHelp } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -16,6 +16,7 @@ import { useTranslations } from "next-intl"
 import { useFormatPrice } from "@/hooks/useFormatPrice"
 import { formatNuukDate, formatNuukTime } from "@/lib/nuukTime"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
+import { calcServiceFee } from "@/lib/money"
 
 const getLocationName = (id: string) =>
   GREENLAND_LOCATIONS.find((l) => l.name_dk.toLowerCase() === id.toLowerCase())
@@ -112,6 +113,8 @@ export default function TransportDrawer({ id, seats, onClose }: Props) {
   }
 
   const totalOre = data ? seats * data.price_per_seat_ore : 0
+  const serviceFeeOre = totalOre > 0 ? calcServiceFee(totalOre) : 0
+  const guestTotalOre = totalOre + serviceFeeOre
   const fromName = data ? getLocationName(data.from_location) : ""
   const toName = data ? getLocationName(data.to_location) : ""
   const depTime = data ? formatNuukTime(data.departure_at) : null
@@ -235,11 +238,28 @@ export default function TransportDrawer({ id, seats, onClose }: Props) {
                     {formatPrice(data.price_per_seat_ore)}{" "}
                     {t("drawer_seat_count", { count: seats })}
                   </span>
-                  <span>{formatPrice(totalOre)}</span>
+                  <span className="tabular-nums">{formatPrice(totalOre)}</span>
                 </div>
+                <div className="my-2 border-t border-border" aria-hidden />
+                {serviceFeeOre > 0 && (
+                  <div className="flex justify-between text-muted-foreground items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 min-w-0">
+                      {t("booking_service_fee_3")}
+                      <button
+                        type="button"
+                        className="inline-flex shrink-0 text-muted-foreground hover:text-foreground touch-manipulation rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        title={t("booking_service_fee_hint")}
+                        aria-label={t("booking_service_fee_hint")}
+                      >
+                        <CircleHelp className="w-3.5 h-3.5" />
+                      </button>
+                    </span>
+                    <span className="tabular-nums">{formatPrice(serviceFeeOre)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-bold text-foreground pt-1.5 border-t border-border">
                   <span>{tCommon("total")}</span>
-                  <span>{formatPrice(totalOre)}</span>
+                  <span className="tabular-nums">{formatPrice(guestTotalOre)}</span>
                 </div>
               </div>
             </>
@@ -258,7 +278,7 @@ export default function TransportDrawer({ id, seats, onClose }: Props) {
                 ? t("drawer_opening_payment")
                 : notEnoughSeats
                   ? t("drawer_not_enough_seats", { count: data.seats_available })
-                  : t("drawer_book_return", { price: formatPrice(totalOre) })}
+                  : t("drawer_book_return", { price: formatPrice(guestTotalOre) })}
             </Button>
             <p className="text-xs text-muted-foreground text-center">
               {t("drawer_secure")}

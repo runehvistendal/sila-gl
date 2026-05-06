@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Maximize2, X, ChevronLeft, ChevronRight } from "lucide-react"
+import { captureEvent } from "@/lib/analytics/posthog-events"
 
 const FALLBACK =
   "https://images.unsplash.com/photo-1510798831971-661eb04b3739?w=900&h=600&fit=crop"
@@ -10,15 +11,30 @@ const FALLBACK =
 interface Props {
   images?: string[]
   title?: string
+  /** Når sat, trackes gallery_viewed én gang ved mount */
+  cabinId?: string
 }
 
-export default function ListingImageGallery({ images: rawImages, title = "" }: Props) {
+export default function ListingImageGallery({
+  images: rawImages,
+  title = "",
+  cabinId,
+}: Props) {
   const images = rawImages?.filter((img) => img?.startsWith("http")) ?? []
   const allImages = images.length > 0 ? images : [FALLBACK]
 
   const [active, setActive]   = useState(0)
   const [lightbox, setLightbox] = useState(false)
   const [lbIndex, setLbIndex] = useState(0)
+
+  useEffect(() => {
+    if (!cabinId) return
+    const n = rawImages?.filter((img) => img?.startsWith("http")).length ?? 0
+    captureEvent("gallery_viewed", {
+      cabin_id: cabinId,
+      image_count: n > 0 ? n : 1,
+    })
+  }, [cabinId, rawImages])
 
   const prev = useCallback(() => setActive((i) => (i - 1 + allImages.length) % allImages.length), [allImages.length])
   const next = useCallback(() => setActive((i) => (i + 1) % allImages.length), [allImages.length])

@@ -72,7 +72,9 @@ export async function createTransportRequest(
     return { error: error?.message ?? "Kunne ikke oprette anmodning" }
   }
 
-  redirect(`/dashboard?tab=requests&toast=transport-request-created`)
+  redirect(
+    `/dashboard?tab=requests&new_tr=${data.id}&tr_from=${encodeURIComponent(input.from_location)}&tr_to=${encodeURIComponent(input.to_location)}&tr_np=${passengers}`,
+  )
 }
 
 export async function getLocations() {

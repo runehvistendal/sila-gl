@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition, useEffect } from "react"
+import { useState, useTransition, useEffect, useRef } from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
@@ -34,6 +34,7 @@ import EmptyState from "./components/EmptyState"
 import OpenRequestsList, { type TransportRequestData } from "./components/OpenRequestsList"
 import ProviderOverviewTab from "./components/ProviderOverviewTab"
 import { toast } from "sonner"
+import { captureEvent, PH_STORE } from "@/lib/analytics/posthog-events"
 
 interface ReviewData {
   id: string
@@ -173,6 +174,81 @@ export default function DashboardClient({
 
     const sp = new URLSearchParams(searchParams.toString())
     sp.delete("toast")
+    const qs = sp.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname)
+  }, [searchParams, pathname, router])
+
+  const phNewTr = useRef(false)
+  useEffect(() => {
+    if (phNewTr.current) return
+    if (searchParams.get("new_tr") == null) return
+    phNewTr.current = true
+    captureEvent("transport_request_created", {
+      from_location: searchParams.get("tr_from") ?? "",
+      to_location: searchParams.get("tr_to") ?? "",
+      num_guests: Math.max(0, Number(searchParams.get("tr_np") ?? 0) || 0),
+    })
+    const sp = new URLSearchParams(searchParams.toString())
+    sp.delete("new_tr")
+    sp.delete("tr_from")
+    sp.delete("tr_to")
+    sp.delete("tr_np")
+    const qs = sp.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname)
+  }, [searchParams, pathname, router])
+
+  const phRs = useRef(false)
+  useEffect(() => {
+    if (phRs.current) return
+    const id = searchParams.get("rs_created")
+    if (!id) return
+    phRs.current = true
+    try {
+      const raw = sessionStorage.getItem(PH_STORE.rideSharePending)
+      sessionStorage.removeItem(PH_STORE.rideSharePending)
+      const p = raw ? JSON.parse(raw) as {
+        from_location: string
+        to_location: string
+        seats: number
+        roundtrip: boolean
+      } : { from_location: "", to_location: "", seats: 0, roundtrip: false }
+      captureEvent("ride_share_created", {
+        ride_share_id: id,
+        from_location: p.from_location,
+        to_location: p.to_location,
+        seats: p.seats,
+        roundtrip: p.roundtrip,
+      })
+    } catch {
+      captureEvent("ride_share_created", {
+        ride_share_id: id,
+        from_location: "",
+        to_location: "",
+        seats: 0,
+        roundtrip: false,
+      })
+    }
+    const sp = new URLSearchParams(searchParams.toString())
+    sp.delete("rs_created")
+    const qs = sp.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname)
+  }, [searchParams, pathname, router])
+
+  const phCabinReq = useRef(false)
+  useEffect(() => {
+    if (phCabinReq.current) return
+    if (searchParams.get("cabin_req") !== "1") return
+    phCabinReq.current = true
+    captureEvent("cabin_request_created", {
+      location: searchParams.get("cabin_loc") ?? "",
+      num_guests: Math.max(0, Number(searchParams.get("cabin_ng") ?? 0) || 0),
+      has_max_price: searchParams.get("cabin_mp") === "1",
+    })
+    const sp = new URLSearchParams(searchParams.toString())
+    sp.delete("cabin_req")
+    sp.delete("cabin_loc")
+    sp.delete("cabin_ng")
+    sp.delete("cabin_mp")
     const qs = sp.toString()
     router.replace(qs ? `${pathname}?${qs}` : pathname)
   }, [searchParams, pathname, router])
@@ -563,7 +639,14 @@ export default function DashboardClient({
                                 onClick={async () => {
                                   const res = await publishCabin(c.id)
                                   if (res.error) toast.error(res.error)
-                                  else { toast.success("Hytte publiceret"); router.refresh() }
+                                  else {
+                                    captureEvent("cabin_published", {
+                                      cabin_id: c.id,
+                                      location: c.location_hub,
+                                    })
+                                    toast.success("Hytte publiceret")
+                                    router.refresh()
+                                  }
                                 }}
                                 className="rounded-lg text-xs border-green-300 text-green-700 hover:bg-green-50"
                               >
@@ -596,7 +679,11 @@ export default function DashboardClient({
                                         onClick={async () => {
                                           const res = await unpublishCabin(c.id)
                                           if (res.error) toast.error(res.error)
-                                          else { toast.success("Hytte afpubliceret"); router.refresh() }
+                                          else {
+                                            captureEvent("cabin_unpublished", { cabin_id: c.id })
+                                            toast.success("Hytte afpubliceret")
+                                            router.refresh()
+                                          }
                                         }}
                                         className="bg-amber-600 hover:bg-amber-700 text-white"
                                       >

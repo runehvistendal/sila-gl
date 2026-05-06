@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { X, Mail, Lock, Loader2 } from "lucide-react"
 import { createClient } from "@/lib/supabase"
+import { captureEvent } from "@/lib/analytics/posthog-events"
+import { clearPendingOAuthIntent, setPendingOAuthIntent } from "@/components/analytics/OAuthReturnTracker"
 
 interface LoginModalProps {
   open: boolean
@@ -25,6 +27,7 @@ export default function LoginModal({ open, onClose }: LoginModalProps) {
   async function handleOAuth(provider: "google" | "facebook") {
     setLoading(true)
     setError(null)
+    if (provider === "google") setPendingOAuthIntent("login_google")
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
@@ -32,6 +35,7 @@ export default function LoginModal({ open, onClose }: LoginModalProps) {
       },
     })
     if (error) {
+      clearPendingOAuthIntent()
       setError(error.message)
       setLoading(false)
     }
@@ -55,6 +59,8 @@ export default function LoginModal({ open, onClose }: LoginModalProps) {
       return
     }
 
+    clearPendingOAuthIntent()
+    captureEvent("login", { method: "email" })
     onClose()
     router.refresh()
   }

@@ -17,6 +17,7 @@ import { oreToKr } from "@/lib/money"
 import ListingImageGallery from "@/components/cabins/ListingImageGallery"
 import CabinReviews from "@/components/cabins/CabinReviews"
 import CabinDetailLayout from "@/components/cabins/CabinDetailLayout"
+import { CabinViewTracker } from "@/components/analytics/CabinViewTracker"
 
 export type CabinDetailData = {
   id: string
@@ -165,6 +166,12 @@ export default async function CabinDetailPage({
     <main className="min-h-screen bg-background" style={{ fontFamily: "var(--font-jakarta, system-ui)" }}>
       <JsonLd data={lodgingSchema} />
       <Navbar user={navUser} />
+      <CabinViewTracker
+        cabinId={cabin.id}
+        location={cabin.location_hub}
+        pricePerNightOre={cabin.price_per_night_ore}
+        hasTransport={cabin.offers_transport}
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
         <Link
@@ -200,7 +207,11 @@ export default async function CabinDetailPage({
           </div>
         </div>
 
-        <ListingImageGallery images={cabin.images} title={cabin.title} />
+        <ListingImageGallery
+          images={cabin.images}
+          title={cabin.title}
+          cabinId={cabin.id}
+        />
 
         <CabinDetailLayout
           bookingCabin={{
@@ -210,6 +221,8 @@ export default async function CabinDetailPage({
             offers_transport: cabin.offers_transport,
             transport_price_per_person_ore: cabin.transport_price_per_person_ore,
             min_nights: cabin.min_nights ?? 1,
+            location_hub: cabin.location_hub,
+            instant_book: cabin.instant_book,
           }}
           transportCabin={{
             id: cabin.id,

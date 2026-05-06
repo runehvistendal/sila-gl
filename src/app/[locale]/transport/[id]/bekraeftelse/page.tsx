@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
 import { da } from "date-fns/locale"
 import { formatKr } from "@/lib/money"
+import { Suspense } from "react"
+import { TransportBekraeftelseTracker } from "@/components/analytics/TransportBekraeftelseTracker"
 
 export const dynamic = "force-dynamic"
 export const metadata = { title: "Booking bekræftet — Sila.gl" }
@@ -64,6 +66,9 @@ export default async function BekraeftelsePage({
   return (
     <main className="min-h-screen bg-background">
       <Navbar user={navUser} />
+      <Suspense fallback={null}>
+        <TransportBekraeftelseTracker />
+      </Suspense>
 
       <div className="max-w-lg mx-auto px-4 pt-24 pb-16 text-center">
         <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">

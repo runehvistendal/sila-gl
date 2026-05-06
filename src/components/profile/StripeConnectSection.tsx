@@ -6,6 +6,7 @@ import { Loader2, CreditCard } from "lucide-react"
 import { connect } from "@/app/actions/stripe"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { captureEvent } from "@/lib/analytics/posthog-events"
 
 type Props = {
   stripeAccountId: string | null
@@ -19,6 +20,7 @@ export default function StripeConnectSection({
   const [isPending, startTransition] = useTransition()
 
   function onConnect() {
+    captureEvent("stripe_onboarding_started", {})
     startTransition(async () => {
       const r = await connect()
       if ("error" in r) {

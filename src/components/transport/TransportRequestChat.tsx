@@ -13,6 +13,7 @@ import {
   submitTransportOffer,
   acceptTransportOffer,
 } from "@/app/[locale]/transport/anmodninger/[id]/actions"
+import { captureEvent } from "@/lib/analytics/posthog-events"
 
 interface Message {
   id: string
@@ -75,6 +76,15 @@ export default function TransportRequestChat({
 
   const isClosed = requestStatus === "closed" || requestStatus === "cancelled"
   const isProvider = !isRequester
+
+  const offerReceivedFired = useRef(false)
+  useEffect(() => {
+    if (!isRequester || offerReceivedFired.current) return
+    const pending = offers.filter((o) => o.status === "pending")
+    if (pending.length === 0) return
+    offerReceivedFired.current = true
+    captureEvent("transport_offer_received", { request_id: requestId })
+  }, [isRequester, offers, requestId])
 
   // Supabase Realtime — subscribe to new messages for this request
   useEffect(() => {
@@ -162,11 +172,17 @@ export default function TransportRequestChat({
 
   function handleAccept(offerId: string) {
     setAcceptError(null)
+    const offerRow = offers.find((o) => o.id === offerId)
     startTransition(async () => {
       const r = await acceptTransportOffer(offerId)
       if ("error" in r) {
         setAcceptError(r.error)
       } else {
+        captureEvent("transport_offer_accepted", {
+          request_id: requestId,
+          offer_id: offerId,
+          price: offerRow ? Math.round(offerRow.price_ore / 100) : 0,
+        })
         window.location.href = r.url
       }
     })

@@ -182,5 +182,5 @@ export async function createSamsejlads(
     }
   }
 
-  redirect("/dashboard?tab=mine-opslag")
+  redirect(`/dashboard?tab=mine-opslag&rs_created=${mainRide.id}`)
 }

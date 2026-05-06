@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 import { ArrowRight } from "lucide-react"
 import { getTranslations, setRequestLocale } from "next-intl/server"
 import { Link } from "@/i18n/navigation"
@@ -126,7 +127,9 @@ export default async function HytterPage({ params, searchParams }: Props) {
     <main className="min-h-screen bg-background">
       <Navbar user={navUser} />
 
-      <HytterClient cabins={cabins} initialFilters={initialFilters} />
+      <Suspense fallback={null}>
+        <HytterClient cabins={cabins} initialFilters={initialFilters} />
+      </Suspense>
 
       {/* ── CTA ── */}
       <section className="py-16 bg-primary/5 border-t border-border">

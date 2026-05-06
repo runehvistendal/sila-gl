@@ -45,5 +45,7 @@ export async function createCabinRequest(formData: FormData) {
   if (error) return { error: "Noget gik galt. Prøv igen." }
 
   revalidatePath("/dashboard")
-  redirect("/dashboard?tab=requests&toast=cabin-request-created")
+  redirect(
+    `/dashboard?tab=requests&toast=cabin-request-created&cabin_req=1&cabin_loc=${encodeURIComponent(location)}&cabin_ng=${numGuests}&cabin_mp=${maxPriceKr != null ? "1" : "0"}`,
+  )
 }

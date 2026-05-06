@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import dynamic from "next/dynamic"
 import { Anchor, Grid, Map, ArrowRight, MessageSquare } from "lucide-react"
 import { useFormatter, useTranslations } from "next-intl"
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import TransportCard, { type RideShareCardData } from "./components/TransportCard"
 import TransportFilters, { type TransportFilterValues } from "./components/TransportFilters"
 import type { TransportMapRoute } from "@/components/map/TransportMap"
+import { captureEvent } from "@/lib/analytics/posthog-events"
 
 function MapLoading() {
   const t = useTranslations("transport")
@@ -105,6 +106,35 @@ export default function TransportClient({ rideShares, openRequests }: Props) {
     return result
   }, [rideShares, filters])
 
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    searchDebounceRef.current = setTimeout(() => {
+      const loc =
+        filters.fromLoc !== "all" || filters.toLoc !== "all"
+          ? `${filters.fromLoc === "all" ? "" : filters.fromLoc}>${filters.toLoc === "all" ? "" : filters.toLoc}`
+          : ""
+      captureEvent("search_performed", {
+        type: "transport",
+        location: loc,
+        check_in: "",
+        check_out: "",
+        guests: "",
+      })
+    }, 450)
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    }
+  }, [filters])
+
+  function handleFilterApplied(key: string, value: string | boolean | string[]) {
+    captureEvent("filter_applied", {
+      type: "transport",
+      filter_key: key,
+      filter_value: Array.isArray(value) ? value.join(",") : String(value),
+    })
+  }
+
   const getReturnTrip = (rs: RideShareCardData): RideShareCardData | null =>
     rideShares.find(
       (r) =>
@@ -170,7 +200,11 @@ export default function TransportClient({ rideShares, openRequests }: Props) {
               </button>
             </div>
           </div>
-          <TransportFilters filters={filters} onChange={setFilters} />
+          <TransportFilters
+            filters={filters}
+            onChange={setFilters}
+            onFilterApplied={handleFilterApplied}
+          />
         </div>
       </div>
 
@@ -185,6 +219,7 @@ export default function TransportClient({ rideShares, openRequests }: Props) {
               setSelectedRouteId(id)
               setView("grid")
             }}
+            analyticsType="transport"
             className="h-[420px] md:h-[520px]"
           />
         ) : filtered.length === 0 ? (
@@ -199,8 +234,8 @@ export default function TransportClient({ rideShares, openRequests }: Props) {
               {t(filtered.length === 1 ? "routesFound_one" : "routesFound_other", { count: filtered.length })}
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {visible.map((rs) => (
-                <TransportCard key={rs.id} rideShare={rs} returnTrip={getReturnTrip(rs)} />
+              {visible.map((rs, idx) => (
+                <TransportCard key={rs.id} rideShare={rs} returnTrip={getReturnTrip(rs)} resultIndex={idx} />
               ))}
             </div>
             {!showAll && filtered.length > 9 && (

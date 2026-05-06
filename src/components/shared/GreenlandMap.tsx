@@ -1,8 +1,18 @@
 "use client"
 
 import { useEffect } from "react"
-import { MapContainer, TileLayer } from "react-leaflet"
+import { MapContainer, TileLayer, useMapEvents } from "react-leaflet"
 import "leaflet/dist/leaflet.css"
+import { captureEvent } from "@/lib/analytics/posthog-events"
+
+function GreenlandMapInteractions() {
+  useMapEvents({
+    zoomend: () => {
+      captureEvent("map_interacted", { type: "cabin", action: "zoom" })
+    },
+  })
+  return null
+}
 
 export default function GreenlandMap() {
   useEffect(() => {
@@ -23,6 +33,7 @@ export default function GreenlandMap() {
       style={{ height: "100%", width: "100%", borderRadius: "1rem" }}
       scrollWheelZoom={false}
     >
+      <GreenlandMapInteractions />
       <TileLayer
         attribution='&copy; <a href="https://carto.com/">CartoDB</a>'
         url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"

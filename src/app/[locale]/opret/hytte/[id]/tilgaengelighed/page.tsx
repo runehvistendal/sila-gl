@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
 import AvailabilityCalendar from "./AvailabilityCalendar"
+import { CabinCreatedTracker } from "@/components/analytics/CabinCreatedTracker"
 
 export const dynamic = "force-dynamic"
 
@@ -13,10 +14,13 @@ export async function generateMetadata() {
 
 export default async function TilgaengelighedPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ created?: string }>
 }) {
   const { id: cabinId } = await params
+  const { created } = await searchParams
 
   const supabase = await createClient()
   const {
@@ -29,7 +33,9 @@ export default async function TilgaengelighedPage({
 
   const { data: cabin } = await supabase
     .from("cabins")
-    .select("id, title, published, min_nights, preparation_days")
+    .select(
+      "id, title, published, min_nights, preparation_days, location_hub, price_per_night_ore, offers_transport",
+    )
     .eq("id", cabinId)
     .eq("owner_id", user.id)
     .is("deleted_at", null)
@@ -63,13 +69,32 @@ export default async function TilgaengelighedPage({
   }
 
   const initialBlocked = (availabilityRows ?? []).map((r) => r.date as string)
-  const isPublished = (cabin as { published: boolean }).published
-  const minNights = (cabin as { min_nights: number }).min_nights ?? 1
-  const preparationDays = (cabin as { preparation_days: number }).preparation_days ?? 0
+
+  const cabinRow = cabin as {
+    title: string
+    published: boolean
+    min_nights: number
+    preparation_days: number
+    location_hub: string
+    price_per_night_ore: number
+    offers_transport: boolean
+  }
+
+  const isPublished = cabinRow.published
+  const minNights = cabinRow.min_nights ?? 1
+  const preparationDays = cabinRow.preparation_days ?? 0
 
   return (
     <main className="min-h-screen bg-background">
       <Navbar user={navUser} />
+      {created === "1" ? (
+        <CabinCreatedTracker
+          cabinId={cabinId}
+          location={cabinRow.location_hub}
+          pricePerNightOre={cabinRow.price_per_night_ore}
+          hasTransport={cabinRow.offers_transport}
+        />
+      ) : null}
 
       <div className="mx-auto max-w-2xl px-4 pt-20 pb-20">
         <div className="mb-8">
@@ -81,7 +106,7 @@ export default async function TilgaengelighedPage({
           <h1 className="text-2xl font-bold text-foreground mb-1">
             {t("manage_availability_title")}
           </h1>
-          <p className="text-sm font-medium text-foreground mb-6">{cabin.title}</p>
+          <p className="text-sm font-medium text-foreground mb-6">{cabinRow.title}</p>
 
           <div className="rounded-xl border border-[#4A9CC7]/30 bg-[#4A9CC7]/8 px-4 py-4 text-sm text-[#1a5f7a]">
             <p className="font-semibold mb-1">{t("availability_default_info")}</p>

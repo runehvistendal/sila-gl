@@ -45,16 +45,16 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - src/lib/cabinFacilities.ts (CABIN_FACILITIES)
 - src/lib/amenityMeta.ts (AMENITY_META + AMENITY_FILTER_KEYS — 18 DB-nøgler)
 - src/components/shared/AddOnServicesEditor.tsx (DEL G)
-- **Stripe Connect** onboarding (15 % kommission, server-side) ✅
-- **Hyttebooking** med Stripe Checkout + webhook (status: confirmed verificeret) ✅
+- **Stripe Connect** onboarding (15 % kommission på udbyderpris — gæsten betaler tillige **3 % servicegebyr** oven i den aftalte pris; platformens **`application_fee_amount`** = kommission **+** servicegebyr) ✅
+- **Hyttebooking** med Stripe Checkout + webhook (status: confirmed verificeret) — `total_price_ore` er udbyders subtotal til Connect; **`service_fee_ore`** på `cabin_bookings`; sekundær Checkout-linje «Servicegebyr (3%)» hvor afrunding > 0 ✅
 - **Sikkerhedsaudit** gennemført — kritiske RLS-fejl rettet, kolonneniveau-sikkerhed på profiles ✅
 - **Kalender UX:** grå strikethrough på optagede datoer (Airbnb-stil) ✅
 - **Cancel-flow:** pending booking annulleres + Stripe session expires ved tilbagetryk ✅
 - **pg_cron cleanup:** pending bookinger udløber automatisk efter 15 min ✅
 - **Rate limiting:** `rate_limits`-tabel + `consume_rate_limit` RPC (5 forsøg / 10 min) ✅
-- **Transportanmodninger:** /transport/anmod (tur-type, returdato, passagerer), /transport/anmodninger/[id] (Realtime chat, tilbudskort, accept → Stripe Checkout, webhook) ✅
+- **Transportanmodninger:** /transport/anmod (tur-type, returdato, passagerer), /transport/anmodninger/[id] (Realtime chat, tilbudskort, accept → Stripe Checkout med servicegebyr-linje + `transport_offers.service_fee_ore`, webhook) ✅
 - **Anmeldelsessystem:** dobbelt-blind (trigger), 30-dages vindue (pg_cron), alle 3 booking-typer, ReviewForm + ReviewDialog, dashboard review-knap, /profil/[id] offentlig ✅
-- **Samsejlads bookingflow:** fusioneret ind i /transport — /samsejlads eksisterer ikke længere ✅
+- **Samsejlads bookingflow:** fusioneret ind i /transport (`/api/transport/checkout`) — **`ride_share_bookings.service_fee_ore`**; samme 3 %-logik — /samsejlads eksisterer ikke længere ✅
 - **Mapbox kortvisning:** `TransportMap.tsx` (streets-v12, buet linje via createArc, ⚓/🏁 HTML-markorer, fitBounds, flyTo, lazy load overview / direct load detail) på /transport og /transport/[id] ✅
 - **Returture:** `return_ride_share_id` på ride_shares, badge på listekort, alternative ture fra andre sejlere på /transport/[id] ✅
 - **Timezone:** `src/lib/nuukTime.ts` — America/Godthab (UTC-3), alle departure_at vises i Nuuk-tid ✅
@@ -84,6 +84,11 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - **Klikbar billede + navn** på hytte-rækker — aktiv → /hytter/[id], kladde → /opret/hytte/[id]/rediger. Hover: opacity på billede, underline på navn ✅
 - **Øje-symbol fjernet** — navigation via klikbart billede/navn ✅
 - **Rediger-siden renset** — kun HytteForm (inkl. AddOnServicesEditor) + "Administrer tilgængelighed →" link. Ingen kalender-queries ✅
+- **PostHog analytics** ✅ — `posthog-js` installeret; `PostHogProvider.tsx` initialiserer kun hvis **`NEXT_PUBLIC_POSTHOG_KEY`** og **`NEXT_PUBLIC_POSTHOG_HOST`** er sat. Provider wrappes i **`src/app/[locale]/layout.tsx`**. Events via **`src/lib/analytics/posthog-events.ts`** (booking, transport, login, kort m.fl.). Kræver env-variabler i **`.env.local`** + **Vercel** inden lancering.
+
+## Nye filer (6.5.2026)
+
+- `supabase/migrations/20260506000000_service_fee.sql` — `service_fee_ore` på `cabin_bookings`, `ride_share_bookings`, `transport_offers`; udvider `cabin_bookings_guard_update` med immutable `service_fee_ore`
 
 ## Nye filer (5.5.2026)
 - `supabase/migrations/20260505120000_min_nights_preparation.sql` — min_nights (default 1) + preparation_days (default 0, IN 0-3) på cabins
@@ -124,8 +129,7 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 2. ~~SEO grundlag~~ ✅ — `metadata.ts`, `sitemap.ts`, `robots.ts`, `/destination/[slug]`, JsonLd; polering se **Påmindelser inden lancering**
 3. ~~**Sanity:** Visual Editing + Page Builder~~ ✅ — se **Sanity CMS** + **Sanity Visual Editing** nedenfor
 4. Stripe live-test end-to-end — kritisk inden lancering
-5. PostHog analytics — installer inden lancering
-6. Lancering — første 20 udbydere
+5. Lancering — første 20 udbydere
 
 ## Sanity CMS (5.5.2026)
 - Sanity Studio kører på `/studio` — beskyttet af `is_admin` (`proxy.ts`: studio **før** next-intl, ellers `/da/studio`-404)
@@ -137,7 +141,7 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - **Klient:** `src/lib/sanity.ts` (`getSanityPublicClient()`, `sanityFetchClient()`, **`getSanityDraftStegaClient()`**, `getSanityBareTokenClient()` — se **Sanity Visual Editing**)
 - **Globale strenge:** `globalSettings` (navngivne `_da/_en`-felter + `stringOverrides`); merges ind i beskeder via `src/lib/i18n/mergeSanityIntoMessages.ts`. **Seed fra bundlet JSON:** `scripts/seed-sanity-content.ts` → `npm run seed:sanity` (kræver **Editor**-token, se Miljøvariabler)
 - **Sider:** Eksplicitte mapper under `src/app/[locale]/` har **forrang**; **`src/app/[locale]/[slug]/page.tsx`** er dynamiske CMS-sider (`page`-dokumenter i Sanity).
-- Lokale tekst-/CMS-sider: `/om`, `/faq`, `/vilkaar`, `/privatlivspolitik`, `/udbyderguide`, `/blog`, `/blog/[slug]` (+ destination `/destination/[slug]` med Sanity-overlay)
+- Lokale tekst-/CMS-sider: `/om`, `/faq`, `/vilkaar`, `/privatlivspolitik`, **`/udbyderguide`** (`src/app/[locale]/udbyderguide/page.tsx` — fast dansk onboarding-indhold · **mobile-first** layout 6.5; ikke Sanity-styret pt.), `/blog`, `/blog/[slug]` (+ destination `/destination/[slug]` med Sanity-overlay)
 - **CORS:** Tilføj `http://localhost:3000` (og production-URL) med **Allow credentials** i Sanity dashboard for embedded Studio
 
 ### Sanity Visual Editing
@@ -184,10 +188,9 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - Destinationssider poleres
 - Indholdsmæssig SEO
 - Lighthouse-test
-- PostHog analytics
 - MobilePay til Stripe
-- Udbyderguide
-- Stripe live-test end-to-end
+- ~~Udbyderguide~~ → opdateret 6.5 (evt. Sanity-overlay / flersprog senere)
+- Stripe live-test end-to-end (**inkl. 3 %-servicegebyr-linje**)
 
 ## Aktiv arkitektur: aktiver + opslag
 - Aktiver: cabins (hytte) + boats (båd) — gemmes med `published=false` indtil opslag
@@ -229,7 +232,7 @@ Rolle-**UPDATE** (reconcile, server): `src/lib/supabase-service.ts` med **`SUPAB
 - **profiles følsomme felter** (`stripe_account_id`, `phone`, `stripe_onboarding_complete`): læses **ALDRIG** direkte via `.from("profiles").select(...)` fra klientkode eller server actions — brug udelukkende:
  - `get_my_sensitive_profile()` — egne data
  - `get_owner_stripe_info(cabin_id)` — ejerens Stripe-info i bookingflow
-- **cabin_bookings immutable felter** (`total_price_ore`, `platform_fee_ore`, `stripe_session_id`, `stripe_payment_intent_id`, `guest_id`, `cabin_id`, `check_in`, `check_out`, `num_guests`): beskyttet af BEFORE UPDATE trigger `cabin_bookings_guard_update` — service_role passerer (auth.uid() IS NULL)
+- **cabin_bookings immutable felter** (`total_price_ore`, `platform_fee_ore`, **`service_fee_ore`**, `stripe_session_id`, `stripe_payment_intent_id`, `guest_id`, `cabin_id`, `check_in`, `check_out`, `num_guests`): beskyttet af BEFORE UPDATE trigger `cabin_bookings_guard_update` — service_role passerer (auth.uid() IS NULL)
 - **handle_new_user trigger**: fallback `full_name = 'Sila-bruger'` — aldrig email som fallback
 - **Ingen console.log** af service role key eller andre secrets — ikke engang prefix
 - **Rate limiting**: alle server actions der skriver kritiske data bruger `consume_rate_limit` RPC
@@ -251,9 +254,10 @@ Rolle-**UPDATE** (reconcile, server): `src/lib/supabase-service.ts` med **`SUPAB
 
 ## Pengebeløb — KRITISK
 - ALLE beløb i databasen = **øre** (integer), **aldrig** float/decimal til penge
-- Konvertering **KUN** i `src/lib/money.ts`: `oreToKr()` og `krToOre()`
-- Aldrig rå øre vilkårligt i UI — kør gennem `money.ts`
+- Konvertering og **gæste-servicegebyr (3 % af udbyder-subtotal i øre)** **KUN** i `src/lib/money.ts`: `oreToKr()`, `krToOre()`, **`calcServiceFee(total_price_ore)`** → `Math.round(total_price_ore * 0.03)` (server-side sandhed i checkout; UI må vise samme formlen som estimat)
+- Aldrig rå øre vilkårligt i UI — kør gennem `money.ts` / `useFormatPrice`
 - **Stripe:** forventer typisk heltals-øre i flows — hold server-side, send direkte i øre hvor det er defineret sådan
+- **Betaling gæst:** Checkout-summen = `total_price_ore` (til connected account som subtotal fratrukket 15 % platform) + **service_fee_ore**; `application_fee_amount` = **15 %-andel + service_fee_ore** (platform beholder begge)
 
 ## ride_shares — korrekte kolonner
 | Kolonne | Type | Bemærkning |

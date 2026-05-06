@@ -12,6 +12,9 @@ interface CabinBookingProps {
   price_per_night_ore: number
   offers_transport: boolean
   transport_price_per_person_ore: number | null
+  min_nights?: number
+  location_hub: string
+  instant_book: boolean
 }
 
 interface CabinTransportProps {

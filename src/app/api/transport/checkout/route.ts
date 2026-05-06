@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase-server"
 import { createServiceClient } from "@/lib/supabase-service"
 import { stripe } from "@/lib/stripe"
 import { getAppBaseUrl } from "@/lib/appUrl"
+import { calcServiceFee } from "@/lib/money"
 
 export const dynamic = "force-dynamic"
 
@@ -81,6 +82,7 @@ export async function POST(request: Request) {
   // Calculate price server-side — NEVER trust frontend price
   const totalPriceOre = numSeats * rs.price_per_seat_ore
   const platformFeeOre = Math.round(totalPriceOre * 0.15)
+  const serviceFeeOre = calcServiceFee(totalPriceOre)
 
   if (totalPriceOre < 1) {
     return Response.json({ error: "Ugyldig pris" }, { status: 400 })
@@ -96,6 +98,7 @@ export async function POST(request: Request) {
       num_seats:        numSeats,
       total_price_ore:  totalPriceOre,
       platform_fee_ore: platformFeeOre,
+      service_fee_ore:  serviceFeeOre,
       status:           "pending",
     })
     .select("id")
@@ -110,25 +113,44 @@ export async function POST(request: Request) {
   const departure = new Date(rs.departure_at)
   const dateLabel = departure.toLocaleDateString("da-DK", { day: "numeric", month: "long", year: "numeric" })
 
+  const lineItems: Array<{
+    quantity: number
+    price_data: {
+      currency: "dkk"
+      unit_amount: number
+      product_data: { name: string; description?: string }
+    }
+  }> = [
+    {
+      quantity: 1,
+      price_data: {
+        currency: "dkk",
+        unit_amount: totalPriceOre,
+        product_data: {
+          name: `Samsejlads: ${rs.from_location} → ${rs.to_location}`,
+          description: `Afgang ${dateLabel} · ${numSeats} plads${numSeats !== 1 ? "er" : ""}`,
+        },
+      },
+    },
+  ]
+  if (serviceFeeOre > 0) {
+    lineItems.push({
+      quantity: 1,
+      price_data: {
+        currency: "dkk",
+        unit_amount: serviceFeeOre,
+        product_data: { name: "Servicegebyr (3%)" },
+      },
+    })
+  }
+
   try {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
-      line_items: [
-        {
-          quantity: numSeats,
-          price_data: {
-            currency: "dkk",
-            unit_amount: rs.price_per_seat_ore,
-            product_data: {
-              name: `Samsejlads: ${rs.from_location} → ${rs.to_location}`,
-              description: `Afgang ${dateLabel}`,
-            },
-          },
-        },
-      ],
+      line_items: lineItems,
       payment_intent_data: {
-        application_fee_amount: platformFeeOre,
+        application_fee_amount: platformFeeOre + serviceFeeOre,
         transfer_data: { destination: skipper.stripe_account_id },
         metadata: { booking_id: bookingId, ride_share_id: rideShareId },
       },

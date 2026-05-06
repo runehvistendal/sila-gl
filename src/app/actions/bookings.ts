@@ -5,6 +5,7 @@ import { createServiceClient } from "@/lib/supabase-service"
 import { enumerateNights } from "@/lib/cabinBookingDates"
 import { getAppBaseUrl } from "@/lib/appUrl"
 import { stripe } from "@/lib/stripe"
+import { calcServiceFee } from "@/lib/money"
 
 export type TransportTrip = "none" | "round_trip" | "outbound" | "return"
 
@@ -194,6 +195,7 @@ export async function createCabinBooking(
   }
   const totalPriceOre = cabinStayOre + transportTotalOre
   const platformFeeOre = Math.round(totalPriceOre * 0.15)
+  const serviceFeeOre = calcServiceFee(totalPriceOre)
 
   const requestedNights = enumerateNights(cIn.d, cOut.d)
   if (requestedNights.length > 0) {
@@ -281,6 +283,7 @@ export async function createCabinBooking(
       num_guests: guests,
       total_price_ore: totalPriceOre,
       platform_fee_ore: platformFeeOre,
+      service_fee_ore: serviceFeeOre,
       status: "pending",
       includes_transport: transportTotalOre > 0,
       transport_total_ore: transportTotalOre,
@@ -302,6 +305,10 @@ export async function createCabinBooking(
     cOut.d,
   )
 
+  const nightsLabelDa = `${nights} ${nights === 1 ? "nat" : "nætter"}`
+  const transportHint =
+    transportTotalOre > 0 ? "Inkl. tilvalgt transport til/fra hytten." : undefined
+
   const lineItems: Array<{
     quantity: number
     price_data: {
@@ -314,24 +321,21 @@ export async function createCabinBooking(
       quantity: 1,
       price_data: {
         currency: "dkk",
-        unit_amount: cabinStayOre,
-        product_data: { name: `${c.title} — overnatning` },
+        unit_amount: totalPriceOre,
+        product_data: {
+          name: `Hytteophold (${nightsLabelDa})`,
+          description: transportHint,
+        },
       },
     },
   ]
-  if (transportTotalOre > 0) {
-    const label =
-      trip === "round_trip"
-        ? "Transport (tur-retur)"
-        : trip === "outbound"
-          ? "Transport (udrejse)"
-          : "Transport (hjemrejse)"
+  if (serviceFeeOre > 0) {
     lineItems.push({
       quantity: 1,
       price_data: {
         currency: "dkk",
-        unit_amount: transportTotalOre,
-        product_data: { name: label },
+        unit_amount: serviceFeeOre,
+        product_data: { name: "Servicegebyr (3%)" },
       },
     })
   }
@@ -343,7 +347,7 @@ export async function createCabinBooking(
         payment_method_types: ["card"],
         line_items: lineItems,
         payment_intent_data: {
-          application_fee_amount: platformFeeOre,
+          application_fee_amount: platformFeeOre + serviceFeeOre,
           transfer_data: {
             destination: o.stripe_account_id,
           },

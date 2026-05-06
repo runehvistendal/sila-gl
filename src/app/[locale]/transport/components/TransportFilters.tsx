@@ -2,13 +2,8 @@
 
 import { useRef, useEffect } from "react"
 import { Input } from "@/components/ui/input"
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select"
 import { Search, SlidersHorizontal, X } from "lucide-react"
-import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
-
-const CITIES = [...new Set(GREENLAND_LOCATIONS.map((l) => l.name_dk))].sort()
+import LocationAutocomplete from "@/components/shared/LocationAutocomplete"
 
 export interface TransportFilterValues {
   search:        string
@@ -24,6 +19,8 @@ export interface TransportFilterValues {
 interface Props {
   filters:  TransportFilterValues
   onChange: (f: TransportFilterValues) => void
+  /** Analytics: invoked after each filter change */
+  onFilterApplied?: (key: string, value: string | boolean | string[]) => void
 }
 
 const BOAT_TYPE_OPTIONS = [
@@ -34,17 +31,20 @@ const BOAT_TYPE_OPTIONS = [
   { value: "motorbåd",  label: "Motorbåd" },
 ]
 
-export default function TransportFilters({ filters, onChange }: Props) {
+export default function TransportFilters({ filters, onChange, onFilterApplied }: Props) {
   const panelRef = useRef<HTMLDivElement>(null)
 
-  const set = <K extends keyof TransportFilterValues>(key: K, val: TransportFilterValues[K]) =>
+  const set = <K extends keyof TransportFilterValues>(key: K, val: TransportFilterValues[K]) => {
     onChange({ ...filters, [key]: val })
+    onFilterApplied?.(key, val as unknown as string | boolean | string[])
+  }
 
   function toggleBoatType(val: string) {
     const next = filters.boatTypes.includes(val)
       ? filters.boatTypes.filter((t) => t !== val)
       : [...filters.boatTypes, val]
-    set("boatTypes", next)
+    onChange({ ...filters, boatTypes: next })
+    onFilterApplied?.("boatTypes", next)
   }
 
   function resetFilters() {
@@ -55,6 +55,7 @@ export default function TransportFilters({ filters, onChange }: Props) {
       onlyAvailable: true,
       showPanel:     false,
     })
+    onFilterApplied?.("reset", true)
   }
 
   // Close on outside click
@@ -89,25 +90,21 @@ export default function TransportFilters({ filters, onChange }: Props) {
           />
         </div>
 
-        <Select value={filters.fromLoc} onValueChange={(v) => set("fromLoc", v)}>
-          <SelectTrigger className="w-[160px] h-10 rounded-xl">
-            <SelectValue placeholder="Alle afgange" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Alle afgange</SelectItem>
-            {CITIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <LocationAutocomplete
+          value={filters.fromLoc === "all" ? "" : filters.fromLoc}
+          onChange={(name_dk) => set("fromLoc", name_dk || "all")}
+          placeholder="Alle afgange"
+          className="w-full min-w-0 sm:w-[min(100%,11rem)]"
+          aria-label="Afgangsted"
+        />
 
-        <Select value={filters.toLoc} onValueChange={(v) => set("toLoc", v)}>
-          <SelectTrigger className="w-[160px] h-10 rounded-xl">
-            <SelectValue placeholder="Alle destinationer" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Alle destinationer</SelectItem>
-            {CITIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <LocationAutocomplete
+          value={filters.toLoc === "all" ? "" : filters.toLoc}
+          onChange={(name_dk) => set("toLoc", name_dk || "all")}
+          placeholder="Alle destinationer"
+          className="w-full min-w-0 sm:w-[min(100%,11rem)]"
+          aria-label="Destination"
+        />
 
         {/* Filtrer-knap */}
         <div className="relative" ref={panelRef}>

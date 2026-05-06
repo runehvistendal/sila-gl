@@ -1,13 +1,11 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter } from "@/i18n/navigation"
 import { Search, SlidersHorizontal, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
+import LocationAutocomplete from "@/components/shared/LocationAutocomplete"
 import { AMENITY_META, AMENITY_FILTER_KEYS } from "@/lib/amenityMeta"
-
-const CITIES = [...new Set(GREENLAND_LOCATIONS.map((l) => l.name_dk))].sort()
 
 const SELECT_CLS =
   "h-10 rounded-xl border border-input bg-transparent px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring text-foreground cursor-pointer"
@@ -21,6 +19,8 @@ export interface FilterValues {
   sort: string
   search: string
 }
+
+import { captureEvent } from "@/lib/analytics/posthog-events"
 
 const DEFAULT: FilterValues = {
   hub: "",
@@ -67,6 +67,13 @@ export default function CabinFilters({
 
   const push = useCallback(
     (next: FilterValues) => {
+      captureEvent("search_performed", {
+        type: "hytte",
+        location: next.hub ?? "",
+        check_in: "",
+        check_out: "",
+        guests: next.guests ?? "",
+      })
       const p = new URLSearchParams()
       if (next.search)    p.set("search",    next.search)
       if (next.hub)       p.set("hub",       next.hub)
@@ -84,6 +91,12 @@ export default function CabinFilters({
   function set<K extends keyof FilterValues>(key: K, val: FilterValues[K]) {
     const next = { ...filters, [key]: val }
     setFilters(next)
+    captureEvent("filter_applied", {
+      type: "hytte",
+      filter_key: key,
+      filter_value:
+        typeof val === "boolean" ? String(val) : val === undefined ? "" : String(val),
+    })
     // Debounce text search — push immediately for selects/toggles
     if (key !== "search") push(next)
   }
@@ -122,18 +135,13 @@ export default function CabinFilters({
         </form>
 
         {/* Location */}
-        <select
+        <LocationAutocomplete
           value={filters.hub}
-          onChange={(e) => set("hub", e.target.value)}
-          className={`${SELECT_CLS} w-full sm:w-[180px]`}
-        >
-          <option value="">Alle destinationer</option>
-          {CITIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
+          onChange={(name_dk) => set("hub", name_dk)}
+          placeholder="Alle destinationer"
+          className="w-full sm:w-[min(100%,14rem)]"
+          aria-label="Destination"
+        />
 
         {/* Sort */}
         <select

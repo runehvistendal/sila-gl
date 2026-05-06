@@ -58,7 +58,8 @@
   --secondary-foreground:  hsl(215 25% 25%);
 
   --muted:                 hsl(210 20% 95%);
-  --muted-foreground:      hsl(215 15% 50%);
+  /* ~#556b82 — WCAG AA på hvid / #f8fafc (krav 4.5:1 mod body-tekst) */
+  --muted-foreground:      hsl(215 17% 40%);
 
   --accent:                hsl(173 55% 42%);
   --accent-foreground:     hsl(0 0% 100%);
@@ -97,6 +98,13 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-jakarta), sans-serif;
+  }
+}
+
+/* Udbyderguide: skjul nav og CTA-knapper når brugeren printer / gemmer som PDF */
+@media print {
+  .udbyderguide-no-print {
+    display: none !important;
   }
 }
 

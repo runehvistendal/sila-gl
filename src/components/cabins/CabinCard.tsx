@@ -6,6 +6,8 @@ import { useTranslations } from "next-intl"
 import { MapPin, Anchor, ChevronLeft, ChevronRight, Zap, Users, MountainSnow } from "lucide-react"
 import { formatKr } from "@/lib/money"
 
+import { captureEvent } from "@/lib/analytics/posthog-events"
+
 export interface CabinCardData {
   id: string
   title: string
@@ -27,7 +29,14 @@ function isValidUrl(url: string): boolean {
   }
 }
 
-export default function CabinCard({ cabin }: { cabin: CabinCardData }) {
+export default function CabinCard({
+  cabin,
+  resultIndex = 0,
+}: {
+  cabin: CabinCardData
+  /** 0-based position in current result list (søgning) */
+  resultIndex?: number
+}) {
   const t = useTranslations("cabins")
   const tDetail = useTranslations("cabinDetail")
 
@@ -49,7 +58,17 @@ export default function CabinCard({ cabin }: { cabin: CabinCardData }) {
   }
 
   return (
-    <Link href={`/hytter/${cabin.id}`} className="group block">
+    <Link
+      href={`/hytter/${cabin.id}`}
+      className="group block"
+      onClick={() =>
+        captureEvent("search_result_clicked", {
+          type: "hytte",
+          listing_id: cabin.id,
+          position_in_results: resultIndex,
+        })
+      }
+    >
       <div className="relative overflow-hidden rounded-2xl aspect-[4/3] mb-3 bg-gradient-to-br from-primary/20 to-accent/20">
         {hasImages && !imgError ? (
           // eslint-disable-next-line @next/next/no-img-element

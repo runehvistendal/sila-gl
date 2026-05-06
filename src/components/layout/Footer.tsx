@@ -30,22 +30,22 @@ export default async function Footer({ locale }: FooterProps) {
             </p>
           </div>
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider mb-4 text-primary">{t("platforms")}</p>
+            <p className="text-xs font-bold uppercase tracking-wider mb-4 text-primary-foreground">{t("platforms")}</p>
             <div className="flex flex-col gap-2.5 text-sm text-primary-foreground/60">
               <Link href="/hytter"    className="hover:text-primary-foreground transition-colors">{t("cabins")}</Link>
               <Link href="/transport" className="hover:text-primary-foreground transition-colors">{t("transport")}</Link>
             </div>
           </div>
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider mb-4 text-primary">{t("about")}</p>
+            <p className="text-xs font-bold uppercase tracking-wider mb-4 text-primary-foreground">{t("about")}</p>
             <div className="flex flex-col gap-2.5 text-sm text-primary-foreground/60">
               <Link href="/om"           className="hover:text-primary-foreground transition-colors">{t("aboutUs")}</Link>
-              <Link href="/udbyderguide" className="hover:text-primary-foreground transition-colors">{t("becomeProvider")}</Link>
+              <Link href="/udbyderguide" className="hover:text-primary-foreground transition-colors">{t("providerGuide")}</Link>
               <Link href="/faq"          className="hover:text-primary-foreground transition-colors">{t("contact")}</Link>
             </div>
           </div>
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider mb-4 text-primary">{t("legal")}</p>
+            <p className="text-xs font-bold uppercase tracking-wider mb-4 text-primary-foreground">{t("legal")}</p>
             <div className="flex flex-col gap-2.5 text-sm text-primary-foreground/60">
               <Link href="/privatlivspolitik" className="hover:text-primary-foreground transition-colors">{t("privacy")}</Link>
               <Link href="/vilkaar"           className="hover:text-primary-foreground transition-colors">{t("terms")}</Link>
@@ -54,10 +54,10 @@ export default async function Footer({ locale }: FooterProps) {
           </div>
         </div>
         <div className="border-t border-primary-foreground/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-xs text-primary-foreground/30">
+          <p className="text-xs text-primary-foreground/60">
             {t("copyright")}
           </p>
-          <p className="text-xs text-primary-foreground/30">
+          <p className="text-xs text-primary-foreground/60">
             {t("slogan")}
           </p>
         </div>

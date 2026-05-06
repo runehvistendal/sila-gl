@@ -1,7 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { useEffect, useMemo, useState, useTransition } from "react"
+import { useEffect, useMemo, useState, useTransition, useRef } from "react"
 import { isValidPhoneNumber } from "libphonenumber-js/min"
 import PhoneInput from "react-phone-number-input"
 import "react-phone-number-input/style.css"
@@ -30,6 +30,7 @@ import {
 import { changeEmail, updateProfile } from "./actions"
 import AvatarUpload from "@/components/profile/AvatarUpload"
 import StripeConnectSection from "@/components/profile/StripeConnectSection"
+import { captureEvent } from "@/lib/analytics/posthog-events"
 
 export type ProfileInitial = {
   full_name: string
@@ -144,6 +145,15 @@ export default function ProfileForm({
   )
   const [emailEdit, setEmailEdit] = useState(email)
 
+  const fieldSnapshot = useRef({
+    fullName: initial.full_name,
+    locationId: initial.location_id ?? "__none__",
+    language: initial.language as string,
+    bio: initial.bio,
+    phone: initial.phone,
+    roleType: initial.role_type as string,
+  })
+
   useEffect(() => {
     setEmailEdit(email)
   }, [email])
@@ -177,6 +187,25 @@ export default function ProfileForm({
       if ("error" in r) {
         toast.error(r.error)
         return
+      }
+      const changed: string[] = []
+      const snap = fieldSnapshot.current
+      if (fullName.trim() !== snap.fullName) changed.push("full_name")
+      if (locationId !== snap.locationId) changed.push("location_id")
+      if (language !== snap.language) changed.push("language")
+      if (bio !== snap.bio) changed.push("bio")
+      if (phone !== snap.phone) changed.push("phone")
+      if (roleType !== snap.roleType) changed.push("role_type")
+      fieldSnapshot.current = {
+        fullName: fullName.trim(),
+        locationId,
+        language,
+        bio,
+        phone,
+        roleType,
+      }
+      if (changed.length > 0) {
+        captureEvent("profile_updated", { fields_changed: changed })
       }
       toast.success(t("save_success"))
     })

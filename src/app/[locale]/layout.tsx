@@ -5,6 +5,7 @@ import { setRequestLocale } from "next-intl/server"
 import { Toaster } from "sonner"
 import { draftMode } from "next/headers"
 import { VisualEditing } from "next-sanity/visual-editing"
+import { PostHogProvider } from "@/components/analytics/PostHogProvider"
 import Footer from "@/components/layout/Footer"
 import { routing } from "@/i18n/routing"
 
@@ -36,10 +37,12 @@ export default async function LocaleLayout({ children, params }: Props) {
 
   return (
     <NextIntlClientProvider>
-      {children}
-      <Footer locale={locale} />
-      <Toaster position="top-center" richColors />
-      {draft.isEnabled ? <VisualEditing /> : null}
+      <PostHogProvider>
+        {children}
+        <Footer locale={locale} />
+        <Toaster position="top-center" richColors />
+        {draft.isEnabled ? <VisualEditing /> : null}
+      </PostHogProvider>
     </NextIntlClientProvider>
   )
 }

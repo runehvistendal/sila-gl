@@ -120,9 +120,9 @@ export async function createBaad(
   }
 
   if (actionType === "create_trip") {
-    redirect(`/opret/samsejlads?baadId=${boatId}`)
+    redirect(`/opret/samsejlads?baadId=${boatId}&boat_created=1`)
   }
-  redirect("/opret")
+  redirect(`/opret?boat_created=${boatId}`)
 }
 
 export async function updateBaad(

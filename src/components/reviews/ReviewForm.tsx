@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "next-intl"
 import { createReview, type BookingType, type ReviewerRole } from "@/app/actions/reviews"
+import { captureEvent } from "@/lib/analytics/posthog-events"
 
 const MIN_COMMENT = 20
 
@@ -93,6 +94,10 @@ export default function ReviewForm({
       if (result.error) {
         setErrorMsg(result.error)
       } else {
+        captureEvent("review_submitted", {
+          booking_type: bookingType,
+          rating,
+        })
         setSubmitted(true)
         onSuccess?.()
       }

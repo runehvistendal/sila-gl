@@ -18,6 +18,7 @@ import { createClient } from "@/lib/supabase"
 import LoginModal from "@/components/auth/LoginModal"
 import type { NavUser } from "@/lib/getNavUser"
 import { updateLanguage } from "@/app/actions/language"
+import { captureEvent } from "@/lib/analytics/posthog-events"
 
 export type { NavUser } from "@/lib/getNavUser"
 
@@ -131,6 +132,7 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
   /* ── Locale switching ── */
   async function handleLocaleSwitch(newLocale: "da" | "en") {
     if (newLocale === locale) return
+    captureEvent("language_switched", { from: locale, to: newLocale })
     if (user) await updateLanguage(newLocale)
     router.replace(pathname, { locale: newLocale })
   }

@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { FormEvent, useState } from "react"
 import { motion } from "framer-motion"
-import { Search } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "@/i18n/navigation"
+import LocationAutocomplete from "@/components/shared/LocationAutocomplete"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 import type { GreenlandLocation } from "@/lib/greenlandLocations"
 
@@ -13,35 +13,20 @@ const majorHubs = GREENLAND_LOCATIONS.filter((l) => l.is_major_hub)
 export default function HeroContent() {
   const t = useTranslations("home")
   const router = useRouter()
-
-  const [query, setQuery] = useState("")
-  const [open, setOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  const results =
-    query.length > 0
-      ? GREENLAND_LOCATIONS.filter(
-          (l) =>
-            l.name_dk.toLowerCase().startsWith(query.toLowerCase()) ||
-            l.name_gl.toLowerCase().startsWith(query.toLowerCase()),
-        ).slice(0, 7)
-      : []
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [])
-
-  function pick(loc: GreenlandLocation) {
-    setQuery(loc.name_dk)
-    setOpen(false)
-  }
+  const [hub, setHub] = useState("")
 
   function goToLocation(loc: GreenlandLocation) {
-    router.push(`/hytter?location=${loc.name_dk.toLowerCase()}`)
+    router.push(`/hytter?hub=${encodeURIComponent(loc.name_dk)}`)
+  }
+
+  function submitSearch(e?: FormEvent) {
+    e?.preventDefault()
+    const trimmed = hub.trim()
+    if (!trimmed) {
+      router.push("/hytter")
+      return
+    }
+    router.push(`/hytter?hub=${encodeURIComponent(trimmed)}`)
   }
 
   return (
@@ -49,7 +34,11 @@ export default function HeroContent() {
       {/* Badge */}
       <motion.div
         className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 mb-6 text-sm font-medium"
-        style={{ backgroundColor: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.9)" }}
+        style={{
+          backgroundColor: "rgba(255,255,255,0.12)",
+          border: "1px solid rgba(255,255,255,0.18)",
+          color: "rgba(255,255,255,0.9)",
+        }}
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -79,57 +68,27 @@ export default function HeroContent() {
 
       {/* Søgefelt + separat Søg-knap */}
       <motion.div
-        ref={containerRef}
         className="relative w-full md:max-w-[480px]"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.35 }}
       >
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2.5 flex-1 px-4 py-4 md:py-3.5 bg-white rounded-2xl shadow-2xl">
-            <Search size={17} className="text-gray-400 shrink-0" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value)
-                setOpen(true)
-              }}
-              onFocus={() => setOpen(true)}
-              placeholder={t("searchPlaceholder")}
-              className="flex-1 text-sm text-gray-700 outline-none placeholder:text-gray-400 bg-transparent min-w-0"
-            />
-            {query && (
-              <button type="button" onClick={() => setQuery("")} className="text-gray-400 hover:text-gray-600 text-xl leading-none shrink-0">
-                &times;
-              </button>
-            )}
-          </div>
-
+        <form className="flex items-center gap-2" onSubmit={submitSearch}>
+          <LocationAutocomplete
+            variant="hero"
+            className="flex-1 min-w-0"
+            value={hub}
+            onChange={setHub}
+            placeholder={t("searchPlaceholder")}
+            aria-label={t("searchPlaceholder")}
+          />
           <button
-            type="button"
+            type="submit"
             className="px-5 py-4 md:py-3.5 rounded-2xl text-sm font-semibold text-primary-foreground bg-primary shrink-0 hover:bg-primary/90 transition-colors shadow-2xl whitespace-nowrap"
           >
             {t("searchButton")}
           </button>
-        </div>
-
-        {open && results.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50">
-            {results.map((loc) => (
-              <button
-                key={`${loc.postal_code}-${loc.name_dk}`}
-                type="button"
-                onMouseDown={() => pick(loc)}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
-              >
-                <Search size={13} className="text-gray-400 shrink-0" />
-                <span className="text-sm text-gray-800">{loc.name_dk}</span>
-                <span className="text-xs text-gray-400 ml-auto">{loc.region}</span>
-              </button>
-            ))}
-          </div>
-        )}
+        </form>
       </motion.div>
 
       <motion.div
@@ -144,7 +103,11 @@ export default function HeroContent() {
             type="button"
             onClick={() => goToLocation(loc)}
             className="text-xs px-3 py-2 rounded-full transition-all hover:bg-white/20 active:scale-95"
-            style={{ backgroundColor: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.85)" }}
+            style={{
+              backgroundColor: "rgba(255,255,255,0.1)",
+              border: "1px solid rgba(255,255,255,0.2)",
+              color: "rgba(255,255,255,0.85)",
+            }}
           >
             {loc.name_dk}
           </button>

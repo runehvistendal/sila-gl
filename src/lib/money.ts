@@ -21,3 +21,8 @@ export function formatKr(ore: number): string {
     maximumFractionDigits: 0,
   })
 }
+
+/** Guest service fee: 3 % of subtotal (øre). Server-side source of truth for checkout. */
+export function calcServiceFee(total_price_ore: number): number {
+  return Math.round(total_price_ore * 0.03)
+}

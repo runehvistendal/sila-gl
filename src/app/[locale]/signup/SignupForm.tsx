@@ -4,6 +4,11 @@ import { useState } from "react"
 import Link from "next/link"
 import { Mail, Lock, User, Loader2, CheckCircle } from "lucide-react"
 import { createClient } from "@/lib/supabase"
+import { captureEvent } from "@/lib/analytics/posthog-events"
+import {
+  clearPendingOAuthIntent,
+  setPendingOAuthIntent,
+} from "@/components/analytics/OAuthReturnTracker"
 
 function GoogleIcon() {
   return (
@@ -50,6 +55,7 @@ export default function SignupForm() {
   async function handleOAuth(provider: "google" | "facebook") {
     setLoading(true)
     setError(null)
+    if (provider === "google") setPendingOAuthIntent("signup_google")
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
@@ -57,6 +63,7 @@ export default function SignupForm() {
       },
     })
     if (error) {
+      clearPendingOAuthIntent()
       setError(error.message)
       setLoading(false)
     }
@@ -94,10 +101,12 @@ export default function SignupForm() {
 
     // Hvis session allerede er oprettet (email-bekræftelse er slået fra i Supabase)
     if (data.session) {
+      captureEvent("signup_completed", { method: "email" })
       window.location.href = "/"
       return
     }
 
+    captureEvent("signup_completed", { method: "email" })
     setSuccess(true)
     setLoading(false)
   }

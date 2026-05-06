@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 import { createSamsejlads, type SamsejladsFormState } from "./actions"
+import { PH_STORE } from "@/lib/analytics/posthog-events"
 
 interface Boat {
   id: string
@@ -74,7 +75,27 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
   const today = new Date().toISOString().split("T")[0]
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form
+      action={formAction}
+      onSubmit={() => {
+        try {
+          const el = document.getElementById("total_pladser") as HTMLInputElement | null
+          const seats = Math.max(1, Math.min(20, Number(el?.value ?? 1)))
+          sessionStorage.setItem(
+            PH_STORE.rideSharePending,
+            JSON.stringify({
+              from_location: fromLocation,
+              to_location: toLocation,
+              seats,
+              roundtrip: returtur,
+            }),
+          )
+        } catch {
+          /* ignore */
+        }
+      }}
+      className="space-y-6"
+    >
       <input type="hidden" name="boat_id" value={boatId} />
       <input type="hidden" name="from_location" value={fromLocation} />
       <input type="hidden" name="to_location" value={toLocation} />

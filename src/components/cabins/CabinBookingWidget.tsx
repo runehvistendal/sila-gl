@@ -14,7 +14,7 @@ import {
   startOfDay,
   parseISO,
 } from "date-fns"
-import { Loader2 } from "lucide-react"
+import { Loader2, CircleHelp } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
@@ -22,6 +22,8 @@ import {
   type TransportTrip,
 } from "@/app/actions/bookings"
 import { cn } from "@/lib/utils"
+import { captureEvent, PH_STORE } from "@/lib/analytics/posthog-events"
+import { calcServiceFee } from "@/lib/money"
 import "react-day-picker/style.css"
 
 const DRAFT_KEY = "sila_cabin_booking_draft_v1"
@@ -41,6 +43,8 @@ type CabinProps = {
   offers_transport: boolean
   transport_price_per_person_ore: number | null
   min_nights?: number
+  location_hub: string
+  instant_book: boolean
 }
 
 type Props = {
@@ -139,6 +143,8 @@ export default function CabinBookingWidget({
   }, [cabin.offers_transport, transport, perPerson, guests])
 
   const totalOre = cabinTotalOre + transportTotalOre
+  const serviceFeeOre = totalOre > 0 ? calcServiceFee(totalOre) : 0
+  const guestTotalOre = totalOre + serviceFeeOre
 
   const loginHref = `/login?next=${encodeURIComponent(loginNextPath)}`
 
@@ -233,6 +239,30 @@ export default function CabinBookingWidget({
           toast.error(r.error)
           return
         }
+        try {
+          sessionStorage.setItem(
+            PH_STORE.cabinCheckout,
+            JSON.stringify({
+              cabin_id: cabin.id,
+              location: cabin.location_hub,
+              nights,
+              total_price_ore: totalOre,
+              service_fee_ore: serviceFeeOre,
+              guest_total_ore: guestTotalOre,
+              instant_book: cabin.instant_book,
+            }),
+          )
+        } catch {
+          /* ignore */
+        }
+        captureEvent("booking_started", {
+          cabin_id: cabin.id,
+          location: cabin.location_hub,
+          check_in: checkIn,
+          check_out: checkOut,
+          nights,
+          total_price: Math.round(guestTotalOre / 100),
+        })
         window.location.assign(r.url)
       } catch (e) {
         toast.error(e instanceof Error ? e.message : tCommon("error"))
@@ -371,9 +401,28 @@ export default function CabinBookingWidget({
                 </span>
               </div>
             )}
-            <div className="flex justify-between font-bold text-foreground pt-1 border-t border-border">
+            <div className="my-2 border-t border-border" aria-hidden />
+            {serviceFeeOre > 0 && (
+              <div className="flex justify-between text-muted-foreground items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 min-w-0">
+                  {t("booking_service_fee_3")}
+                  <button
+                    type="button"
+                    className="inline-flex shrink-0 text-muted-foreground hover:text-foreground touch-manipulation rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    title={t("booking_service_fee_hint")}
+                    aria-label={t("booking_service_fee_hint")}
+                  >
+                    <CircleHelp className="w-3.5 h-3.5" />
+                  </button>
+                </span>
+                <span className="font-medium text-foreground tabular-nums">
+                  {formatPrice(serviceFeeOre)}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between font-bold text-foreground pt-1.5 border-t border-border">
               <span>{tCommon("total")}</span>
-              <span className="tabular-nums">{formatPrice(totalOre)}</span>
+              <span className="tabular-nums">{formatPrice(guestTotalOre)}</span>
             </div>
             <p className="text-xs text-muted-foreground pt-1">
               {t("booking_platform_fee_note")}
@@ -395,7 +444,7 @@ export default function CabinBookingWidget({
                   {t("booking_redirecting")}
                 </>
               ) : nights > 0 && !guestInvalid ? (
-                `${t("booking_book_now")}${totalOre > 0 ? " — " + formatPrice(totalOre) : ""}`
+                `${t("booking_book_now")}${totalOre > 0 ? " — " + formatPrice(guestTotalOre) : ""}`
               ) : (
                 t("booking_select_dates_guests")
               )}

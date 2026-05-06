@@ -1,6 +1,21 @@
 ﻿# Sila.gl — Hukommelse
 
-## Status (5.5.2026)
+## Status (6.5.2026)
+
+### Nyt 6.5.2026
+
+- **Servicegebyr gæst (3 %):** `service_fee_ore` (øre, NOT NULL default 0) på `cabin_bookings`, `ride_share_bookings`, `transport_offers` — migration `supabase/migrations/20260506000000_service_fee.sql` · `calcServiceFee()` i `src/lib/money.ts` · `cabin_bookings_guard_update` forbyder ændring af `service_fee_ore` (service_role/webhook undtaget som ved øvrige betalingsfelter).
+- **Checkout (server autoritativ):** Hytte `createCabinBooking` (`src/app/actions/bookings.ts`) — Stripe-linjer: hytte-subtotal (+ evt. beskrivelse ved transport) + «Servicegebyr (3%)» hvor fee > 0 · `payment_intent_data.application_fee_amount` = `platform_fee_ore + service_fee_ore`. Samme mønster: `src/app/api/transport/checkout/route.ts` · transporttilbud `acceptTransportOffer` i `src/app/[locale]/transport/anmodninger/[id]/actions.ts` (`transport_offers.service_fee_ore` ved session).
+- **Booking-UI:** `CabinBookingWidget.tsx`, `TransportDetailClient.tsx`, `TransportDrawer.tsx` — prisopdeling + tooltip (bundlet DA/EN: `cabins.booking_service_fee_*`, `transport.booking_service_fee_*`); klient matcher `calcServiceFee` kun til estimat/display.
+- **/udbyderguide** (`src/app/[locale]/udbyderguide/page.tsx`): tekst/process/økonomi kort oprullet; hero med tre ikon-flow (Megaphone, Users, Banknote), separate betaling-sektion fjernet; CTA **«Klar til at begynde?»** + Opret profil + PDF-print nederst i økonomi-sektionen; **mobile-first** typografi/spacing/tabeller/stackede rækker på small screens.
+
+## Bygget og komplet
+
+- **PostHog analytics** ✅ — `posthog-js` installeret; `PostHogProvider.tsx` initialiserer kun hvis **`NEXT_PUBLIC_POSTHOG_KEY`** og **`NEXT_PUBLIC_POSTHOG_HOST`** er sat. Provider wrappes i **`src/app/[locale]/layout.tsx`**. Events via **`src/lib/analytics/posthog-events.ts`** (booking, transport, login, kort m.fl.). Kræver env-variabler i **`.env.local`** + **Vercel** inden lancering.
+
+---
+
+## Status (5.5.2026 — historik under denne linje)
 
 - Footer ✅ — root layout, alle sider
 - /hytter, /hytter/[id], /transport, /transport/[id] ✅
@@ -56,8 +71,7 @@
 2. ~~SEO grundlag~~ ✅ FÆRDIG — `src/lib/metadata.ts`, `sitemap.ts`, `robots.ts`, `/destination/[slug]`, JsonLd (forside, hytte, transport, destination); polering + indhold se **Påmindelser**
 3. ~~Sanity: Visual Editing + Page Builder + globalSettings~~ ✅ FÆRDIG — se blokken ovenfor
 4. **Stripe live-test end-to-end** — næste opgave · kritisk inden lancering
-5. PostHog analytics — installer inden lancering
-6. Lancering — første 20 udbydere
+5. Lancering — første 20 udbydere
 
 ## Sanity CMS (5.5.2026 — reference)
 
@@ -75,10 +89,9 @@
 - Destinationssider poleres
 - Indholdsmæssig SEO
 - Lighthouse-test
-- PostHog analytics
 - MobilePay til Stripe
-- Udbyderguide
-- Stripe live-test end-to-end (**næste opgave**)
+- Udbyderguide — indhold/UX opdateret 6.5; eventuel Sanity-overlay senere · se Status 6.5
+- Stripe live-test end-to-end (**næste opgave**); inkluder 3 %-linje i test
 
 ## i18n — dansk + engelsk (færdig 5.5.2026)
 
@@ -106,4 +119,5 @@
 - **Sanity-projekt:** `lu0y9jmk` + `production`; seed: `npm run seed:sanity` · Editor-token
 - **SEO-filer:** `src/lib/metadata.ts`, `src/app/sitemap.ts`, `src/app/robots.ts`, `src/components/seo/JsonLd.tsx`.
 - **Transport-stednavne:** `getLocationName()` i `greenlandLocations.ts`.
-- Fuld agent-kontekst: **`CLAUDE.md`** (inkl. nye afsnit om i18n, SEO, Sanity-env, Next 16).
+- **Servicegebyr gæst (3 %):** `calcServiceFee` i `src/lib/money.ts` · kolonner + migration **`20260506000000_service_fee.sql`**
+- **PostHog:** se **Bygget og komplet**
