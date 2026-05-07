@@ -1,6 +1,7 @@
 "use client"
 
 import { useActionState, useState } from "react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -30,6 +31,7 @@ const SORTED_LOCATIONS = [...GREENLAND_LOCATIONS].sort((a, b) =>
 )
 
 export default function SejladsOpslagForm({ boat }: Props) {
+  const tCreate = useTranslations("create")
   const [state, action, isPending] = useActionState<CreateSejladsState, FormData>(
     createSejladsOpslag,
     null
@@ -253,6 +255,9 @@ export default function SejladsOpslagForm({ boat }: Props) {
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
             Lad felterne stå tomme hvis du ikke tilbyder hjemrejse.
+          </p>
+          <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
+            {tCreate("sejlads_return_contact_note")}
           </p>
         </div>
 

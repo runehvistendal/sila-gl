@@ -55,11 +55,47 @@ export default async function FaqPage({ params }: Props) {
         {body ? (
           <PortableTextRenderer value={body} />
         ) : (
-          <div className="text-center py-16">
-            <p className="text-muted-foreground mb-6">{tStatic("coming_soon")}</p>
-            <Link href="/ophold/i-naturen" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-              {tStatic("explore_cabins")} <ArrowRight className="w-4 h-4" />
-            </Link>
+          <div className="space-y-10 py-4 text-left">
+            <p className="text-muted-foreground leading-relaxed">{tStatic("faq_fallback_intro")}</p>
+            <dl className="space-y-8">
+              {(
+                [
+                  { q: "faq_fallback_q1", a: "faq_fallback_a1" },
+                  { q: "faq_fallback_q2", a: "faq_fallback_a2" },
+                  { q: "faq_fallback_q3", a: "faq_fallback_a3" },
+                  { q: "faq_fallback_q4", a: "faq_fallback_a4" },
+                  { q: "faq_fallback_q5", a: "faq_fallback_a5" },
+                ] as const
+              ).map(({ q, a }) => (
+                <div key={q} className="border-b border-border pb-8 last:border-0 last:pb-0">
+                  <dt className="text-base font-semibold text-foreground mb-2">{tStatic(q)}</dt>
+                  <dd className="text-sm text-muted-foreground leading-relaxed">{tStatic(a)}</dd>
+                </div>
+              ))}
+            </dl>
+            <div className="flex flex-col sm:flex-row flex-wrap gap-3 pt-2">
+              <Link
+                href="/ophold/i-naturen"
+                className="inline-flex items-center justify-center gap-1.5 rounded-full border border-border bg-background px-5 py-2.5 text-sm font-medium text-foreground hover:bg-muted/60 transition-colors"
+              >
+                {tStatic("faq_explore_nature")}
+                <ArrowRight className="w-4 h-4 shrink-0" />
+              </Link>
+              <Link
+                href="/ophold/i-byen"
+                className="inline-flex items-center justify-center gap-1.5 rounded-full border border-border bg-background px-5 py-2.5 text-sm font-medium text-foreground hover:bg-muted/60 transition-colors"
+              >
+                {tStatic("faq_explore_city")}
+                <ArrowRight className="w-4 h-4 shrink-0" />
+              </Link>
+              <Link
+                href="/transport"
+                className="inline-flex items-center justify-center gap-1.5 rounded-full border border-border bg-background px-5 py-2.5 text-sm font-medium text-foreground hover:bg-muted/60 transition-colors"
+              >
+                {tStatic("faq_explore_transport")}
+                <ArrowRight className="w-4 h-4 shrink-0" />
+              </Link>
+            </div>
           </div>
         )}
       </div>

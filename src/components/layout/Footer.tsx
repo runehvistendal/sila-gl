@@ -34,7 +34,7 @@ export default async function Footer({ locale }: FooterProps) {
             <div className="flex flex-col gap-2.5 text-sm text-primary-foreground/60">
               <Link href="/ophold/i-naturen" className="hover:text-primary-foreground transition-colors">{t("stay_nature")}</Link>
               <Link href="/ophold/i-byen" className="hover:text-primary-foreground transition-colors">{t("stay_city")}</Link>
-              <Link href="/transport" className="hover:text-primary-foreground transition-colors">{t("transport")}</Link>
+              <Link href="/transport" className="hover:text-primary-foreground transition-colors">{t("platformTransport")}</Link>
             </div>
           </div>
           <div>
@@ -42,7 +42,7 @@ export default async function Footer({ locale }: FooterProps) {
             <div className="flex flex-col gap-2.5 text-sm text-primary-foreground/60">
               <Link href="/om"           className="hover:text-primary-foreground transition-colors">{t("aboutUs")}</Link>
               <Link href="/udbyderguide" className="hover:text-primary-foreground transition-colors">{t("providerGuide")}</Link>
-              <Link href="/faq"          className="hover:text-primary-foreground transition-colors">{t("contact")}</Link>
+              <Link href="/faq"          className="hover:text-primary-foreground transition-colors">{t("faq")}</Link>
             </div>
           </div>
           <div>

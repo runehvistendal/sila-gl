@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase-server"
 export async function createCabinRequest(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect("/login?next=/anmod")
+  if (!user) redirect(`/login?next=${encodeURIComponent("/anmod?type=stay")}`)
 
   // Rate limiting
   const { error: rlErr } = await supabase.rpc("consume_rate_limit", {
@@ -23,7 +23,20 @@ export async function createCabinRequest(formData: FormData) {
   const checkOut      = formData.get("desired_check_out") as string
   const numGuests     = Number(formData.get("num_guests"))
   const maxPriceKr    = formData.get("max_price_kr") ? Number(formData.get("max_price_kr")) : null
-  const description   = (formData.get("description") as string | null) || null
+  const propertyType = (formData.get("desired_property_type") as string) || "cabin"
+  const prefSleeping = (formData.get("pref_sleeping") as string | null)?.trim() || ""
+  const prefMustHave = (formData.get("pref_must_have") as string | null)?.trim() || ""
+
+  if (!["cabin", "residence"].includes(propertyType)) {
+    return { error: "Vælg opholdstype." }
+  }
+
+  const freeDesc = ((formData.get("description") as string | null) || "").trim()
+  const descParts: string[] = []
+  if (prefSleeping) descParts.push(`Senge/sovepladser: ${prefSleeping}`)
+  if (prefMustHave) descParts.push(`Vigtigst for os: ${prefMustHave}`)
+  if (freeDesc) descParts.push(freeDesc)
+  const description = descParts.length > 0 ? descParts.join("\n\n") : null
 
   if (!location || !checkIn || !checkOut || !numGuests) {
     return { error: "Udfyld venligst alle påkrævede felter." }
@@ -33,13 +46,14 @@ export async function createCabinRequest(formData: FormData) {
   }
 
   const { error } = await supabase.from("cabin_requests").insert({
-    guest_id:          user.id,
+    guest_id:               user.id,
     location,
-    desired_check_in:  checkIn,
-    desired_check_out: checkOut,
-    num_guests:        numGuests,
-    max_price_ore:     maxPriceKr ? Math.round(maxPriceKr * 100) : null,
+    desired_check_in:       checkIn,
+    desired_check_out:      checkOut,
+    num_guests:             numGuests,
+    max_price_ore:          maxPriceKr ? Math.round(maxPriceKr * 100) : null,
     description,
+    desired_property_type:  propertyType as "cabin" | "residence",
   })
 
   if (error) return { error: "Noget gik galt. Prøv igen." }

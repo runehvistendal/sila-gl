@@ -4,6 +4,7 @@ import { useActionState, useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
 import { createBaad, updateBaad, type BaadFormState } from "./actions"
 import AddOnServicesEditor, { type AddOnService } from "@/components/shared/AddOnServicesEditor"
+import PendingCabinImageUpload from "@/components/cabins/PendingCabinImageUpload"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -30,6 +31,7 @@ export type InitialBoat = {
   description: string | null
   equipment: string[] | null
   addon_services: unknown
+  images?: string[] | null
 }
 
 interface Props {
@@ -373,9 +375,11 @@ export default function BaadForm({ mode, initialBoat }: Props) {
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
           {t("section_images")}
         </p>
-        <div className="rounded-xl border-2 border-dashed border-border bg-muted/30 py-10 flex flex-col items-center justify-center gap-2 text-muted-foreground">
-          <p className="text-sm">{t("images_next_step")}</p>
-        </div>
+        <PendingCabinImageUpload
+          variant="boat"
+          formFieldName="boat_images_json"
+          initialUrls={initialBoat?.images ?? undefined}
+        />
       </div>
 
       {state?.errors?._form && (

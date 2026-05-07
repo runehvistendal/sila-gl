@@ -14,7 +14,7 @@ import {
   startOfDay,
   parseISO,
 } from "date-fns"
-import { Loader2, CircleHelp } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils"
 import { captureEvent, PH_STORE } from "@/lib/analytics/posthog-events"
 import { calcServiceFee, oreToKr } from "@/lib/money"
 import type { TransferRoute } from "@/types/transfer"
+import ServiceFeeHelpIcon from "@/components/shared/ServiceFeeHelpIcon"
 import "react-day-picker/style.css"
 
 const DRAFT_KEY = "sila_cabin_booking_draft_v1"
@@ -566,14 +567,10 @@ export default function CabinBookingWidget({
               <div className="flex justify-between text-muted-foreground items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 min-w-0">
                   Servicegebyr (3%)
-                  <button
-                    type="button"
-                    className="inline-flex shrink-0 text-muted-foreground hover:text-foreground touch-manipulation rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    title={t("booking_service_fee_hint")}
-                    aria-label={t("booking_service_fee_hint")}
-                  >
-                    <CircleHelp className="w-3.5 h-3.5" />
-                  </button>
+                  <ServiceFeeHelpIcon
+                    tooltipText={t("booking_service_fee_hint")}
+                    ariaLabel={t("booking_service_fee_aria")}
+                  />
                 </span>
                 <span className="font-medium text-foreground tabular-nums">
                   {fmtOreKrLine(serviceFeeOre)}

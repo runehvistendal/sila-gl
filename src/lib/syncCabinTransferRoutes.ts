@@ -21,7 +21,7 @@ export async function syncCabinTransferRoutes(
   if (delErr) return { error: delErr.message }
 
   if (routes.length === 0) {
-    return { error: null }
+    return { error: "Tilføj mindst én transferrute, eller slå tilbuddet fra" }
   }
 
   for (const r of routes) {
@@ -31,8 +31,11 @@ export async function syncCabinTransferRoutes(
     if (!r.from_arrival_point.trim()) {
       return { error: "Udfyld ankomstpunkt for alle transferruter" }
     }
-    if (r.price_one_way_ore < 0 || r.price_roundtrip_ore < 0) {
-      return { error: "Transferpriser kan ikke være negative" }
+    if (r.price_one_way_ore <= 0 || r.price_roundtrip_ore <= 0) {
+      return { error: "Angiv pris for enkelttur og tur/retur for alle transferruter" }
+    }
+    if (!r.description.trim()) {
+      return { error: "Udfyld beskrivelse til gæsten for alle transferruter" }
     }
     if (r.max_guests < 1) {
       return { error: "Maks. gæster skal mindst være 1 pr. rute" }

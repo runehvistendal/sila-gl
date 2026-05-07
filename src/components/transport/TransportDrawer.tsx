@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowRight, Calendar, Clock, Users, Anchor, User, X, CircleHelp } from "lucide-react"
+import { ArrowRight, Calendar, Clock, Users, Anchor, User, X } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -17,6 +17,7 @@ import { useFormatPrice } from "@/hooks/useFormatPrice"
 import { formatNuukDate, formatNuukTime } from "@/lib/nuukTime"
 import { getLocationName } from "@/lib/greenlandLocations"
 import { calcServiceFee } from "@/lib/money"
+import ServiceFeeHelpIcon from "@/components/shared/ServiceFeeHelpIcon"
 
 interface RideShareDetail {
   id: string
@@ -241,14 +242,10 @@ export default function TransportDrawer({ id, seats, onClose }: Props) {
                   <div className="flex justify-between text-muted-foreground items-center gap-2">
                     <span className="inline-flex items-center gap-1.5 min-w-0">
                       {t("booking_service_fee_3")}
-                      <button
-                        type="button"
-                        className="inline-flex shrink-0 text-muted-foreground hover:text-foreground touch-manipulation rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        title={t("booking_service_fee_hint")}
-                        aria-label={t("booking_service_fee_hint")}
-                      >
-                        <CircleHelp className="w-3.5 h-3.5" />
-                      </button>
+                      <ServiceFeeHelpIcon
+                        tooltipText={t("booking_service_fee_hint")}
+                        ariaLabel={t("booking_service_fee_aria")}
+                      />
                     </span>
                     <span className="tabular-nums">{formatPrice(serviceFeeOre)}</span>
                   </div>

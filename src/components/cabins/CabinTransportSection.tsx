@@ -36,11 +36,19 @@ interface Props {
   transports: RideShareData[]
   guests: number
   onTransportCostChange?: (cost: number) => void
+  /** false når "Kom dertil" allerede vises (fx af TransferRoutesDisplay) */
+  showSectionTitle?: boolean
 }
 
 type TripType = "round_trip" | "outbound" | "return"
 
-export default function CabinTransportSection({ cabin, transports, guests, onTransportCostChange }: Props) {
+export default function CabinTransportSection({
+  cabin,
+  transports,
+  guests,
+  onTransportCostChange,
+  showSectionTitle = true,
+}: Props) {
   const t = useTranslations("cabins")
   const tCommon = useTranslations("common")
   const fmt = useFormatter()
@@ -110,7 +118,9 @@ export default function CabinTransportSection({ cabin, transports, guests, onTra
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-foreground mb-4">{t("getting_there")}</h2>
+      {showSectionTitle ? (
+        <h2 className="text-xl font-bold text-foreground mb-4">{t("getting_there")}</h2>
+      ) : null}
 
       {/* ── HOST-PROVIDED TRANSPORT ── */}
       {cabin.offers_transport && pricePerSeat > 0 && (

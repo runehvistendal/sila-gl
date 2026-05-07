@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description =
     content?.[`seoDescription_${locale}`] ??
     content?.seoDescription_da ??
-    tStatic("fallback_description_pages")
+    tStatic("om_meta_description")
   return buildMetadata({ locale, title, description, path: "/om" })
 }
 
@@ -57,11 +57,17 @@ export default async function OmPage({ params }: Props) {
         {body ? (
           <PortableTextRenderer value={body} />
         ) : (
-          <div className="text-center py-16">
-            <p className="text-muted-foreground mb-6">{tStatic("coming_soon")}</p>
-            <Link href="/ophold/i-naturen" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-              {tStatic("explore_cabins")} <ArrowRight className="w-4 h-4" />
-            </Link>
+          <div className="space-y-6 text-left">
+            <p className="text-muted-foreground leading-relaxed">{tStatic("om_fallback_intro")}</p>
+            <p className="text-muted-foreground leading-relaxed">{tStatic("om_fallback_p1")}</p>
+            <p className="text-muted-foreground leading-relaxed">{tStatic("om_fallback_p2")}</p>
+            <p className="text-muted-foreground leading-relaxed">{tStatic("om_fallback_p3")}</p>
+            <p className="text-muted-foreground leading-relaxed">{tStatic("om_fallback_p4")}</p>
+            <div className="pt-4">
+              <Link href="/faq" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+                {tStatic("fallback_title_faq")} <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
         )}
       </div>

@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatKr } from "@/lib/money"
-import { publishedCabinDetailPath } from "@/lib/cabinPublicPaths"
+import { publishedCabinDetailPath, guestStayRequestHref } from "@/lib/cabinPublicPaths"
 import { getLocationName } from "@/lib/greenlandLocations"
 import BookingRow, { STATUS_COLORS, STATUS_LABELS, type CabinBookingData } from "./components/BookingRow"
 import {
@@ -94,6 +94,7 @@ export interface CabinRequestData {
   description?: string | null
   status: string
   created_at: string
+  desired_property_type?: "cabin" | "residence"
   // udbyder-visning
   guest_id?: string | null
   guest_name?: string | null
@@ -141,6 +142,8 @@ export default function DashboardClient({
   unreadMessages,
 }: Props) {
   const tDash = useTranslations("dashboard")
+  const tNav = useTranslations("nav")
+  const tRequest = useTranslations("request")
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -169,7 +172,7 @@ export default function DashboardClient({
       },
       "boat-updated":                  { title: "Ændringer gemt" },
       "transport-request-created":  { title: "Transportanmodning sendt", description: "Sejlere vil svare med tilbud." },
-      "cabin-request-created":      { title: "Hytteanmodning sendt", description: "Udlejere i området vil kontakte dig." },
+      "cabin-request-created":      { title: tRequest("submitted"), description: tRequest("submitted_body") },
     }
 
     const msg = map[t]
@@ -181,7 +184,7 @@ export default function DashboardClient({
     sp.delete("toast")
     const qs = sp.toString()
     router.replace(qs ? `${pathname}?${qs}` : pathname)
-  }, [searchParams, pathname, router])
+  }, [searchParams, pathname, router, tRequest])
 
   const phNewTr = useRef(false)
   useEffect(() => {
@@ -304,12 +307,12 @@ export default function DashboardClient({
           <div className="flex gap-2 flex-wrap">
             {isTraveler && (
               <Button variant="outline" asChild className="rounded-xl gap-2 text-sm">
-                <Link href="/anmod?type=cabin"><MapPin className="w-4 h-4" /> Anmod om hytte</Link>
+                <Link href={guestStayRequestHref}><MapPin className="w-4 h-4" /> {tNav("requestCabin")}</Link>
               </Button>
             )}
             {isTraveler && (
               <Button variant="outline" asChild className="rounded-xl gap-2 text-sm">
-                <Link href="/transport/anmod"><Anchor className="w-4 h-4" /> Anmod om transport</Link>
+                <Link href="/transport/anmod"><Anchor className="w-4 h-4" /> {tRequest("link_transport_request")}</Link>
               </Button>
             )}
             {isProvider && (
@@ -505,10 +508,15 @@ export default function DashboardClient({
               <div className="pt-6 border-t border-border">
                 <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
                   <Home className="w-4 h-4 text-primary" />
-                  Hytteanmodninger
+                  {tDash("stay_requests_title")}
                 </h3>
                 {myCabinRequests.length === 0 ? (
-                  <EmptyState icon={Home} message="Ingen hytteanmodninger endnu" cta="Anmod om hytte" ctaHref="/anmod" />
+                  <EmptyState
+                    icon={Home}
+                    message={tDash("stay_requests_empty")}
+                    cta={tDash("stay_requests_cta")}
+                    ctaHref={guestStayRequestHref}
+                  />
                 ) : (
                   <div className="space-y-3">
                     {myCabinRequests.map((r) => (
@@ -550,7 +558,7 @@ export default function DashboardClient({
                 <div className="pt-6 border-t border-border">
                   <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
                     <Home className="w-4 h-4 text-primary" />
-                    Hytteanmodninger
+                    {tDash("guest_stay_requests_title")}
                     {guestCabinRequests.length > 0 && (
                       <span className="bg-amber-100 text-amber-700 text-xs rounded-full px-2 py-0.5 font-semibold">
                         {guestCabinRequests.length}
@@ -558,11 +566,11 @@ export default function DashboardClient({
                     )}
                   </h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Gæster der søger hytteleje i dit område
+                    {tDash("guest_stay_requests_subtitle")}
                   </p>
                   {guestCabinRequests.length === 0 ? (
                     <p className="text-sm text-muted-foreground bg-muted/50 rounded-xl p-4">
-                      Ingen åbne hytteanmodninger endnu.
+                      {tDash("guest_stay_requests_none")}
                     </p>
                   ) : (
                     <div className="space-y-3">
@@ -888,9 +896,12 @@ const CABIN_REQ_COLORS: Record<string, string> = {
 }
 
 function CabinRequestRow({ r, isHost }: { r: CabinRequestData; isHost: boolean }) {
+  const tReq = useTranslations("request")
   const nights = r.desired_check_in && r.desired_check_out
     ? Math.round((new Date(r.desired_check_out).getTime() - new Date(r.desired_check_in).getTime()) / (1000 * 60 * 60 * 24))
     : null
+
+  const stayKind = r.desired_property_type === "residence" ? "residence" : "cabin"
 
   return (
     <div className="bg-white rounded-xl border border-border p-4 space-y-3">
@@ -922,6 +933,12 @@ function CabinRequestRow({ r, isHost }: { r: CabinRequestData; isHost: boolean }
               <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
               {r.location}
             </p>
+            <Badge
+              variant="secondary"
+              className="mt-1.5 border-0 bg-muted text-foreground text-[10px] font-semibold uppercase tracking-wide"
+            >
+              {stayKind === "residence" ? tReq("badge_residence") : tReq("badge_cabin")}
+            </Badge>
           </div>
         </div>
         <Badge className={`${CABIN_REQ_COLORS[r.status] ?? "bg-gray-100 text-gray-500"} border-0 text-xs`}>

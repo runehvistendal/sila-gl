@@ -4,9 +4,10 @@ import { useState, useRef, useEffect } from "react"
 import { useTranslations, useLocale } from "next-intl"
 import { useRouter, usePathname, Link } from "@/i18n/navigation"
 import {
-  Globe, ChevronDown, Menu, X, Anchor, LogIn,
+  Globe, ChevronDown, Menu, X, LogIn,
   Plus, Home, Waves, Inbox,
 } from "lucide-react"
+import SilaLogoMark from "@/components/brand/SilaLogoMark"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +20,7 @@ import LoginModal from "@/components/auth/LoginModal"
 import type { NavUser } from "@/lib/getNavUser"
 import { updateLanguage } from "@/app/actions/language"
 import { captureEvent } from "@/lib/analytics/posthog-events"
+import { guestStayRequestHref } from "@/lib/cabinPublicPaths"
 
 export type { NavUser } from "@/lib/getNavUser"
 
@@ -151,7 +153,7 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
 
           {/* ── Logo ── */}
           <Link href="/" className={`flex items-center gap-2 ${textMain}`}>
-            <Anchor size={20} className="text-primary" />
+            <SilaLogoMark size={22} className="shrink-0 text-primary" />
             <span className="text-xl font-semibold">{t("logoText")}</span>
           </Link>
 
@@ -168,15 +170,11 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-48 rounded-2xl p-1.5">
-                <DropdownMenuItem asChild>
-                  <Link href="/ophold/i-naturen" className="rounded-xl cursor-pointer">
-                    {t("stayNature")}
-                  </Link>
+                <DropdownMenuItem asChild className="rounded-xl cursor-pointer data-highlighted:bg-gray-50 data-highlighted:text-gray-900 focus:bg-gray-50 focus:text-gray-900">
+                  <Link href="/ophold/i-naturen">{t("stayNature")}</Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/ophold/i-byen" className="rounded-xl cursor-pointer">
-                    {t("stayCity")}
-                  </Link>
+                <DropdownMenuItem asChild className="rounded-xl cursor-pointer data-highlighted:bg-gray-50 data-highlighted:text-gray-900 focus:bg-gray-50 focus:text-gray-900">
+                  <Link href="/ophold/i-byen">{t("stayCity")}</Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -205,13 +203,13 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                   {isTraveler && (
                     <>
                       <DropdownMenuItem asChild>
-                        <Link href="/anmod?type=cabin" className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer">
+                        <Link href={guestStayRequestHref} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer">
                           <Home size={15} className="text-muted-foreground" />
                           <span>{t("requestCabin")}</span>
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link href="/anmod?type=transport" className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer">
+                        <Link href="/transport/anmod" className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer">
                           <Waves size={15} className="text-muted-foreground" />
                           <span>{t("requestTransport")}</span>
                         </Link>
@@ -357,7 +355,7 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
               className="flex items-center gap-2 text-white"
               onClick={() => setMobileOpen(false)}
             >
-              <Anchor size={20} className="text-primary" />
+              <SilaLogoMark size={22} className="shrink-0 text-primary" />
               <span className="text-xl font-semibold">{t("logoText")}</span>
             </Link>
             <button
@@ -394,7 +392,10 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                 <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">{t("dashboard")}</Link>
                 <Link href="/profil" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">{t("profile")}</Link>
                 {isTraveler && (
-                  <Link href="/anmod?type=cabin" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">{t("requestCabin")}</Link>
+                  <>
+                    <Link href={guestStayRequestHref} onClick={() => setMobileOpen(false)} className="w-full text-center py-3 text-lg font-medium text-white/90 hover:text-primary transition-colors">{t("requestCabin")}</Link>
+                    <Link href="/transport/anmod" onClick={() => setMobileOpen(false)} className="w-full text-center py-3 text-lg font-medium text-white/90 hover:text-primary transition-colors">{t("requestTransport")}</Link>
+                  </>
                 )}
                 <button onClick={handleSignOut} className="mt-6 px-8 py-3 rounded-full text-sm font-medium border border-white/20 text-white/60 hover:text-white hover:border-white/40 transition-colors">
                   {t("signOut")}

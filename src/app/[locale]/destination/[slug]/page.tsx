@@ -16,6 +16,7 @@ import { sanityImage } from "@/lib/sanity"
 import SectionRenderer from "@/components/sanity/SectionRenderer"
 import type { Locale } from "@/i18n/routing"
 import Image from "next/image"
+import { guestStayRequestHref } from "@/lib/cabinPublicPaths"
 
 export const revalidate = 3600
 
@@ -154,7 +155,7 @@ export default async function DestinationPage({ params }: Props) {
           <div className="rounded-2xl border border-dashed border-border p-10 text-center">
             <p className="text-muted-foreground mb-4">{t("no_cabins", { name })}</p>
             <Link
-              href="/anmod"
+              href={guestStayRequestHref}
               className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
             >
               {t("request_cta", { name })} <ArrowRight className="w-4 h-4" />

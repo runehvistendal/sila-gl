@@ -5,7 +5,7 @@ import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import {
   ArrowRight, ChevronLeft, Calendar, Clock, Users, Anchor,
-  RefreshCw, MessageSquare, User, Star, CircleHelp,
+  RefreshCw, MessageSquare, User, Star,
 } from "lucide-react"
 import { useFormatter, useTranslations } from "next-intl"
 import {
@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge"
 import { formatKr, oreToKr, calcServiceFee } from "@/lib/money"
 import { createTransportRequest } from "./actions"
 import TransportDrawer from "@/components/transport/TransportDrawer"
+import ServiceFeeHelpIcon from "@/components/shared/ServiceFeeHelpIcon"
 import { captureEvent, PH_STORE } from "@/lib/analytics/posthog-events"
 
 const TransportMap = dynamic(() => import("@/components/map/TransportMap"), {
@@ -471,14 +472,10 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
                                         <div className="flex justify-between text-muted-foreground items-center gap-2 pt-1">
                                           <span className="inline-flex items-center gap-1.5 min-w-0">
                                             {tTransport("booking_service_fee_3")}
-                                            <button
-                                              type="button"
-                                              className="inline-flex shrink-0 text-muted-foreground hover:text-foreground touch-manipulation rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                              title={tTransport("booking_service_fee_hint")}
-                                              aria-label={tTransport("booking_service_fee_hint")}
-                                            >
-                                              <CircleHelp className="w-3.5 h-3.5" />
-                                            </button>
+                                            <ServiceFeeHelpIcon
+                                              tooltipText={tTransport("booking_service_fee_hint")}
+                                              ariaLabel={tTransport("booking_service_fee_aria")}
+                                            />
                                           </span>
                                           <span className="tabular-nums">{formatKr(combinedServiceFee)}</span>
                                         </div>
@@ -736,14 +733,10 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
                       <div className="flex justify-between text-muted-foreground items-center gap-2">
                         <span className="inline-flex items-center gap-1.5 min-w-0">
                           {tTransport("booking_service_fee_3")}
-                          <button
-                            type="button"
-                            className="inline-flex shrink-0 text-muted-foreground hover:text-foreground touch-manipulation rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            title={tTransport("booking_service_fee_hint")}
-                            aria-label={tTransport("booking_service_fee_hint")}
-                          >
-                            <CircleHelp className="w-3.5 h-3.5" />
-                          </button>
+                          <ServiceFeeHelpIcon
+                            tooltipText={tTransport("booking_service_fee_hint")}
+                            ariaLabel={tTransport("booking_service_fee_aria")}
+                          />
                         </span>
                         <span className="tabular-nums">{formatKr(outboundServiceFee)}</span>
                       </div>

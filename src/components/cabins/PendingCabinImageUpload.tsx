@@ -12,19 +12,31 @@ const MAX_BYTES = 5 * 1024 * 1024
 const MAX_IMAGES = 8
 
 interface Props {
-  onImagesChange: (urls: string[]) => void
+  onImagesChange?: (urls: string[]) => void
+  /** cabin = hytte/bolig pending; boat = båd pending (Cloudinary-mappe) */
+  variant?: "cabin" | "boat"
+  /** Når sat, indsættes et skjult felt til FormData (JSON-array af URLer) */
+  formFieldName?: string
+  initialUrls?: string[]
 }
 
-export default function PendingCabinImageUpload({ onImagesChange }: Props) {
+export default function PendingCabinImageUpload({
+  onImagesChange,
+  variant = "cabin",
+  formFieldName,
+  initialUrls,
+}: Props) {
+  const signKind = variant === "boat" ? "boat-pending" : "cabin-pending"
+  const subjectLabel = variant === "boat" ? "bådbilleder" : "hyttebilleder"
   const inputRef = useRef<HTMLInputElement>(null)
-  const [images, setImages] = useState<string[]>([])
+  const [images, setImages] = useState<string[]>(() => initialUrls?.filter(Boolean) ?? [])
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
 
   const updateImages = useCallback(
     (next: string[]) => {
       setImages(next)
-      onImagesChange(next)
+      onImagesChange?.(next)
     },
     [onImagesChange],
   )
@@ -50,7 +62,7 @@ export default function PendingCabinImageUpload({ onImagesChange }: Props) {
 
       setUploading(true)
       try {
-        const sign = await fetchCloudinarySignature({ kind: "cabin-pending" })
+        const sign = await fetchCloudinarySignature({ kind: signKind })
         const url = await uploadImageToCloudinary(file, sign)
         current = [...current, url]
         updateImages(current)
@@ -70,6 +82,9 @@ export default function PendingCabinImageUpload({ onImagesChange }: Props) {
 
   return (
     <div className="space-y-4">
+      {formFieldName ? (
+        <input type="hidden" name={formFieldName} value={JSON.stringify(images)} readOnly aria-hidden />
+      ) : null}
       <p className="text-xs text-muted-foreground">
         Første billede er forsidebillede. Op til {MAX_IMAGES} billeder. Billeder gemmes når du trykker «Gem og fortsæt».
       </p>
@@ -103,7 +118,7 @@ export default function PendingCabinImageUpload({ onImagesChange }: Props) {
           accept="image/*"
           multiple
           className="sr-only"
-          aria-label="Vælg hyttebilleder"
+          aria-label={variant === "boat" ? "Vælg bådbilleder" : "Vælg hyttebilleder"}
           onChange={(e) => { void handleFiles(e.target.files); e.target.value = "" }}
         />
         {uploading ? (

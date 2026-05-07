@@ -28,6 +28,20 @@ type BaadFieldErrors = Partial<
 
 export type BaadFormState = { errors?: BaadFieldErrors } | null
 
+function parseBoatImagesFromForm(formData: FormData): string[] {
+  const raw = formData.get("boat_images_json") as string | null
+  if (raw == null || raw === "") return []
+  try {
+    const p = JSON.parse(raw) as unknown
+    if (!Array.isArray(p)) return []
+    return p.filter(
+      (x): x is string => typeof x === "string" && (x.startsWith("http://") || x.startsWith("https://")),
+    )
+  } catch {
+    return []
+  }
+}
+
 export async function createBaad(
   prevState: BaadFormState,
   formData: FormData,
@@ -75,6 +89,8 @@ export async function createBaad(
     }
   }
 
+  const boatImages = parseBoatImagesFromForm(formData)
+
   const { data: inserted, error } = await supabase.from("boats").insert({
     owner_id: user.id,
     name: data.name,
@@ -84,7 +100,7 @@ export async function createBaad(
     equipment: data.equipment,
     addon_services: addonServices,
     safety_confirmed: true,
-    images: [],
+    images: boatImages,
   }).select("id").single()
 
   if (error || !inserted) {
@@ -182,6 +198,8 @@ export async function updateBaad(
     }
   }
 
+  const boatImages = parseBoatImagesFromForm(formData)
+
   const { error } = await supabase
     .from("boats")
     .update({
@@ -192,6 +210,7 @@ export async function updateBaad(
       equipment: data.equipment,
       addon_services: addonServices,
       safety_confirmed: true,
+      images: boatImages,
     })
     .eq("id", boat_id)
     .eq("owner_id", user.id)

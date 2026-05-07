@@ -21,7 +21,7 @@ export default async function RedigerBaadPage({
 
   const { data: boat, error } = await supabase
     .from("boats")
-    .select("id, name, boat_type, capacity, description, equipment, addon_services, owner_id")
+    .select("id, name, boat_type, capacity, description, equipment, addon_services, owner_id, images")
     .eq("id", id)
     .is("deleted_at", null)
     .single()
@@ -37,6 +37,7 @@ export default async function RedigerBaadPage({
     description: boat.description,
     equipment: (boat.equipment as string[] | null) ?? null,
     addon_services: boat.addon_services,
+    images: (boat.images as string[] | null) ?? null,
   }
 
   const navUser = await getNavUserForPage(supabase, user)
@@ -49,7 +50,7 @@ export default async function RedigerBaadPage({
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-foreground mb-2">Rediger båd</h1>
           <p className="text-sm text-muted-foreground">
-            Opdatér oplysningerne — billeder og ture håndteres andre steder.
+            Opdatér oplysningerne — ture oprettes under «Opret tur».
           </p>
         </div>
 

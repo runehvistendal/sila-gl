@@ -74,11 +74,11 @@ export default function OpretPageClient({ cabins, boats }: Props) {
   }, [searchParams, router, pathname])
 
   function onHytteCardClick() {
-    if (cabins.length === 0) router.push("/opret/hytte")
+    router.push("/opret/hytte")
   }
 
   function onTransportCardClick() {
-    if (boats.length === 0) router.push("/opret/baad")
+    router.push("/opret/baad")
   }
 
   function handlePublish(cabinId: string) {

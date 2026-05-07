@@ -258,7 +258,7 @@ export default async function DashboardPage() {
     // My cabin requests (as guest)
     supabase
       .from("cabin_requests")
-      .select("id, location, desired_check_in, desired_check_out, num_guests, max_price_ore, description, status, created_at")
+      .select("id, location, desired_check_in, desired_check_out, num_guests, max_price_ore, description, status, created_at, desired_property_type")
       .eq("guest_id", user.id)
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
@@ -268,7 +268,7 @@ export default async function DashboardPage() {
     cabinIds.length > 0
       ? supabase
           .from("cabin_requests")
-          .select("id, cabin_id, location, desired_check_in, desired_check_out, num_guests, max_price_ore, description, status, created_at, profiles!guest_id(id, full_name, avatar_url)")
+          .select("id, cabin_id, location, desired_check_in, desired_check_out, num_guests, max_price_ore, description, status, created_at, desired_property_type, profiles!guest_id(id, full_name, avatar_url)")
           .or(`cabin_id.in.(${cabinIds.join(",")}),cabin_id.is.null`)
           .eq("status", "open")
           .is("deleted_at", null)
@@ -390,6 +390,7 @@ export default async function DashboardPage() {
     description:      (r.description as string | null) ?? null,
     status:           r.status as string,
     created_at:       r.created_at as string,
+    desired_property_type: (r.desired_property_type as "cabin" | "residence" | null) ?? "cabin",
   }))
 
   const guestCabinRequests = (guestCabinReqRaw ?? []).map((r: Record<string, unknown>) => {
@@ -405,6 +406,7 @@ export default async function DashboardPage() {
       description:      (r.description as string | null) ?? null,
       status:           r.status as string,
       created_at:       r.created_at as string,
+      desired_property_type: (r.desired_property_type as "cabin" | "residence" | null) ?? "cabin",
       guest_id:         pr?.id ?? null,
       guest_name:       pr?.full_name ?? null,
       guest_avatar_url: pr?.avatar_url ?? null,

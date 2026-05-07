@@ -22,8 +22,8 @@ const TRANSPORT_OPTIONS: {
   label: string
   icon: string
 }[] = [
-  { value: "boat", label: "Båd", icon: "🚤" },
   { value: "car", label: "Bil", icon: "🚗" },
+  { value: "boat", label: "Båd", icon: "🚤" },
 ]
 
 function krInputValue(ore: number): string {
@@ -50,16 +50,23 @@ function routeRowKey(cabinId: string, route: TransferRoute, index: number): stri
   return route.id ?? `${cabinId}-route-${index}`
 }
 
+function reqStar(show: boolean) {
+  return show ? <span className="text-destructive"> *</span> : null
+}
+
 export interface TransferRouteEditorProps {
   cabinId: string
   initialRoutes: TransferRoute[]
   onChange: (routes: TransferRoute[]) => void
+  /** Når sand: vis rød stjerne ved obligatoriske felter (transfer slået til) */
+  showRequiredMarkers?: boolean
 }
 
 export default function TransferRouteEditor({
   cabinId,
   initialRoutes,
   onChange,
+  showRequiredMarkers = false,
 }: TransferRouteEditorProps) {
   function patchRoute(index: number, patch: Partial<TransferRoute>) {
     const next = initialRoutes.map((r, i) => (i === index ? { ...r, ...patch } : r))
@@ -67,11 +74,8 @@ export default function TransferRouteEditor({
   }
 
   function handleOneWayKrChange(index: number, value: string) {
-    const oneWayOre = parseKrToOre(value)
-    const roundtripOre = suggestedRoundtripOreFromOneWayOre(oneWayOre)
     patchRoute(index, {
-      price_one_way_ore: oneWayOre,
-      price_roundtrip_ore: roundtripOre,
+      price_one_way_ore: parseKrToOre(value),
     })
   }
 
@@ -92,7 +96,7 @@ export default function TransferRouteEditor({
       ...initialRoutes,
       {
         from_arrival_point: "",
-        transport_type: "boat",
+        transport_type: "car",
         price_one_way_ore: 0,
         price_roundtrip_ore: 0,
         max_guests: 4,
@@ -104,122 +108,156 @@ export default function TransferRouteEditor({
 
   return (
     <div className="space-y-0 font-sans">
-      {initialRoutes.map((route, index) => (
-        <div key={routeRowKey(cabinId, route, index)}>
-          {index > 0 && <hr className="my-6 border-border" />}
-          <div className="space-y-4">
-            <div className="w-full space-y-2">
-              <Label htmlFor={`${cabinId}-arrival-${index}`} className="text-xs text-muted-foreground">
-                Fra ankomstpunkt
-              </Label>
-              <Input
-                id={`${cabinId}-arrival-${index}`}
-                type="text"
-                value={route.from_arrival_point}
-                onChange={(e) => patchRoute(index, { from_arrival_point: e.target.value })}
-                placeholder='fx "Nuuk Havn"'
-                className="w-full rounded-xl"
-              />
-            </div>
+      {initialRoutes.map((route, index) => {
+        const suggestRt =
+          route.price_one_way_ore > 0
+            ? suggestedRoundtripOreFromOneWayOre(route.price_one_way_ore)
+            : null
+        return (
+          <div key={routeRowKey(cabinId, route, index)}>
+            {index > 0 && <hr className="my-6 border-border" />}
+            <div className="space-y-4">
+              <div className="w-full space-y-2">
+                <Label htmlFor={`${cabinId}-arrival-${index}`} className="text-xs text-muted-foreground">
+                  Fra ankomstpunkt
+                  {reqStar(showRequiredMarkers)}
+                </Label>
+                <Input
+                  id={`${cabinId}-arrival-${index}`}
+                  type="text"
+                  value={route.from_arrival_point}
+                  onChange={(e) => patchRoute(index, { from_arrival_point: e.target.value })}
+                  placeholder='Fx "Nuuk Havn"'
+                  className="w-full rounded-xl"
+                />
+              </div>
 
-            <div className="w-full space-y-2">
-              <Label className="text-xs text-muted-foreground">Transportform</Label>
-              <Select
-                value={route.transport_type}
-                onValueChange={(v) =>
-                  patchRoute(index, { transport_type: v as TransferTransportType })
-                }
+              <div className="w-full space-y-2">
+                <Label className="text-xs text-muted-foreground">
+                  Transportform
+                  {reqStar(showRequiredMarkers)}
+                </Label>
+                <Select
+                  value={route.transport_type}
+                  onValueChange={(v) =>
+                    patchRoute(index, { transport_type: v as TransferTransportType })
+                  }
+                >
+                  <SelectTrigger className="w-full rounded-xl sm:max-w-md" size="default">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {TRANSPORT_OPTIONS.map((opt) => (
+                      <SelectItem
+                        key={opt.value}
+                        value={opt.value}
+                        className="rounded-lg cursor-default focus:bg-gray-50 data-[highlighted]:bg-gray-50"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span aria-hidden>{opt.icon}</span>
+                          <span>{opt.label}</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="w-full space-y-2">
+                  <Label htmlFor={`${cabinId}-oneway-${index}`} className="text-xs text-muted-foreground">
+                    Pris enkelttur (kr)
+                    {reqStar(showRequiredMarkers)}
+                  </Label>
+                  <Input
+                    id={`${cabinId}-oneway-${index}`}
+                    type="text"
+                    inputMode="decimal"
+                    value={krInputValue(route.price_one_way_ore)}
+                    onChange={(e) => handleOneWayKrChange(index, e.target.value)}
+                    placeholder="0"
+                    className="w-full rounded-xl"
+                  />
+                  {suggestRt != null && (
+                    <p className="text-xs text-muted-foreground">
+                      Forslag tur/retur (1,8× enkelttur):{" "}
+                      <span className="tabular-nums">{(suggestRt / 100).toLocaleString("da-DK")} kr</span>
+                      {" — "}udfyld feltet nedenfor
+                    </p>
+                  )}
+                </div>
+                <div className="w-full space-y-2">
+                  <Label htmlFor={`${cabinId}-round-${index}`} className="text-xs text-muted-foreground">
+                    Pris tur/retur (kr)
+                    {reqStar(showRequiredMarkers)}
+                  </Label>
+                  <Input
+                    id={`${cabinId}-round-${index}`}
+                    type="text"
+                    inputMode="decimal"
+                    value={krInputValue(route.price_roundtrip_ore)}
+                    onChange={(e) => handleRoundTripKrChange(index, e.target.value)}
+                    placeholder={
+                      suggestRt != null
+                        ? `Fx ${(suggestRt / 100).toLocaleString("da-DK")}`
+                        : "0"
+                    }
+                    className={cn(
+                      "w-full rounded-xl",
+                      suggestRt != null &&
+                        route.price_roundtrip_ore === 0 &&
+                        "placeholder:text-muted-foreground/70",
+                    )}
+                  />
+                </div>
+              </div>
+
+              <div className="w-full space-y-2 sm:max-w-xs">
+                <Label htmlFor={`${cabinId}-guests-${index}`} className="text-xs text-muted-foreground">
+                  Maks. gæster
+                  {reqStar(showRequiredMarkers)}
+                </Label>
+                <Input
+                  id={`${cabinId}-guests-${index}`}
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={route.max_guests}
+                  onChange={(e) => {
+                    const n = parseInt(e.target.value, 10)
+                    patchRoute(index, { max_guests: Number.isFinite(n) && n >= 1 ? n : 1 })
+                  }}
+                  className="w-full rounded-xl"
+                />
+              </div>
+
+              <div className="w-full space-y-2">
+                <Label htmlFor={`${cabinId}-desc-${index}`} className="text-xs text-muted-foreground">
+                  Beskrivelse til gæsten
+                  {reqStar(showRequiredMarkers)}
+                </Label>
+                <Textarea
+                  id={`${cabinId}-desc-${index}`}
+                  value={route.description}
+                  onChange={(e) => patchRoute(index, { description: e.target.value })}
+                  placeholder="Fx hvor I mødes, hvad der er inkluderet, og at tidspunkt og praktiske detaljer aftales med udbyderen på Sila efter booking."
+                  className={cn("min-h-20 w-full rounded-xl resize-y")}
+                />
+              </div>
+
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                className="w-full rounded-xl sm:w-auto"
+                onClick={() => removeRoute(index)}
               >
-                <SelectTrigger className="w-full rounded-xl sm:max-w-md" size="default">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TRANSPORT_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      <span className="flex items-center gap-2">
-                        <span aria-hidden>{opt.icon}</span>
-                        <span>{opt.label}</span>
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                Slet rute
+              </Button>
             </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="w-full space-y-2">
-                <Label htmlFor={`${cabinId}-oneway-${index}`} className="text-xs text-muted-foreground">
-                  Pris enkelttur (kr)
-                </Label>
-                <Input
-                  id={`${cabinId}-oneway-${index}`}
-                  type="text"
-                  inputMode="decimal"
-                  value={krInputValue(route.price_one_way_ore)}
-                  onChange={(e) => handleOneWayKrChange(index, e.target.value)}
-                  placeholder="0"
-                  className="w-full rounded-xl"
-                />
-              </div>
-              <div className="w-full space-y-2">
-                <Label htmlFor={`${cabinId}-round-${index}`} className="text-xs text-muted-foreground">
-                  Pris tur/retur (kr)
-                </Label>
-                <Input
-                  id={`${cabinId}-round-${index}`}
-                  type="text"
-                  inputMode="decimal"
-                  value={krInputValue(route.price_roundtrip_ore)}
-                  onChange={(e) => handleRoundTripKrChange(index, e.target.value)}
-                  placeholder="0"
-                  className="w-full rounded-xl"
-                />
-              </div>
-            </div>
-
-            <div className="w-full space-y-2 sm:max-w-xs">
-              <Label htmlFor={`${cabinId}-guests-${index}`} className="text-xs text-muted-foreground">
-                Maks. gæster
-              </Label>
-              <Input
-                id={`${cabinId}-guests-${index}`}
-                type="number"
-                min={1}
-                step={1}
-                value={route.max_guests}
-                onChange={(e) => {
-                  const n = parseInt(e.target.value, 10)
-                  patchRoute(index, { max_guests: Number.isFinite(n) && n >= 1 ? n : 1 })
-                }}
-                className="w-full rounded-xl"
-              />
-            </div>
-
-            <div className="w-full space-y-2">
-              <Label htmlFor={`${cabinId}-desc-${index}`} className="text-xs text-muted-foreground">
-                Beskrivelse til gæsten
-              </Label>
-              <Textarea
-                id={`${cabinId}-desc-${index}`}
-                value={route.description}
-                onChange={(e) => patchRoute(index, { description: e.target.value })}
-                placeholder="Hvor mødes I, hvad er inkluderet, …"
-                className={cn("min-h-20 w-full rounded-xl resize-y")}
-              />
-            </div>
-
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              className="w-full rounded-xl sm:w-auto"
-              onClick={() => removeRoute(index)}
-            >
-              Slet rute
-            </Button>
           </div>
-        </div>
-      ))}
+        )
+      })}
 
       <div className={cn(initialRoutes.length > 0 ? "mt-6 pt-2" : "pt-0")}>
         <Button

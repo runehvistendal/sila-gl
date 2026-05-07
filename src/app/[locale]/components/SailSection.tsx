@@ -1,13 +1,11 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo } from "react"
 import dynamic from "next/dynamic"
-import { Anchor, Users, ArrowRight, Home as HomeLucide, MapPin } from "lucide-react"
+import { Anchor, Users, ArrowRight } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { Link } from "@/i18n/navigation"
-import { cn } from "@/lib/utils"
 import type { TransportMapRoute } from "@/components/map/TransportMap"
-import { cabinPinsToMapRoutes, type CabinMapPin } from "@/lib/cabinMapRoutes"
 import { getLocationName } from "@/lib/greenlandLocations"
 
 export type HomeRideShareMapRow = {
@@ -40,7 +38,6 @@ const TransportMap = dynamic(() => import("@/components/map/TransportMap"), {
 })
 
 const FEATURE_ICONS_SAM = [Users, Anchor] as const
-const FEATURE_ICONS_CABIN = [HomeLucide, MapPin] as const
 
 function rideRowsToRoutes(rows: HomeRideShareMapRow[]): TransportMapRoute[] {
   return rows
@@ -72,21 +69,14 @@ function rideRowsToRoutes(rows: HomeRideShareMapRow[]): TransportMapRoute[] {
     }))
 }
 
-type Tab = "transport" | "cabins"
-
 interface Props {
   rideShares: HomeRideShareMapRow[]
-  cabinPins: CabinMapPin[]
 }
 
-export default function SailSection({ rideShares, cabinPins }: Props) {
+export default function SailSection({ rideShares }: Props) {
   const t = useTranslations("home")
-  const [tab, setTab] = useState<Tab>("transport")
 
   const transportRoutes = useMemo(() => rideRowsToRoutes(rideShares), [rideShares])
-  const cabinRoutes = useMemo(() => cabinPinsToMapRoutes(cabinPins), [cabinPins])
-
-  const mapRoutes = tab === "transport" ? transportRoutes : cabinRoutes
 
   const transportFeatures = useMemo(
     () =>
@@ -97,14 +87,6 @@ export default function SailSection({ rideShares, cabinPins }: Props) {
     [t],
   )
 
-  const cabinFeatures = useMemo(
-    () =>
-      ([0, 1] as const).map((i) => ({
-        label: t(`cabinMapSection.features.${i}.label`),
-        desc: t(`cabinMapSection.features.${i}.desc`),
-      })),
-    [t],
-  )
   const transportHeadLead = useMemo(
     () => t("sailSection.title").replace(/\s*[—–-]\s*$/, "").trim(),
     [t],
@@ -113,133 +95,52 @@ export default function SailSection({ rideShares, cabinPins }: Props) {
   return (
     <section className="py-20 bg-background">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-8">
-        <div className="flex justify-center md:justify-start">
-          <div
-            role="tablist"
-            aria-label={t("sailMapTabs.aria")}
-            className="inline-flex rounded-full border border-border bg-muted/40 p-1"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === "transport"}
-              onClick={() => setTab("transport")}
-              className={cn(
-                "rounded-full px-5 py-2 text-sm font-semibold transition-colors",
-                tab === "transport"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {t("sailMapTabs.samsejlads")}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === "cabins"}
-              onClick={() => setTab("cabins")}
-              className={cn(
-                "rounded-full px-5 py-2 text-sm font-semibold transition-colors",
-                tab === "cabins"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {t("sailMapTabs.hytter")}
-            </button>
-          </div>
-        </div>
-
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div>
-            {tab === "transport" ? (
-              <>
-                <div className="inline-flex items-center gap-2 text-primary/70 text-xs font-bold tracking-widest uppercase mb-5">
-                  <Anchor size={14} /> {t("sailSection.uniqueLabel")}
-                </div>
-                <h2 className="text-3xl sm:text-4xl font-bold mb-4 leading-tight">
-                  <span className="text-foreground">{transportHeadLead}</span>
-                  <em className="font-normal italic text-primary">
-                    {" "}
-                    — {t("sailSection.titleHighlight")}
-                  </em>
-                </h2>
-                <p className="text-muted-foreground text-lg leading-relaxed mb-8">{t("sailSection.desc")}</p>
-                <div className="flex flex-col gap-3 mb-8">
-                  {transportFeatures.map((f, i) => {
-                    const Icon = FEATURE_ICONS_SAM[i]
-                    return (
-                      <div
-                        key={f.label}
-                        className="flex items-center gap-4 rounded-2xl p-4 bg-card shadow-card border border-border"
-                      >
-                        <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
-                          <Icon size={18} className="text-primary" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">{f.label}</p>
-                          <p className="text-xs text-muted-foreground">{f.desc}</p>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-                <Link
-                  href="/transport"
-                  className="inline-flex items-center gap-2 px-8 py-3 rounded-full text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                >
-                  {t("sailSection.findBoat")} <ArrowRight size={15} />
-                </Link>
-              </>
-            ) : (
-              <>
-                <div className="inline-flex items-center gap-2 text-primary/70 text-xs font-bold tracking-widest uppercase mb-5">
-                  <HomeLucide size={14} /> {t("cabinMapSection.badge")}
-                </div>
-                <h2 className="text-3xl sm:text-4xl font-bold mb-4 leading-tight">
-                  <span className="text-foreground">{t("cabinMapSection.titleLead")}</span>
-                  <em className="font-normal italic text-primary">
-                    {" "}
-                    — {t("cabinMapSection.titleHighlight")}
-                  </em>
-                </h2>
-                <p className="text-muted-foreground text-lg leading-relaxed mb-8">{t("cabinMapSection.desc")}</p>
-                <div className="flex flex-col gap-3 mb-8">
-                  {cabinFeatures.map((f, i) => {
-                    const Icon = FEATURE_ICONS_CABIN[i]
-                    return (
-                      <div
-                        key={f.label}
-                        className="flex items-center gap-4 rounded-2xl p-4 bg-card shadow-card border border-border"
-                      >
-                        <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
-                          <Icon size={18} className="text-primary" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">{f.label}</p>
-                          <p className="text-xs text-muted-foreground">{f.desc}</p>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-                <Link
-                  href="/ophold/i-naturen"
-                  className="inline-flex items-center gap-2 px-8 py-3 rounded-full text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                >
-                  {t("cabinMapSection.seeAll")} <ArrowRight size={15} />
-                </Link>
-              </>
-            )}
+            <div className="inline-flex items-center gap-2 text-primary/70 text-xs font-bold tracking-widest uppercase mb-5">
+              <Anchor size={14} /> {t("sailSection.uniqueLabel")}
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold mb-4 leading-tight">
+              <span className="text-foreground">{transportHeadLead}</span>
+              <em className="font-normal italic text-primary">
+                {" "}
+                — {t("sailSection.titleHighlight")}
+              </em>
+            </h2>
+            <p className="text-muted-foreground text-lg leading-relaxed mb-8">{t("sailSection.desc")}</p>
+            <div className="flex flex-col gap-3 mb-8">
+              {transportFeatures.map((f, i) => {
+                const Icon = FEATURE_ICONS_SAM[i]
+                return (
+                  <div
+                    key={f.label}
+                    className="flex items-center gap-4 rounded-2xl p-4 bg-card shadow-card border border-border"
+                  >
+                    <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+                      <Icon size={18} className="text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{f.label}</p>
+                      <p className="text-xs text-muted-foreground">{f.desc}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <Link
+              href="/transport"
+              className="inline-flex items-center gap-2 px-8 py-3 rounded-full text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              {t("sailSection.findBoat")} <ArrowRight size={15} />
+            </Link>
           </div>
 
           <div className="relative rounded-2xl overflow-hidden h-80 lg:h-96 shadow-card-hover">
             <TransportMap
-              key={tab}
               mode="overview"
-              routes={mapRoutes}
+              routes={transportRoutes}
               className="h-full min-h-[20rem] border-0 rounded-2xl"
-              analyticsType={tab === "cabins" ? "cabin" : "transport"}
+              analyticsType="transport"
             />
           </div>
         </div>

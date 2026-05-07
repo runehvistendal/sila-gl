@@ -308,12 +308,6 @@ export default async function ResidenceDetailPage({
                 </div>
               )}
 
-              {cabin.offers_transport && (
-                <div className="rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-5 space-y-2">
-                  <h2 className="text-lg font-bold text-foreground">{tDetail("transfer_title")}</h2>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{tDetail("transfer_snippet")}</p>
-                </div>
-              )}
             </>
           }
           reviewsContent={

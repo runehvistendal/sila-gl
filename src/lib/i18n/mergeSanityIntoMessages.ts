@@ -81,7 +81,6 @@ export const GLOBAL_SETTINGS_SEMANTIC_FIELDS: { field: string; path: string }[] 
   { field: "homeSailFindBoat", path: "home.sailSection.findBoat" },
   { field: "homeCtaTitle", path: "home.cta.title" },
   { field: "homeCtaSubtitle", path: "home.cta.subtitle" },
-  { field: "homeCtaCreateExperience", path: "home.cta.createExperience" },
   { field: "homeCtaTransport", path: "home.cta.transport" },
   { field: "homeCtaStat0Value", path: "home.cta.stats.0.value" },
   { field: "homeCtaStat0Sub", path: "home.cta.stats.0.sub" },

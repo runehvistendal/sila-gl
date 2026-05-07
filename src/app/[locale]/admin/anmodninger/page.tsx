@@ -1,4 +1,4 @@
-import { getTranslations } from "next-intl/server"
+import { getLocale, getTranslations } from "next-intl/server"
 import { createServiceClient } from "@/lib/supabase-service"
 import {
   Table,
@@ -22,7 +22,9 @@ const STATUS_CLASSES: Record<string, string> = {
 }
 
 export default async function AdminAnmodningerPage() {
+  const locale = await getLocale()
   const t = await getTranslations("admin")
+  const tReq = await getTranslations({ locale, namespace: "request" })
   const svc = createServiceClient()
 
   const statusLabel: Record<string, string> = {
@@ -36,7 +38,7 @@ export default async function AdminAnmodningerPage() {
     .from("cabin_requests")
     .select(`
       id, location, desired_check_in, desired_check_out, num_guests,
-      max_price_ore, status, created_at,
+      max_price_ore, status, created_at, desired_property_type,
       profiles!guest_id(full_name)
     `)
     .is("deleted_at", null)
@@ -52,6 +54,7 @@ export default async function AdminAnmodningerPage() {
     max_price_ore: number | null
     status: string
     created_at: string
+    desired_property_type?: string | null
     profiles: { full_name: string | null } | null
   }
 
@@ -70,6 +73,7 @@ export default async function AdminAnmodningerPage() {
             <TableRow className="bg-gray-50">
               <TableHead className="font-semibold">{t("col_guest")}</TableHead>
               <TableHead className="font-semibold">{t("col_destination")}</TableHead>
+              <TableHead className="font-semibold">{t("col_stay_type")}</TableHead>
               <TableHead className="font-semibold">{t("col_check_in")}</TableHead>
               <TableHead className="font-semibold">{t("col_check_out")}</TableHead>
               <TableHead className="font-semibold">{t("col_count")}</TableHead>
@@ -89,6 +93,9 @@ export default async function AdminAnmodningerPage() {
                   </TableCell>
                   <TableCell className="text-gray-700 text-sm capitalize">
                     {r.location || "—"}
+                  </TableCell>
+                  <TableCell className="text-gray-700 text-sm">
+                    {r.desired_property_type === "residence" ? tReq("badge_residence") : tReq("badge_cabin")}
                   </TableCell>
                   <TableCell className="text-gray-700 text-sm">
                     {new Date(r.desired_check_in).toLocaleDateString("da-DK")}

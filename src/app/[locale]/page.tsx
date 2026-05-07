@@ -58,7 +58,7 @@ export default async function Home({ params }: Props) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const [t, tCabins, sanityHome, globalSettings, cabinsResult, mapRidesResult, mapCabinsResult] =
+  const [t, tCabins, sanityHome, globalSettings, cabinsResult, cityResult, mapRidesResult] =
     await Promise.all([
     getTranslations({ locale, namespace: "home" }),
     getTranslations({ locale, namespace: "cabins" }),
@@ -87,6 +87,28 @@ export default async function Home({ params }: Props) {
       .order("created_at", { ascending: false })
       .limit(3),
     supabase
+      .from("cabins")
+      .select(
+        `
+      id,
+      title,
+      location_hub,
+      price_per_night_ore,
+      max_guests,
+      instant_book,
+      offers_transport,
+      images,
+      amenities,
+      owner_id,
+      profiles!owner_id ( full_name )
+    `,
+      )
+      .eq("published", true)
+      .eq("property_type", "residence")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(3),
+    supabase
       .from("ride_shares")
       .select(
         `
@@ -106,18 +128,11 @@ export default async function Home({ params }: Props) {
       .eq("status", "active")
       .gt("seats_available", 0)
       .limit(20),
-    supabase
-      .from("cabins")
-      .select("id, title, location_hub")
-      .eq("published", true)
-      .eq("property_type", "cabin")
-      .is("deleted_at", null)
-      .limit(20),
   ])
 
   const navUser = user ? await getNavUserForPage(supabase, user) : null
 
-  const featuredCabins: CabinCardData[] = (cabinsResult.data ?? []).map((row: Record<string, unknown>) => ({
+  const mapCabinRow = (row: Record<string, unknown>): CabinCardData => ({
     id: row.id as string,
     title: row.title as string,
     location_hub: row.location_hub as string,
@@ -128,14 +143,12 @@ export default async function Home({ params }: Props) {
     images: (row.images as string[]) ?? [],
     amenities: (row.amenities as string[] | null) ?? null,
     host_name: (row.profiles as { full_name?: string } | null)?.full_name ?? null,
-  }))
+  })
+
+  const featuredCabins: CabinCardData[] = (cabinsResult.data ?? []).map(mapCabinRow)
+  const featuredCity: CabinCardData[] = (cityResult.data ?? []).map(mapCabinRow)
 
   const sailRideShares = (mapRidesResult.data ?? []) as HomeRideShareMapRow[]
-  const sailCabins = (mapCabinsResult.data ?? []) as {
-    id: string
-    title: string
-    location_hub: string
-  }[]
 
   const steps = ([0, 1, 2] as const).map((i) => ({
     title: t(`howItWorks.steps.${i}.title`),
@@ -241,7 +254,7 @@ export default async function Home({ params }: Props) {
             ) : (
               featuredCabins.map((cabin) => (
                 <div key={cabin.id} className="min-w-0">
-                  <CabinCard cabin={cabin} />
+                  <CabinCard cabin={cabin} detailHref={`/ophold/i-naturen/${cabin.id}`} />
                 </div>
               ))
             )}
@@ -255,10 +268,51 @@ export default async function Home({ params }: Props) {
               {t("cabinsSection.seeAllCabins")}
             </Link>
           </div>
+
+          <div className="mt-14 pt-14 border-t border-border">
+            <div className="flex items-end justify-between mb-2">
+              <div>
+                <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">
+                  {t("citySection.title")}
+                </h2>
+                <p className="text-muted-foreground text-sm">{t("citySection.subtitle")}</p>
+              </div>
+              <Link
+                href="/ophold/i-byen"
+                className="hidden sm:flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary/80 group"
+              >
+                {t("citySection.seeAll")}{" "}
+                <ArrowRight size={15} className="group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+            </div>
+
+            <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {featuredCity.length === 0 ? (
+                <div className="col-span-full text-center py-16 text-muted-foreground text-sm">
+                  {t("citySection.empty")}
+                </div>
+              ) : (
+                featuredCity.map((cabin) => (
+                  <div key={cabin.id} className="min-w-0">
+                    <CabinCard cabin={cabin} detailHref={`/ophold/i-byen/${cabin.id}`} />
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="mt-8 text-center sm:hidden">
+              <Link
+                href="/ophold/i-byen"
+                className="inline-flex items-center gap-1 px-6 py-2.5 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
+              >
+                {t("citySection.seeAllCity")}
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
 
-      <SailSection rideShares={sailRideShares} cabinPins={sailCabins} />
+      <SailSection rideShares={sailRideShares} />
 
       <section className="py-20 bg-primary">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
