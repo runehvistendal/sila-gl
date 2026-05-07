@@ -25,7 +25,12 @@ Grønlands marketplace for hytteudlejning og samsejlads. «Grønland på lokale 
 
 ### Nyt 7.5.2026
 
-- **Dato-bevidst søgning** ✅ — `/hytter?checkIn=YYYY-MM-DD&checkOut=YYYY-MM-DD` filtrerer cabins server-side via `cabin_availability` (is_available=false-overlap) + `cabin_bookings` (status='confirmed', overlap) i `src/app/[locale]/hytter/page.tsx`. `/transport?date=YYYY-MM-DD` filtrerer ride_shares server-side med `.gte("departure_at", nuukDateToUtcIso(date))` (Nuuk-midnat → UTC) i `src/app/[locale]/transport/page.tsx`. **HeroContent** har tabs (Hytter | Samsejlads) — Hytter-tab: hub + indtjek + udtjek; Samsejlads-tab: afrejsedato. **CabinFilters**: dato-inputs i popover + chips for aktive datoer (med X). **TransportFilters**: afrejsedato i popover + chip. Bundlet keys: `home.searchTabs.*`, `home.searchDates.*`. Native `<input type="date">`. Mobile-first.
+- Produktstrategi besluttet — se CLAUDE.md ## Produktstrategi
+- Korttidsboligudlejning bygget: /ophold/i-naturen + /ophold/i-byen + /opret/bolig
+- greenlandLocations.ts: location_type + arrival_points + hjælpefunktioner
+- Hero: Ophold/Samsejlads tabs, Hvem?-felt i samsejlads
+- Testdata: lokationer rettet, Maliks hytte publiceret
+- Migrationer: 20260507000000, 20260507120000, 20260507140000
 
 ## Status (6.5.2026)
 
@@ -96,18 +101,23 @@ Grønlands marketplace for hytteudlejning og samsejlads. «Grønland på lokale 
 
 ## Næste trin
 
-1. ~~i18n — dansk + engelsk med next-intl~~ ✅
-2. ~~SEO grundlag~~ ✅ — `src/lib/metadata.ts`, `sitemap.ts`, `robots.ts`, `/destination/[slug]`, JsonLd (forside, hytte, transport, destination); polering + indhold se **Påmindelser**
-3. ~~Sanity: Visual Editing + Page Builder + globalSettings~~ ✅ — se blokken ovenfor
-4. ~~Dato-bevidst søgning~~ ✅ — se Status 7.5
-5. **i18n-oprydning** — `TYPE_LABEL`, `region_label`, øvrige hardkodede strenge til brugerens sprog
-6. **Lighthouse-test**
-7. **Stripe live-test end-to-end** — kritisk; **inkl. 3 %-servicegebyr-linje**
-8. **MobilePay til Stripe**
-9. **Lancering** — første 20 udbydere
-10. **Produktstrategi** besluttet 7.5.2026 — se CLAUDE.md ## Produktstrategi
-11. **Transfer-flow** skal bygges (AddOnServicesEditor-mønster + `from_location_id` på `transport_offers`)
-12. **Korttidsboligudlejning** tilføjes som kategori under Ophold (I naturen / I byen)
+1. **Transfer-flow** (næste sprint — høj prioritet):
+   - /ophold/i-byen/[id]: transfer vises ikke selvom udbyderen har valgt det — fix display
+   - /opret/bolig: dropdown viser kun 6 byer — skal bruge LocationAutocomplete med alle byer + bygder (`isInByenCategory` = true)
+   - /opret/bolig: udbyderen kan kun vælge by, ikke ankomstpunkt (Nuuk Lufthavn/Nuuk Havn) — tilføj arrival_points-trin efter lokationsvalg
+   - Transfer-flow generelt: AddOnServicesEditor-mønster + `from_location_id` på `transport_offers`
+
+2. **Stripe live-test end-to-end** — kritisk inden lancering; inkl. 3%-servicegebyr-linje
+
+3. **Admin /admin/hytter** — bolig-rækker skal bruge `publishedCabinDetailPath`
+
+4. **ESLint** — `react-hooks/set-state-in-effect` i `BoligForm.tsx`, `CreateForm.tsx`, `BaadForm.tsx`
+
+5. **AI SEO-strategi** — udestår; påmind Rune inden lancering
+
+6. **MobilePay til Stripe** — fase 3
+
+7. **Lancering** — første 20 udbydere
 
 ## Sanity CMS (5.5.2026 — reference)
 
