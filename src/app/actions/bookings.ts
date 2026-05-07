@@ -190,13 +190,16 @@ export async function createCabinBooking(
   let transferRouteId: string | null = null
   let transferIsRoundtripSnapshot: boolean | null = null
   let transferPriceOreSnapshot: number | null = null
+  let transferFromArrivalPoint: string | null = null
 
   const structuredId =
     typeof input.transfer_route_id === "string" ? input.transfer_route_id.trim() : ""
   if (structuredId.length > 0) {
     const { data: trRow, error: trErr } = await supabase
       .from("transfer_routes")
-      .select("id, cabin_id, price_one_way_ore, price_roundtrip_ore, max_guests")
+      .select(
+        "id, cabin_id, from_arrival_point, price_one_way_ore, price_roundtrip_ore, max_guests",
+      )
       .eq("id", structuredId)
       .maybeSingle()
 
@@ -224,6 +227,7 @@ export async function createCabinBooking(
     transferRouteId = (trRow as { id: string }).id
     transferIsRoundtripSnapshot = isRt
     transferPriceOreSnapshot = expectedOre
+    transferFromArrivalPoint = (trRow as { from_arrival_point: string }).from_arrival_point
   } else {
     let trip: TransportTrip = input.transport_trip ?? "none"
     const allowed: TransportTrip[] = ["none", "round_trip", "outbound", "return"]
@@ -355,8 +359,12 @@ export async function createCabinBooking(
   )
 
   const nightsLabelDa = `${nights} ${nights === 1 ? "nat" : "nætter"}`
-  const transportHint =
-    transportTotalOre > 0 ? "Inkl. tilvalgt transport til/fra hytten." : undefined
+
+  const opholdOre = cabinStayOre
+  const transferPriceOreForFee =
+    transferPriceOreSnapshot != null && transferPriceOreSnapshot > 0
+      ? transferPriceOreSnapshot
+      : transportTotalOre
 
   const lineItems: Array<{
     quantity: number
@@ -370,14 +378,38 @@ export async function createCabinBooking(
       quantity: 1,
       price_data: {
         currency: "dkk",
-        unit_amount: totalPriceOre,
+        unit_amount: opholdOre,
         product_data: {
           name: `Hytteophold (${nightsLabelDa})`,
-          description: transportHint,
         },
       },
     },
   ]
+
+  if (transferPriceOreSnapshot != null && transferPriceOreSnapshot > 0 && transferFromArrivalPoint) {
+    lineItems.push({
+      quantity: 1,
+      price_data: {
+        currency: "dkk",
+        unit_amount: transferPriceOreSnapshot,
+        product_data: {
+          name: `Transfer fra ${transferFromArrivalPoint}`,
+        },
+      },
+    })
+  } else if (transportTotalOre > 0) {
+    lineItems.push({
+      quantity: 1,
+      price_data: {
+        currency: "dkk",
+        unit_amount: transportTotalOre,
+        product_data: {
+          name: "Transport til/fra ophold",
+        },
+      },
+    })
+  }
+
   if (serviceFeeOre > 0) {
     lineItems.push({
       quantity: 1,
@@ -389,6 +421,9 @@ export async function createCabinBooking(
     })
   }
 
+  const applicationFeeAmount =
+    Math.round((opholdOre + transferPriceOreForFee) * 0.15) + serviceFeeOre
+
   try {
     const sessionCheckout = await stripe.checkout.sessions.create(
       {
@@ -396,7 +431,7 @@ export async function createCabinBooking(
         payment_method_types: ["card"],
         line_items: lineItems,
         payment_intent_data: {
-          application_fee_amount: platformFeeOre + serviceFeeOre,
+          application_fee_amount: applicationFeeAmount,
           transfer_data: {
             destination: o.stripe_account_id,
           },
