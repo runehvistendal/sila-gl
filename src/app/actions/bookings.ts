@@ -14,8 +14,13 @@ export type CreateCabinBookingInput = {
   check_in: string
   check_out: string
   guests: number
-  /** Kun relevant hvis hytten tilbyder transport */
+  /** Kun relevant hvis hytten tilbyder transport (legacy per-person) */
   transport_trip?: TransportTrip
+  /** Struktureret transfer (transfer_routes); tilsidesætter legacy-transport */
+  transfer_route_id?: string | null
+  transfer_is_roundtrip?: boolean
+  /** Skal matche rutes enkelt- eller tur/retur-pris i DB */
+  transfer_price_ore?: number
 }
 
 export type CreateCabinBookingResult = { url: string } | { error: string }
@@ -149,19 +154,6 @@ export async function createCabinBooking(
     return { error: `Højst ${c.max_guests} gæster` }
   }
 
-  let trip: TransportTrip = input.transport_trip ?? "none"
-  const allowed: TransportTrip[] = ["none", "round_trip", "outbound", "return"]
-  if (!allowed.includes(trip)) trip = "none"
-  if (!c.offers_transport) {
-    trip = "none"
-  }
-
-  const perPerson = c.transport_price_per_person_ore ?? 0
-  const transportTotalOre = transportOreForTrip(trip, perPerson, guests)
-  if (c.offers_transport && trip !== "none" && perPerson <= 0) {
-    return { error: "Transportpris er ikke angivet for denne hytte" }
-  }
-
   const { data: ownerRows, error: ownerErr } = await supabase.rpc(
     "get_owner_stripe_info",
     { p_cabin_id: c.id },
@@ -193,6 +185,60 @@ export async function createCabinBooking(
   if (cabinStayOre < 1) {
     return { error: "Ugyldig pris" }
   }
+
+  let transportTotalOre = 0
+  let transferRouteId: string | null = null
+  let transferIsRoundtripSnapshot: boolean | null = null
+  let transferPriceOreSnapshot: number | null = null
+
+  const structuredId =
+    typeof input.transfer_route_id === "string" ? input.transfer_route_id.trim() : ""
+  if (structuredId.length > 0) {
+    const { data: trRow, error: trErr } = await supabase
+      .from("transfer_routes")
+      .select("id, cabin_id, price_one_way_ore, price_roundtrip_ore, max_guests")
+      .eq("id", structuredId)
+      .maybeSingle()
+
+    if (trErr || !trRow) {
+      return { error: "Transfer findes ikke" }
+    }
+    if ((trRow as { cabin_id: string }).cabin_id !== c.id) {
+      return { error: "Transfer matcher ikke dette ophold" }
+    }
+    const maxG = (trRow as { max_guests: number }).max_guests
+    if (guests > maxG) {
+      return {
+        error: `Denne transfer kan højst bookes med ${maxG} gæster`,
+      }
+    }
+    const isRt = Boolean(input.transfer_is_roundtrip)
+    const expectedOre = isRt
+      ? (trRow as { price_roundtrip_ore: number }).price_roundtrip_ore
+      : (trRow as { price_one_way_ore: number }).price_one_way_ore
+    const claimed = input.transfer_price_ore
+    if (typeof claimed !== "number" || claimed !== expectedOre) {
+      return { error: "Ugyldig transferpris" }
+    }
+    transportTotalOre = expectedOre
+    transferRouteId = (trRow as { id: string }).id
+    transferIsRoundtripSnapshot = isRt
+    transferPriceOreSnapshot = expectedOre
+  } else {
+    let trip: TransportTrip = input.transport_trip ?? "none"
+    const allowed: TransportTrip[] = ["none", "round_trip", "outbound", "return"]
+    if (!allowed.includes(trip)) trip = "none"
+    if (!c.offers_transport) {
+      trip = "none"
+    }
+
+    const perPerson = c.transport_price_per_person_ore ?? 0
+    transportTotalOre = transportOreForTrip(trip, perPerson, guests)
+    if (c.offers_transport && trip !== "none" && perPerson <= 0) {
+      return { error: "Transportpris er ikke angivet for denne hytte" }
+    }
+  }
+
   const totalPriceOre = cabinStayOre + transportTotalOre
   const platformFeeOre = Math.round(totalPriceOre * 0.15)
   const serviceFeeOre = calcServiceFee(totalPriceOre)
@@ -287,6 +333,9 @@ export async function createCabinBooking(
       status: "pending",
       includes_transport: transportTotalOre > 0,
       transport_total_ore: transportTotalOre,
+      transfer_route_id: transferRouteId,
+      transfer_price_ore: transferPriceOreSnapshot,
+      transfer_is_roundtrip: transferRouteId ? transferIsRoundtripSnapshot : null,
     })
     .select("id")
     .single()

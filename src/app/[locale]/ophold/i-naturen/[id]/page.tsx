@@ -22,8 +22,10 @@ import { oreToKr } from "@/lib/money"
 import ListingImageGallery from "@/components/cabins/ListingImageGallery"
 import CabinReviews from "@/components/cabins/CabinReviews"
 import CabinDetailLayout from "@/components/cabins/CabinDetailLayout"
+import TransferRoutesDisplay from "@/components/cabins/TransferRoutesDisplay"
 import { CabinViewTracker } from "@/components/analytics/CabinViewTracker"
 import { getLocationName } from "@/lib/greenlandLocations"
+import type { TransferRoute } from "@/types/transfer"
 
 export type CabinNatureDetailData = {
   id: string
@@ -112,7 +114,7 @@ export default async function OpholdNatureDetailPage({
 
   const cabin = cabinRaw as unknown as CabinNatureDetailData
 
-  const [{ data: occRows }, { data: blockRows }, { data: transportRows }] =
+  const [{ data: occRows }, { data: blockRows }, { data: transportRows }, { data: transferRouteRows }] =
     await Promise.all([
       supabase.rpc("get_cabin_occupancy", { p_cabin_id: id }),
       supabase
@@ -133,7 +135,25 @@ export default async function OpholdNatureDetailPage({
         .gt("departure_at", new Date().toISOString())
         .order("departure_at", { ascending: true })
         .limit(5),
+      supabase
+        .from("transfer_routes")
+        .select(
+          "id, from_arrival_point, transport_type, price_one_way_ore, price_roundtrip_ore, max_guests, description, sort_order",
+        )
+        .eq("cabin_id", id)
+        .order("sort_order", { ascending: true }),
     ])
+
+  const transferRoutes: TransferRoute[] = (transferRouteRows ?? []).map((r) => ({
+    id: r.id,
+    from_arrival_point: r.from_arrival_point,
+    transport_type: r.transport_type === "boat" ? "boat" : "car",
+    price_one_way_ore: r.price_one_way_ore,
+    price_roundtrip_ore: r.price_roundtrip_ore,
+    max_guests: r.max_guests,
+    description: r.description ?? "",
+    sort_order: r.sort_order,
+  }))
 
   const bookingRows = (occRows ?? []) as { check_in: string; check_out: string }[]
   const occupied = nightsFromBookings(bookingRows)
@@ -244,6 +264,8 @@ export default async function OpholdNatureDetailPage({
           transports={
             (transportRows ?? []) as unknown as import("@/components/cabins/CabinTransportSection").RideShareData[]
           }
+          transferRoutesContent={<TransferRoutesDisplay cabinId={cabin.id} />}
+          transferRoutes={transferRoutes}
           isLoggedIn={!!user}
           loginNextPath={`/ophold/i-naturen/${cabin.id}`}
           disabledYmd={disabledYmd}

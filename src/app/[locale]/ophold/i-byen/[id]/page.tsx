@@ -15,8 +15,10 @@ import { oreToKr } from "@/lib/money"
 import ListingImageGallery from "@/components/cabins/ListingImageGallery"
 import CabinReviews from "@/components/cabins/CabinReviews"
 import CabinDetailLayout from "@/components/cabins/CabinDetailLayout"
+import TransferRoutesDisplay from "@/components/cabins/TransferRoutesDisplay"
 import { CabinViewTracker } from "@/components/analytics/CabinViewTracker"
 import { getLocationName } from "@/lib/greenlandLocations"
+import type { TransferRoute } from "@/types/transfer"
 
 export type ResidenceDetailData = {
   id: string
@@ -107,7 +109,7 @@ export default async function ResidenceDetailPage({
 
   const cabin = cabinRaw as unknown as ResidenceDetailData
 
-  const [{ data: occRows }, { data: blockRows }] = await Promise.all([
+  const [{ data: occRows }, { data: blockRows }, { data: transferRouteRows }] = await Promise.all([
     supabase.rpc("get_cabin_occupancy", { p_cabin_id: id }),
     supabase
       .from("cabin_availability")
@@ -115,7 +117,25 @@ export default async function ResidenceDetailPage({
       .eq("cabin_id", id)
       .eq("is_available", false)
       .is("deleted_at", null),
+    supabase
+      .from("transfer_routes")
+      .select(
+        "id, from_arrival_point, transport_type, price_one_way_ore, price_roundtrip_ore, max_guests, description, sort_order",
+      )
+      .eq("cabin_id", id)
+      .order("sort_order", { ascending: true }),
   ])
+
+  const transferRoutes: TransferRoute[] = (transferRouteRows ?? []).map((r) => ({
+    id: r.id,
+    from_arrival_point: r.from_arrival_point,
+    transport_type: r.transport_type === "boat" ? "boat" : "car",
+    price_one_way_ore: r.price_one_way_ore,
+    price_roundtrip_ore: r.price_roundtrip_ore,
+    max_guests: r.max_guests,
+    description: r.description ?? "",
+    sort_order: r.sort_order,
+  }))
 
   const bookingRows = (occRows ?? []) as { check_in: string; check_out: string }[]
   const occupied = nightsFromBookings(bookingRows)
@@ -232,6 +252,8 @@ export default async function ResidenceDetailPage({
             profiles: cabin.profiles,
           }}
           transports={[]}
+          transferRoutesContent={<TransferRoutesDisplay cabinId={cabin.id} />}
+          transferRoutes={transferRoutes}
           isLoggedIn={!!user}
           loginNextPath={`/ophold/i-byen/${cabin.id}`}
           disabledYmd={disabledYmd}

@@ -23,7 +23,8 @@ import {
 } from "@/app/actions/bookings"
 import { cn } from "@/lib/utils"
 import { captureEvent, PH_STORE } from "@/lib/analytics/posthog-events"
-import { calcServiceFee } from "@/lib/money"
+import { calcServiceFee, oreToKr } from "@/lib/money"
+import type { TransferRoute } from "@/types/transfer"
 import "react-day-picker/style.css"
 
 const DRAFT_KEY = "sila_cabin_booking_draft_v1"
@@ -34,6 +35,8 @@ type Draft = {
   checkOut: string
   guests: number
   transport: TransportTrip
+  transferRouteId?: string | null
+  transferRoundTrip?: boolean
 }
 
 type CabinProps = {
@@ -55,10 +58,23 @@ type Props = {
   disabledYmd: string[]
   /** Kaldes når gæsteantal ændres — bruges til at synkronisere med CabinTransportSection */
   onGuestsChange?: (guests: number) => void
+  /** Strukturerede transferruter fra `transfer_routes` (server-hentet) */
+  transferRoutes?: TransferRoute[]
 }
 
 function parseYmdLocal(s: string): Date {
   return parseISO(s + "T12:00:00")
+}
+
+function fmtOreKrLine(ore: number): string {
+  return `${oreToKr(ore).toLocaleString("da-DK", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })} kr`
+}
+
+function routeTransportIcon(t: TransferRoute["transport_type"]): string {
+  return t === "boat" ? "🚤" : "🚗"
 }
 
 export default function CabinBookingWidget({
@@ -67,6 +83,7 @@ export default function CabinBookingWidget({
   loginNextPath,
   disabledYmd,
   onGuestsChange,
+  transferRoutes = [],
 }: Props) {
   const router = useRouter()
   const locale = useLocale()
@@ -87,6 +104,8 @@ export default function CabinBookingWidget({
   const [transport, setTransport] = useState<TransportTrip>(
     cabin.offers_transport ? "outbound" : "none"
   )
+  const [selectedTransferRouteId, setSelectedTransferRouteId] = useState<string | null>(null)
+  const [transferIsRoundtrip, setTransferIsRoundtrip] = useState(false)
 
   const TRIP_OPTIONS: { value: TransportTrip; label: string }[] = [
     { value: "outbound", label: t("booking_trip_outbound_only") },
@@ -131,7 +150,16 @@ export default function CabinBookingWidget({
 
   const cabinTotalOre = nights * cabin.price_per_night_ore
   const perPerson = cabin.transport_price_per_person_ore ?? 0
-  const transportTotalOre = useMemo(() => {
+
+  const structuredTransferOre = useMemo(() => {
+    if (transferRoutes.length === 0 || !selectedTransferRouteId) return 0
+    const r = transferRoutes.find((x) => x.id === selectedTransferRouteId)
+    if (!r) return 0
+    return transferIsRoundtrip ? r.price_roundtrip_ore : r.price_one_way_ore
+  }, [transferRoutes, selectedTransferRouteId, transferIsRoundtrip])
+
+  const legacyTransportOre = useMemo(() => {
+    if (transferRoutes.length > 0) return 0
     if (!cabin.offers_transport || transport === "none" || perPerson <= 0) {
       return 0
     }
@@ -140,11 +168,23 @@ export default function CabinBookingWidget({
       return perPerson * guests
     }
     return 0
-  }, [cabin.offers_transport, transport, perPerson, guests])
+  }, [transferRoutes.length, cabin.offers_transport, transport, perPerson, guests])
 
-  const totalOre = cabinTotalOre + transportTotalOre
-  const serviceFeeOre = totalOre > 0 ? calcServiceFee(totalOre) : 0
-  const guestTotalOre = totalOre + serviceFeeOre
+  const transportAddonOre = transferRoutes.length > 0 ? structuredTransferOre : legacyTransportOre
+  const subtotalOre = cabinTotalOre + transportAddonOre
+  const serviceFeeOre = subtotalOre > 0 ? calcServiceFee(subtotalOre) : 0
+  const guestTotalOre = subtotalOre + serviceFeeOre
+
+  const selectedTransferRoute = useMemo(
+    () =>
+      selectedTransferRouteId
+        ? transferRoutes.find((x) => x.id === selectedTransferRouteId) ?? null
+        : null,
+    [transferRoutes, selectedTransferRouteId],
+  )
+
+  const transferGuestsInvalid =
+    !!selectedTransferRoute && guests > selectedTransferRoute.max_guests
 
   const loginHref = `/login?next=${encodeURIComponent(loginNextPath)}`
 
@@ -164,6 +204,14 @@ export default function CabinBookingWidget({
         setGuestsInput(String(d.guests))
       }
       if (d.transport) setTransport(d.transport)
+      if (d.transferRouteId !== undefined) {
+        setSelectedTransferRouteId(
+          typeof d.transferRouteId === "string" ? d.transferRouteId : null,
+        )
+      }
+      if (typeof d.transferRoundTrip === "boolean") {
+        setTransferIsRoundtrip(d.transferRoundTrip)
+      }
       sessionStorage.removeItem(DRAFT_KEY)
     } catch {
       /* ignore */
@@ -190,6 +238,8 @@ export default function CabinBookingWidget({
       checkOut,
       guests: guestInvalid ? 1 : guests,
       transport,
+      transferRouteId: selectedTransferRouteId,
+      transferRoundTrip: transferIsRoundtrip,
     }
     sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
   }
@@ -228,13 +278,20 @@ export default function CabinBookingWidget({
     }
     start(async () => {
       try {
-        const r = await createCabinBooking({
+        const payload: Parameters<typeof createCabinBooking>[0] = {
           cabin_id: cabin.id,
           check_in: checkIn,
           check_out: checkOut,
           guests,
-          transport_trip: cabin.offers_transport ? transport : "none",
-        })
+          transport_trip:
+            transferRoutes.length > 0 ? "none" : cabin.offers_transport ? transport : "none",
+        }
+        if (selectedTransferRouteId) {
+          payload.transfer_route_id = selectedTransferRouteId
+          payload.transfer_is_roundtrip = transferIsRoundtrip
+          payload.transfer_price_ore = structuredTransferOre
+        }
+        const r = await createCabinBooking(payload)
         if ("error" in r) {
           toast.error(r.error)
           return
@@ -246,7 +303,7 @@ export default function CabinBookingWidget({
               cabin_id: cabin.id,
               location: cabin.location_hub,
               nights,
-              total_price_ore: totalOre,
+              total_price_ore: subtotalOre,
               service_fee_ore: serviceFeeOre,
               guest_total_ore: guestTotalOre,
               instant_book: cabin.instant_book,
@@ -270,14 +327,18 @@ export default function CabinBookingWidget({
     })
   }
 
+  const needsLegacyTransportPrice =
+    transferRoutes.length === 0 && cabin.offers_transport && perPerson <= 0
+
   const bookDisabled =
     pending ||
     guestInvalid ||
+    transferGuestsInvalid ||
     nights < 1 ||
     nights < minNights ||
     !checkIn ||
     !checkOut ||
-    (cabin.offers_transport && perPerson <= 0)
+    needsLegacyTransportPrice
 
   return (
     <div
@@ -354,7 +415,100 @@ export default function CabinBookingWidget({
             )}
           </div>
 
-          {cabin.offers_transport && perPerson > 0 && (
+          {transferRoutes.length > 0 && (
+            <div className="space-y-3">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+                Tilføj transfer?
+              </span>
+              <div className="space-y-2" role="radiogroup" aria-label="Transfervalg">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={selectedTransferRouteId === null}
+                  onClick={() => setSelectedTransferRouteId(null)}
+                  className={cn(
+                    "w-full text-left rounded-xl border px-3 py-2.5 text-sm transition-colors",
+                    selectedTransferRouteId === null
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border hover:border-primary/50",
+                  )}
+                >
+                  Ingen transfer
+                </button>
+                {transferRoutes.map((r) => {
+                  const rid = r.id
+                  if (!rid) return null
+                  const sel = selectedTransferRouteId === rid
+                  return (
+                    <button
+                      key={rid}
+                      type="button"
+                      role="radio"
+                      aria-checked={sel}
+                      onClick={() => setSelectedTransferRouteId(rid)}
+                      className={cn(
+                        "w-full text-left rounded-xl border px-3 py-2.5 text-sm transition-colors",
+                        sel
+                          ? "border-primary bg-primary/10 text-foreground"
+                          : "border-border hover:border-primary/50",
+                      )}
+                    >
+                      <span className="flex items-start gap-2">
+                        <span className="shrink-0" aria-hidden>
+                          {routeTransportIcon(r.transport_type)}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="font-medium text-foreground block">
+                            {r.from_arrival_point}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {fmtOreKrLine(r.price_one_way_ore)} enkelttur ·{" "}
+                            {fmtOreKrLine(r.price_roundtrip_ore)} tur/retur
+                          </span>
+                          <span className="text-xs text-muted-foreground block mt-0.5">
+                            Op til {r.max_guests} gæster
+                          </span>
+                        </span>
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+              {selectedTransferRouteId && (
+                <div className="space-y-2 pt-1">
+                  <div className="flex flex-col sm:flex-row gap-2 w-full">
+                    <Button
+                      type="button"
+                      variant={!transferIsRoundtrip ? "default" : "outline"}
+                      className="flex-1 rounded-xl"
+                      onClick={() => setTransferIsRoundtrip(false)}
+                    >
+                      Enkelttur
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={transferIsRoundtrip ? "default" : "outline"}
+                      className="flex-1 rounded-xl"
+                      onClick={() => setTransferIsRoundtrip(true)}
+                    >
+                      Tur/retur
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Tidspunkt aftales i chatten. Refunderes ved force majeure.
+                  </p>
+                </div>
+              )}
+              {transferGuestsInvalid && (
+                <p className="text-xs text-destructive">
+                  Denne transfer kan højst bookes med {selectedTransferRoute?.max_guests}{" "}
+                  gæster.
+                </p>
+              )}
+            </div>
+          )}
+
+          {transferRoutes.length === 0 && cabin.offers_transport && perPerson > 0 && (
             <div>
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">
                 {t("booking_transport_label")}
@@ -385,19 +539,25 @@ export default function CabinBookingWidget({
 
         {nights > 0 && cabinTotalOre > 0 && (
           <div className="mt-4 rounded-xl bg-muted p-4 text-sm space-y-1.5">
-            <div className="flex justify-between text-muted-foreground">
+            <div className="flex justify-between gap-2 text-muted-foreground">
               <span>
-                {formatPrice(cabin.price_per_night_ore)} × {nights} {t("booking_night", { count: nights })}
+                Ophold ({nights} {nights === 1 ? "nat" : "nætter"})
               </span>
-              <span className="font-medium text-foreground tabular-nums">
-                {formatPrice(cabinTotalOre)}
+              <span className="font-medium text-foreground tabular-nums shrink-0">
+                {fmtOreKrLine(cabinTotalOre)}
               </span>
             </div>
-            {transportTotalOre > 0 && (
-              <div className="flex justify-between text-muted-foreground">
-                <span>{t("booking_transport_addon")}</span>
-                <span className="font-medium text-foreground tabular-nums">
-                  {formatPrice(transportTotalOre)}
+            {transportAddonOre > 0 && (
+              <div className="flex justify-between gap-2 text-muted-foreground">
+                <span className="min-w-0">
+                  {transferRoutes.length > 0 && selectedTransferRoute ? (
+                    <>Transfer (fra {selectedTransferRoute.from_arrival_point})</>
+                  ) : (
+                    t("booking_transport_addon")
+                  )}
+                </span>
+                <span className="font-medium text-foreground tabular-nums shrink-0">
+                  {fmtOreKrLine(transportAddonOre)}
                 </span>
               </div>
             )}
@@ -405,7 +565,7 @@ export default function CabinBookingWidget({
             {serviceFeeOre > 0 && (
               <div className="flex justify-between text-muted-foreground items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 min-w-0">
-                  {t("booking_service_fee_3")}
+                  Servicegebyr (3%)
                   <button
                     type="button"
                     className="inline-flex shrink-0 text-muted-foreground hover:text-foreground touch-manipulation rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -416,13 +576,13 @@ export default function CabinBookingWidget({
                   </button>
                 </span>
                 <span className="font-medium text-foreground tabular-nums">
-                  {formatPrice(serviceFeeOre)}
+                  {fmtOreKrLine(serviceFeeOre)}
                 </span>
               </div>
             )}
             <div className="flex justify-between font-bold text-foreground pt-1.5 border-t border-border">
-              <span>{tCommon("total")}</span>
-              <span className="tabular-nums">{formatPrice(guestTotalOre)}</span>
+              <span>I alt</span>
+              <span className="tabular-nums">{fmtOreKrLine(guestTotalOre)}</span>
             </div>
             <p className="text-xs text-muted-foreground pt-1">
               {t("booking_platform_fee_note")}
@@ -444,7 +604,7 @@ export default function CabinBookingWidget({
                   {t("booking_redirecting")}
                 </>
               ) : nights > 0 && !guestInvalid ? (
-                `${t("booking_book_now")}${totalOre > 0 ? " — " + formatPrice(guestTotalOre) : ""}`
+                `${t("booking_book_now")}${subtotalOre > 0 ? " — " + formatPrice(guestTotalOre) : ""}`
               ) : (
                 t("booking_select_dates_guests")
               )}

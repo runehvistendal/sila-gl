@@ -5,6 +5,7 @@ import CabinBookingWidget from "@/components/cabins/CabinBookingWidget"
 import CabinTransportSection, {
   type RideShareData,
 } from "@/components/cabins/CabinTransportSection"
+import type { TransferRoute } from "@/types/transfer"
 
 interface CabinBookingProps {
   id: string
@@ -32,6 +33,10 @@ interface Props {
   isLoggedIn: boolean
   loginNextPath: string
   disabledYmd: string[]
+  /** Strukturerede transfer-ruter til booking (samme som TransferRoutesDisplay-kilden) */
+  transferRoutes?: TransferRoute[]
+  /** Server-komponent: strukturerede transfer-ruter (fx TransferRoutesDisplay) */
+  transferRoutesContent?: ReactNode
   /** Server-rendered statisk indhold til venstre kolonne (Om hytten, Inkluderet, Din vært) */
   leftContent: ReactNode
   /** Server-rendered anmeldelsessektion — vises i bunden af venstre kolonne */
@@ -45,6 +50,8 @@ export default function CabinDetailLayout({
   isLoggedIn,
   loginNextPath,
   disabledYmd,
+  transferRoutes = [],
+  transferRoutesContent,
   leftContent,
   reviewsContent,
 }: Props) {
@@ -60,6 +67,7 @@ export default function CabinDetailLayout({
       loginNextPath={loginNextPath}
       disabledYmd={disabledYmd}
       onGuestsChange={setGuests}
+      transferRoutes={transferRoutes}
     />
   )
 
@@ -68,8 +76,17 @@ export default function CabinDetailLayout({
       cabin={transportCabin}
       transports={transports}
       guests={guests}
+      showSectionTitle={!transferRoutesContent}
     />
   ) : null
+
+  const komDertilBlock =
+    transferRoutesContent || transportSection ? (
+      <div className="space-y-6">
+        {transferRoutesContent}
+        {transportSection}
+      </div>
+    ) : null
 
   return (
     <div className="mt-6 lg:mt-10">
@@ -80,7 +97,7 @@ export default function CabinDetailLayout({
         {/* Venstre kolonne */}
         <div className="space-y-8">
           {leftContent}
-          {transportSection}
+          {komDertilBlock}
           {reviewsContent}
         </div>
 
@@ -94,7 +111,7 @@ export default function CabinDetailLayout({
       <div className="lg:hidden space-y-8">
         {leftContent}
         {bookingWidget}
-        {transportSection}
+        {komDertilBlock}
         {reviewsContent}
       </div>
 
