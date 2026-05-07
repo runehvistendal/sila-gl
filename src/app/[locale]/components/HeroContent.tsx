@@ -2,18 +2,23 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 import { cn } from "@/lib/utils"
 import HeroSearchBar from "./HeroSearchBar"
 
 const majorHubs = GREENLAND_LOCATIONS.filter((l) => l.is_major_hub)
 
-type HeroTab = "cabins" | "transport"
+type HeroTab = "ophold" | "samsejlads"
 
 export default function HeroContent() {
   const t = useTranslations("home")
-  const [tab, setTab] = useState<HeroTab>("cabins")
+  const tHero = useTranslations("hero")
+  const locale = useLocale()
+  const [tab, setTab] = useState<HeroTab>("ophold")
+
+  const opholdLabel = locale === "da" ? tHero("tab_ophold") : tHero("tab_stays")
+  const samsejladsLabel = locale === "da" ? tHero("tab_samsejlads") : tHero("tab_sailing")
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-20 pb-16 md:pt-28 md:pb-24">
@@ -70,8 +75,8 @@ export default function HeroContent() {
         >
           {(
             [
-              { key: "cabins" as const, label: t("searchTabs.cabins") },
-              { key: "transport" as const, label: t("searchTabs.transport") },
+              { key: "ophold" as const, label: opholdLabel },
+              { key: "samsejlads" as const, label: samsejladsLabel },
             ] as const
           ).map(({ key, label }) => {
             const active = tab === key

@@ -6,6 +6,7 @@ import { Home, MapPin, Pencil, Trash2, Zap, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { formatKr } from "@/lib/money"
 import { deleteHytte } from "./actions"
+import { getLocationName } from "@/lib/greenlandLocations"
 
 export interface Hytte {
   id: string
@@ -162,7 +163,7 @@ export default function MineHytterList({ cabins }: { cabins: Hytte[] }) {
 
             <p className="mb-3 flex items-center gap-1 text-xs text-muted-foreground">
               <MapPin size={11} className="shrink-0" />
-              {cabin.location_hub}
+              {getLocationName(cabin.location_hub)}
               <span className="mx-1 text-border">·</span>
               {ACCESS_LABELS[cabin.access_type] ?? cabin.access_type}
               <span className="mx-1 text-border">·</span>

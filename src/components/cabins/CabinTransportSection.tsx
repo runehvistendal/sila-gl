@@ -9,11 +9,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { createClient } from "@/lib/supabase"
 import { useTranslations, useFormatter } from "next-intl"
 import { useFormatPrice } from "@/hooks/useFormatPrice"
-import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
+import { GREENLAND_LOCATIONS, getLocationName } from "@/lib/greenlandLocations"
 import TransportDrawer from "@/components/transport/TransportDrawer"
 
 const LOCATIONS = [...new Set(GREENLAND_LOCATIONS.map((l) => l.name_dk))].sort()
-const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
 export interface RideShareData {
   id: string
@@ -174,7 +173,7 @@ export default function CabinTransportSection({ cabin, transports, guests, onTra
       {/* ── OTHER TRANSPORT LISTINGS ── */}
       <div className="mb-5">
         <p className="text-sm font-bold text-foreground mb-3">
-          {t("transport_other_title", { location: cabin.location_hub })}
+          {t("transport_other_title", { location: getLocationName(cabin.location_hub) })}
         </p>
         {transports.length > 0 ? (
           <div className="space-y-3">
@@ -185,9 +184,9 @@ export default function CabinTransportSection({ cabin, transports, guests, onTra
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 text-sm font-medium text-foreground flex-wrap">
-                    <span>{capitalize(tr.from_location)}</span>
+                    <span>{getLocationName(tr.from_location)}</span>
                     <ArrowRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    <span>{capitalize(tr.to_location)}</span>
+                    <span>{getLocationName(tr.to_location)}</span>
                   </div>
                   <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                     <span>{fmt.dateTime(new Date(tr.departure_at), { day: "numeric", month: "short", year: "numeric" })}</span>
@@ -209,7 +208,7 @@ export default function CabinTransportSection({ cabin, transports, guests, onTra
           </div>
         ) : (
           <p className="text-sm text-muted-foreground bg-muted rounded-xl p-4">
-            {t("transport_no_trips", { location: cabin.location_hub })}
+            {t("transport_no_trips", { location: getLocationName(cabin.location_hub) })}
           </p>
         )}
       </div>

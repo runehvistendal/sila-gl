@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase-service"
 import { stripe } from "@/lib/stripe"
 import { getAppBaseUrl } from "@/lib/appUrl"
 import { calcServiceFee } from "@/lib/money"
+import { getLocationName } from "@/lib/greenlandLocations"
 
 export const dynamic = "force-dynamic"
 
@@ -127,7 +128,7 @@ export async function POST(request: Request) {
         currency: "dkk",
         unit_amount: totalPriceOre,
         product_data: {
-          name: `Samsejlads: ${rs.from_location} → ${rs.to_location}`,
+          name: `Samsejlads: ${getLocationName(rs.from_location)} → ${getLocationName(rs.to_location)}`,
           description: `Afgang ${dateLabel} · ${numSeats} plads${numSeats !== 1 ? "er" : ""}`,
         },
       },

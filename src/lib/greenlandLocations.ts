@@ -1,3 +1,6 @@
+export type LocationType = "city" | "village" | "nature"
+export type ArrivalPoint = "airport" | "helipad" | "harbour"
+
 export interface GreenlandLocation {
   postal_code: string
   name_gl: string
@@ -10,9 +13,13 @@ export interface GreenlandLocation {
   population: number
   is_major_hub: boolean
   aliases: string[] /** Gamle danske navne, alternative stavemåder, grønlandske varianter */
+  location_type: LocationType
+  arrival_points: ArrivalPoint[]
 }
 
-export const GREENLAND_LOCATIONS: GreenlandLocation[] = [
+type GreenlandLocationSeed = Omit<GreenlandLocation, "location_type" | "arrival_points">
+
+const GREENLAND_LOCATIONS_SEED: GreenlandLocationSeed[] = [
 
   // ─── BYER ───────────────────────────────────────────────────────────────────
 
@@ -957,6 +964,50 @@ export const GREENLAND_LOCATIONS: GreenlandLocation[] = [
   },
 ]
 
+function inferLocationType(seedType: GreenlandLocationSeed["type"]): LocationType {
+  if (seedType === "by") return "city"
+  if (seedType === "bygd") return "village"
+  return "nature"
+}
+
+/** Afrejsepunkter for byer (name_dk lowercase). By uden eksplicit nøgle: default havn. */
+const CITY_ARRIVAL_POINTS: Record<string, ArrivalPoint[]> = {
+  nuuk: ["airport", "harbour"],
+  ilulissat: ["airport", "harbour"],
+  sisimiut: ["airport", "harbour"],
+  qaqortoq: ["helipad", "harbour"],
+  aasiaat: ["airport", "harbour"],
+  tasiilaq: ["airport", "harbour"],
+  maniitsoq: ["helipad", "harbour"],
+  paamiut: ["helipad", "harbour"],
+  narsaq: ["helipad", "harbour"],
+  nanortalik: ["helipad", "harbour"],
+  qasigiannguit: ["helipad", "harbour"],
+  qeqertarsuaq: ["helipad", "harbour"],
+  kangaatsiaq: ["helipad", "harbour"],
+  uummannaq: ["airport", "harbour"],
+  upernavik: ["airport", "harbour"],
+  qaanaaq: ["airport", "harbour"],
+  kangerlussuaq: ["airport"],
+  ittoqqortoormiit: ["airport", "harbour"],
+  kangilinnguit: ["harbour"],
+  narsarsuaq: ["airport", "harbour"],
+}
+
+function deriveArrivalPoints(seed: GreenlandLocationSeed): ArrivalPoint[] {
+  const lt = inferLocationType(seed.type)
+  if (lt === "nature") return []
+  if (lt === "village") return ["harbour"]
+  const key = seed.name_dk.toLowerCase()
+  return CITY_ARRIVAL_POINTS[key] ?? ["harbour"]
+}
+
+export const GREENLAND_LOCATIONS: GreenlandLocation[] = GREENLAND_LOCATIONS_SEED.map((s) => ({
+  ...s,
+  location_type: inferLocationType(s.type),
+  arrival_points: deriveArrivalPoints(s),
+}))
+
 // ─── UTILITY FUNCTIONS ───────────────────────────────────────────────────────
 
 export function findLocation(query: string): GreenlandLocation | undefined {
@@ -1001,12 +1052,33 @@ export function getAllLocationsSorted(): GreenlandLocation[] {
 
 /** Returnerer visningsnavn (name_dk) for en lowercase location-nøgle fra DB. */
 export function getLocationName(key: string): string {
+  if (!key) return key
+  const byId = findLocationById(key)
+  if (byId) return byId.name_dk
   const found = GREENLAND_LOCATIONS.find(
     (l) =>
       l.name_dk.toLowerCase() === key.toLowerCase() ||
-      l.aliases.some((a) => a.toLowerCase() === key.toLowerCase())
+      l.aliases.some((a) => a.toLowerCase() === key.toLowerCase()),
   )
-  return found?.name_dk ?? key
+  if (found) return found.name_dk
+  return key.charAt(0).toUpperCase() + key.slice(1)
+}
+
+export function getLocationsByType(locationType: LocationType): GreenlandLocation[] {
+  return GREENLAND_LOCATIONS.filter((l) => l.location_type === locationType)
+}
+
+export function getArrivalPoints(locationId: string): ArrivalPoint[] {
+  const composite = findLocationById(locationId)
+  const loc = composite ?? findLocation(locationId)
+  return loc ? [...loc.arrival_points] : []
+}
+
+export function isInByenCategory(locationId: string): boolean {
+  const composite = findLocationById(locationId)
+  const loc = composite ?? findLocation(locationId)
+  if (!loc) return false
+  return loc.location_type === "city" || loc.location_type === "village"
 }
 
 /** Alle lokationer for en given region_label */

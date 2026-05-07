@@ -9,6 +9,7 @@ import {
   notifyNewTransportOffer,
   notifyTransportOfferAccepted,
 } from "@/lib/notifications"
+import { getLocationName } from "@/lib/greenlandLocations"
 
 // ── Send chat message ────────────────────────────────────────────────────────
 
@@ -245,7 +246,7 @@ export async function acceptTransportOffer(offerId: string): Promise<AcceptOffer
           currency: "dkk",
           unit_amount: offer.price_ore,
           product_data: {
-            name: `Transport: ${offer.transport_requests.from_location} → ${offer.transport_requests.to_location}`,
+            name: `Transport: ${getLocationName(offer.transport_requests.from_location)} → ${getLocationName(offer.transport_requests.to_location)}`,
             description: offer.message ?? undefined,
           },
         },

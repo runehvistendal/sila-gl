@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
 import { captureEvent } from "@/lib/analytics/posthog-events"
+import { getLocationName } from "@/lib/greenlandLocations"
 
 export interface TransportMapRoute {
   id: string
@@ -45,10 +46,6 @@ function formatKrLocal(ore: number) {
 
 function midpoint(a: [number, number], b: [number, number]): [number, number] {
   return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
-}
-
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
 /** Buet linje der buer vestover (ud over havet langs Grønlands kyst) */
@@ -209,8 +206,8 @@ export default function TransportMap({
       data: {
         type: "FeatureCollection",
         features: [
-          { type: "Feature", properties: { label: capitalize(route.fromName) }, geometry: { type: "Point", coordinates: from } },
-          { type: "Feature", properties: { label: capitalize(route.toName) },   geometry: { type: "Point", coordinates: to } },
+          { type: "Feature", properties: { label: getLocationName(route.fromName) }, geometry: { type: "Point", coordinates: from } },
+          { type: "Feature", properties: { label: getLocationName(route.toName) },   geometry: { type: "Point", coordinates: to } },
         ],
       },
     })
@@ -265,8 +262,8 @@ export default function TransportMap({
         type: "Feature",
         properties: {
           id:            r.id,
-          fromName:      capitalize(r.fromName),
-          toName:        capitalize(r.toName),
+          fromName:      getLocationName(r.fromName),
+          toName:        getLocationName(r.toName),
           departure:     r.meta?.departure ?? "",
           seats:         r.meta?.seatsAvailable ?? 0,
           price:         r.meta?.priceOre ?? 0,

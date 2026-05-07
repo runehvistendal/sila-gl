@@ -4,6 +4,7 @@ import Link from "next/link"
 import { Anchor, Home, Inbox } from "lucide-react"
 import { useFormatter } from "next-intl"
 import { Badge } from "@/components/ui/badge"
+import { getLocationName } from "@/lib/greenlandLocations"
 
 export interface TransportRequestData {
   id: string
@@ -38,7 +39,7 @@ function RequestCard({ r, highlight, fmtDate }: { r: TransportRequestData; highl
           </div>
           <div>
             <p className="font-semibold text-sm text-foreground">
-              {r.from_location} → {r.to_location}
+              {getLocationName(r.from_location)} → {getLocationName(r.to_location)}
             </p>
             {r.profiles?.full_name && (
               <p className="text-xs text-muted-foreground mt-0.5">{r.profiles.full_name}</p>

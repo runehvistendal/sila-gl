@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { formatKr } from "@/lib/money"
 import { publishedCabinDetailPath } from "@/lib/cabinPublicPaths"
 import AdminTogglePublished from "./AdminTogglePublished"
+import { getLocationName } from "@/lib/greenlandLocations"
 
 export const metadata = { title: "Hytter — Admin" }
 export const dynamic = "force-dynamic"
@@ -77,7 +78,7 @@ export default async function AdminHytterPage() {
                   {cabin.profiles?.full_name ?? <span className="text-gray-400 italic">{t("unknown")}</span>}
                 </TableCell>
                 <TableCell className="text-gray-600 text-sm">
-                  {cabin.location_hub ?? "—"}
+                  {cabin.location_hub ? getLocationName(cabin.location_hub) : "—"}
                 </TableCell>
                 <TableCell className="text-gray-700 text-sm">
                   {formatKr(cabin.price_per_night_ore)}

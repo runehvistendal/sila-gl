@@ -16,6 +16,7 @@ import ListingImageGallery from "@/components/cabins/ListingImageGallery"
 import CabinReviews from "@/components/cabins/CabinReviews"
 import CabinDetailLayout from "@/components/cabins/CabinDetailLayout"
 import { CabinViewTracker } from "@/components/analytics/CabinViewTracker"
+import { getLocationName } from "@/lib/greenlandLocations"
 
 export type ResidenceDetailData = {
   id: string
@@ -148,7 +149,7 @@ export default async function ResidenceDetailPage({
     image: (cabin.images as string[])?.[0],
     address: {
       "@type": "PostalAddress",
-      addressLocality: cabin.location_hub,
+      addressLocality: getLocationName(cabin.location_hub),
       addressCountry: "GL",
     },
     priceRange: `${oreToKr(cabin.price_per_night_ore)} DKK / nat`,
@@ -162,7 +163,7 @@ export default async function ResidenceDetailPage({
       <Navbar user={navUser} />
       <CabinViewTracker
         cabinId={cabin.id}
-        location={cabin.location_hub}
+        location={getLocationName(cabin.location_hub)}
         pricePerNightOre={cabin.price_per_night_ore}
         hasTransport={cabin.offers_transport}
       />
@@ -193,7 +194,7 @@ export default async function ResidenceDetailPage({
           <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap mt-3">
             <span className="flex items-center gap-1">
               <MapPin className="w-4 h-4" />
-              {cabin.location_hub}
+              {getLocationName(cabin.location_hub)}
             </span>
             <span className="flex items-center gap-1">
               <Users className="w-4 h-4" />

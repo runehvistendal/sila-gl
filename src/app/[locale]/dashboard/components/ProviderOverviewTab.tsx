@@ -11,6 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import { formatKr } from "@/lib/money"
+import { getLocationName } from "@/lib/greenlandLocations"
 import type { CabinBookingData } from "./BookingRow"
 import type { TransportRequestData } from "./OpenRequestsList"
 
@@ -64,7 +65,7 @@ export default function ProviderOverviewTab({ transportRequests, hostBookings }:
       ...transportRequests.map((r) => ({
         id:        r.id,
         type:      "transport-request" as const,
-        title:     `${r.from_location} → ${r.to_location}`,
+        title:     `${getLocationName(r.from_location)} → ${getLocationName(r.to_location)}`,
         guestName: r.profiles?.full_name ?? "Gæst",
         date:      r.desired_date,
         status:    r.status,

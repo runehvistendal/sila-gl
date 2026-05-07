@@ -15,12 +15,8 @@ import { createClient } from "@/lib/supabase"
 import { useTranslations } from "next-intl"
 import { useFormatPrice } from "@/hooks/useFormatPrice"
 import { formatNuukDate, formatNuukTime } from "@/lib/nuukTime"
-import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
+import { getLocationName } from "@/lib/greenlandLocations"
 import { calcServiceFee } from "@/lib/money"
-
-const getLocationName = (id: string) =>
-  GREENLAND_LOCATIONS.find((l) => l.name_dk.toLowerCase() === id.toLowerCase())
-    ?.name_dk ?? id.charAt(0).toUpperCase() + id.slice(1)
 
 interface RideShareDetail {
   id: string

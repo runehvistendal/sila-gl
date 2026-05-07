@@ -28,6 +28,7 @@ import {
 } from "@/app/[locale]/dashboard/actions"
 import { publishedCabinDetailPath } from "@/lib/cabinPublicPaths"
 import { captureEvent } from "@/lib/analytics/posthog-events"
+import { getLocationName } from "@/lib/greenlandLocations"
 
 export interface CabinRow {
   id: string
@@ -213,7 +214,7 @@ export default function OpretPageClient({ cabins, boats }: Props) {
                     className="min-w-0 group"
                   >
                     <p className="font-semibold text-foreground break-words group-hover:underline">{c.title}</p>
-                    <p className="text-xs text-muted-foreground break-words">{c.location_hub}</p>
+                    <p className="text-xs text-muted-foreground break-words">{getLocationName(c.location_hub)}</p>
                   </Link>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="secondary" className="border-0 bg-primary/10 text-foreground">

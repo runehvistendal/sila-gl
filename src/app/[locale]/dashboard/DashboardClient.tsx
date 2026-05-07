@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatKr } from "@/lib/money"
 import { publishedCabinDetailPath } from "@/lib/cabinPublicPaths"
+import { getLocationName } from "@/lib/greenlandLocations"
 import BookingRow, { STATUS_COLORS, STATUS_LABELS, type CabinBookingData } from "./components/BookingRow"
 import {
   acceptTransportRequest, declineTransportRequest,
@@ -625,7 +626,7 @@ export default function DashboardClient({
                           >
                             <p className="font-semibold text-sm text-foreground truncate group-hover:underline">{c.title}</p>
                             <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                              <MapPin className="w-3 h-3" />{c.location_hub}
+                              <MapPin className="w-3 h-3" />{getLocationName(c.location_hub)}
                             </p>
                             <p className="text-xs font-medium text-primary mt-1">
                               {formatKr(c.price_per_night_ore)}/nat
@@ -970,7 +971,7 @@ function TransportRequestRow({ r }: { r: { id: string; from_location: string; to
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <p className="font-semibold text-sm text-foreground">
-            {r.from_location} → {r.to_location}
+            {getLocationName(r.from_location)} → {getLocationName(r.to_location)}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
             {r.desired_date ? format(new Date(r.desired_date), "d. MMM yyyy") : "—"}

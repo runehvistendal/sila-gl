@@ -5,14 +5,10 @@ import { ArrowRight, ArrowLeft, Calendar, Users, Anchor, User } from "lucide-rea
 import { Button } from "@/components/ui/button"
 import { formatNuukDate, formatNuukDateShort } from "@/lib/nuukTime"
 import { formatKr, oreToKr } from "@/lib/money"
-import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
+import { getLocationName } from "@/lib/greenlandLocations"
 import { captureEvent } from "@/lib/analytics/posthog-events"
 
 const FALLBACK_BOAT = "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600&h=400&fit=crop&q=80"
-
-const getLocationName = (id: string) =>
-  GREENLAND_LOCATIONS.find((l) => l.name_dk.toLowerCase() === id.toLowerCase())?.name_dk ??
-  id.charAt(0).toUpperCase() + id.slice(1)
 
 const shortBoat = (s: string) => s.length > 25 ? s.slice(0, 25) + "…" : s
 

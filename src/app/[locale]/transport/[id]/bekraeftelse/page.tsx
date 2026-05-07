@@ -11,6 +11,7 @@ import { da } from "date-fns/locale"
 import { formatKr } from "@/lib/money"
 import { Suspense } from "react"
 import { TransportBekraeftelseTracker } from "@/components/analytics/TransportBekraeftelseTracker"
+import { getLocationName } from "@/lib/greenlandLocations"
 
 export const dynamic = "force-dynamic"
 export const metadata = { title: "Booking bekræftet — Sila.gl" }
@@ -83,9 +84,9 @@ export default async function BekraeftelsePage({
           <>
             <p className="text-muted-foreground mb-6">
               Du sejler fra{" "}
-              <strong className="text-foreground">{sessionData.from}</strong>
+              <strong className="text-foreground">{getLocationName(sessionData.from)}</strong>
               {" "}til{" "}
-              <strong className="text-foreground">{sessionData.to}</strong>
+              <strong className="text-foreground">{getLocationName(sessionData.to)}</strong>
               {" "}den{" "}
               <strong className="text-foreground">
                 {format(new Date(sessionData.departure), "d. MMMM yyyy", { locale: da })}
@@ -97,9 +98,9 @@ export default async function BekraeftelsePage({
               <div className="flex items-center gap-3 mb-4">
                 <Anchor className="w-5 h-5 text-primary shrink-0" />
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-foreground">{sessionData.from}</span>
+                  <span className="font-semibold text-foreground">{getLocationName(sessionData.from)}</span>
                   <ArrowRight className="w-4 h-4 text-primary" />
-                  <span className="font-semibold text-foreground">{sessionData.to}</span>
+                  <span className="font-semibold text-foreground">{getLocationName(sessionData.to)}</span>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4 text-sm">

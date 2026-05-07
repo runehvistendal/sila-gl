@@ -7,6 +7,7 @@ import { MapPin, Anchor, ChevronLeft, ChevronRight, Zap, Users, MountainSnow } f
 import { formatKr } from "@/lib/money"
 
 import { captureEvent } from "@/lib/analytics/posthog-events"
+import { getLocationName } from "@/lib/greenlandLocations"
 
 export interface CabinCardData {
   id: string
@@ -151,7 +152,7 @@ export default function CabinCard({
         <div className="flex items-center gap-3 text-muted-foreground text-xs">
           <span className="flex items-center gap-1">
             <MapPin size={11} />
-            {cabin.location_hub}
+            {getLocationName(cabin.location_hub)}
           </span>
           <span className="flex items-center gap-1">
             <Users size={11} />

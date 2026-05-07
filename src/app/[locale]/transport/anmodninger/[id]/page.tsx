@@ -8,6 +8,7 @@ import { getNavUserForPage } from "@/lib/getNavUser"
 import { oreToKr, formatKr } from "@/lib/money"
 import Navbar from "@/components/layout/Navbar"
 import TransportRequestChat from "@/components/transport/TransportRequestChat"
+import { getLocationName } from "@/lib/greenlandLocations"
 
 const TRIP_TYPE_LABELS: Record<string, string> = {
   one_way:    "Enkelttur",
@@ -142,7 +143,7 @@ export default async function TransportRequestDetailPage({
           <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
             <div>
               <h1 className="text-xl font-bold text-foreground">
-                {req.from_location} → {req.to_location}
+                {getLocationName(req.from_location)} → {getLocationName(req.to_location)}
               </h1>
               <p className="text-sm text-muted-foreground mt-0.5">
                 Anmodning af {requesterName}

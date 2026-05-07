@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
 import HytteOpslagForm from "./HytteOpslagForm"
+import { getLocationName } from "@/lib/greenlandLocations"
 
 export const metadata = {
   title: "Publicér hytte — Sila.gl",
@@ -44,7 +45,7 @@ export default async function HytteOpslagPage({
           </p>
           <p className="text-lg font-bold text-foreground">
             {cabin.title}
-            <span className="font-normal text-muted-foreground"> — {cabin.location_hub}</span>
+            <span className="font-normal text-muted-foreground"> — {getLocationName(cabin.location_hub)}</span>
           </p>
         </div>
 

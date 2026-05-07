@@ -82,6 +82,10 @@
     "not_found": "Page not found",
     "go_home": "Go to home"
   },
+  "hero": {
+    "tab_stays": "Stays",
+    "tab_sailing": "Sailing"
+  },
   "home": {
     "badge": "Greenland's cabin & boat marketplace",
     "headline": "Greenland on local terms",

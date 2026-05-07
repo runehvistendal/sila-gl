@@ -11,6 +11,10 @@
   "create": {
     "add_new_residence": "+ Create new home listing"
   },
+  "hero": {
+    "tab_stays": "Stays",
+    "tab_sailing": "Sailing"
+  },
   "ophold": {
     "nature": {
       "pageTitle": "Stays in nature",

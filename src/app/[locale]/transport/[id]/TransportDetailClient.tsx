@@ -8,7 +8,10 @@ import {
   RefreshCw, MessageSquare, User, Star, CircleHelp,
 } from "lucide-react"
 import { useFormatter, useTranslations } from "next-intl"
-import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
+import {
+  GREENLAND_LOCATIONS,
+  getLocationName,
+} from "@/lib/greenlandLocations"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -19,10 +22,6 @@ import { formatKr, oreToKr, calcServiceFee } from "@/lib/money"
 import { createTransportRequest } from "./actions"
 import TransportDrawer from "@/components/transport/TransportDrawer"
 import { captureEvent, PH_STORE } from "@/lib/analytics/posthog-events"
-
-const getLocationName = (id: string) =>
-  GREENLAND_LOCATIONS.find((l) => l.name_dk.toLowerCase() === id.toLowerCase())?.name_dk ??
-  id.charAt(0).toUpperCase() + id.slice(1)
 
 const TransportMap = dynamic(() => import("@/components/map/TransportMap"), {
   ssr: false,

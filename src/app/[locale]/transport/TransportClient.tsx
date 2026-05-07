@@ -11,6 +11,7 @@ import TransportCard, { type RideShareCardData } from "./components/TransportCar
 import TransportFilters, { type TransportFilterValues } from "./components/TransportFilters"
 import type { TransportMapRoute } from "@/components/map/TransportMap"
 import { captureEvent } from "@/lib/analytics/posthog-events"
+import { getLocationName } from "@/lib/greenlandLocations"
 
 function MapLoading() {
   const t = useTranslations("transport")
@@ -206,10 +207,10 @@ export default function TransportClient({
         const loc = rs as RideShareCardData & { from_latitude: number; from_longitude: number; to_latitude: number; to_longitude: number }
         return {
           id:        rs.id,
-          fromName:  rs.from_location,
+          fromName:  getLocationName(rs.from_location),
           fromLat:   loc.from_latitude,
           fromLng:   loc.from_longitude,
-          toName:    rs.to_location,
+          toName:    getLocationName(rs.to_location),
           toLat:     loc.to_latitude,
           toLng:     loc.to_longitude,
           meta: {
@@ -334,7 +335,7 @@ export default function TransportClient({
                   </span>
                 </div>
                 <p className="font-semibold text-sm text-foreground">
-                  {r.from_location} → {r.to_location}
+                  {getLocationName(r.from_location)} → {getLocationName(r.to_location)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {fmt.dateTime(new Date(r.desired_date), { day: "numeric", month: "short", year: "numeric" })}

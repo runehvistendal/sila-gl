@@ -82,6 +82,10 @@
     "not_found": "Siden findes ikke",
     "go_home": "Gå til forsiden"
   },
+  "hero": {
+    "tab_ophold": "Ophold",
+    "tab_samsejlads": "Samsejlads"
+  },
   "home": {
     "badge": "Grønlands hytte- og bådmarketplace",
     "headline": "Grønland på lokale vilkår",

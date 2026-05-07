@@ -9,7 +9,7 @@ import { CalendarDropdown, formatRangeSummary, localTodayYmd, parseYmd } from "@
 import type { GreenlandLocation } from "@/lib/greenlandLocations"
 import { cn } from "@/lib/utils"
 
-type HeroTab = "cabins" | "transport"
+type HeroTab = "ophold" | "samsejlads"
 type ActivePanel = "where" | "when" | "who" | null
 
 interface HeroSearchBarProps {
@@ -70,7 +70,7 @@ export default function HeroSearchBar({ tab, majorHubs }: HeroSearchBarProps) {
 
   function submitSearch(e?: FormEvent) {
     e?.preventDefault()
-    if (tab === "cabins") {
+    if (tab === "ophold") {
       const params = new URLSearchParams()
       const trimmedHub = hub.trim()
       if (trimmedHub) params.set("hub", trimmedHub)
@@ -91,7 +91,7 @@ export default function HeroSearchBar({ tab, majorHubs }: HeroSearchBarProps) {
   }
 
   const whenSummary =
-    tab === "cabins"
+    tab === "ophold"
       ? checkIn && checkOut && checkOut > checkIn
         ? formatRangeSummary(checkIn, checkOut, locale, t)
         : ""
@@ -147,14 +147,14 @@ export default function HeroSearchBar({ tab, majorHubs }: HeroSearchBarProps) {
               >
                 {whenSummary
                   ? whenSummary
-                  : tab === "cabins"
+                  : tab === "ophold"
                     ? t("datesPlaceholder")
                     : t("departurePlaceholder")}
               </span>
             </div>
           </button>
 
-          {tab === "cabins" ? (
+          {tab === "ophold" ? (
             <>
               <div className="hidden md:block w-px bg-gray-200 self-stretch my-3 shrink-0" aria-hidden />
               <div className="md:hidden h-px w-full bg-gray-200 shrink-0" aria-hidden />
@@ -206,7 +206,7 @@ export default function HeroSearchBar({ tab, majorHubs }: HeroSearchBarProps) {
         {whenOpen ? (
           <CalendarDropdown
             ref={calendarRef}
-            mode={tab === "cabins" ? "range" : "single"}
+            mode={tab === "ophold" ? "range" : "single"}
             today={today}
             checkIn={checkIn}
             checkOut={checkOut}
@@ -226,7 +226,7 @@ export default function HeroSearchBar({ tab, majorHubs }: HeroSearchBarProps) {
       </form>
 
       <div className="flex flex-wrap gap-2 mt-6">
-        {tab === "cabins"
+        {tab === "ophold"
           ? majorHubs.map((loc) => (
           <button
             key={`${loc.postal_code}-${loc.name_dk}`}

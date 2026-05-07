@@ -11,6 +11,10 @@
   "create": {
     "add_new_residence": "+ Opret ny bolig"
   },
+  "hero": {
+    "tab_ophold": "Ophold",
+    "tab_samsejlads": "Samsejlads"
+  },
   "ophold": {
     "nature": {
       "pageTitle": "Ophold i naturen",
