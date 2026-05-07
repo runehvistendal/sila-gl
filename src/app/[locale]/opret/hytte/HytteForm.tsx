@@ -6,6 +6,8 @@ import { createHytte, updateHytte, type HytteFormState } from "./actions"
 import { CABIN_FACILITIES, FACILITY_SECTION_LABELS, getFixedFacilityValueSet } from "@/lib/cabinFacilities"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 import AddOnServicesEditor, { type AddOnService } from "@/components/shared/AddOnServicesEditor"
+import TransferRouteEditor from "@/components/cabins/TransferRouteEditor"
+import type { TransferRoute } from "@/types/transfer"
 import { oreToKr } from "@/lib/money"
 import CabinImageUpload from "@/components/cabins/CabinImageUpload"
 import PendingCabinImageUpload from "@/components/cabins/PendingCabinImageUpload"
@@ -44,6 +46,7 @@ export type InitialCabin = {
   transport_from: string | null
   transport_price_roundtrip_ore: number | null
   images: string[] | null
+  transfer_routes?: TransferRoute[]
 }
 
 interface Props {
@@ -84,6 +87,13 @@ export default function HytteForm({ mode, initialCabin }: Props) {
   )
   const [pendingImageUrls, setPendingImageUrls] = useState<string[]>([])
 
+  const [offersTransferRoutes, setOffersTransferRoutes] = useState(
+    () => (initialCabin?.transfer_routes?.length ?? 0) > 0,
+  )
+  const [transferRoutes, setTransferRoutes] = useState<TransferRoute[]>(
+    () => initialCabin?.transfer_routes ?? [],
+  )
+
   const [transportFrom, setTransportFrom] = useState(
     initialCabin?.transport_from ?? "",
   )
@@ -110,6 +120,8 @@ export default function HytteForm({ mode, initialCabin }: Props) {
           ? String(Math.round(oreToKr(initialCabin.transport_price_roundtrip_ore)))
           : "",
       )
+      setTransferRoutes(initialCabin.transfer_routes ?? [])
+      setOffersTransferRoutes((initialCabin.transfer_routes?.length ?? 0) > 0)
     }
   }, [initialCabin])
 
@@ -161,6 +173,17 @@ export default function HytteForm({ mode, initialCabin }: Props) {
         type="hidden"
         name="offers_transport"
         value={offersTransport ? "on" : ""}
+      />
+
+      <input
+        type="hidden"
+        name="offers_transfer_routes"
+        value={offersTransferRoutes ? "on" : ""}
+      />
+      <input
+        type="hidden"
+        name="transfer_routes_json"
+        value={JSON.stringify(transferRoutes)}
       />
 
       {/* 1. Titel */}
@@ -353,6 +376,32 @@ export default function HytteForm({ mode, initialCabin }: Props) {
             className="rounded-xl"
           />
         </div>
+      </div>
+
+      {/* Transfer til/fra ophold (ruter) */}
+      <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-4">
+        <div className="flex items-start gap-3">
+          <Switch
+            id="offers_transfer_routes_switch"
+            checked={offersTransferRoutes}
+            onCheckedChange={setOffersTransferRoutes}
+          />
+          <div className="space-y-1 min-w-0">
+            <Label htmlFor="offers_transfer_routes_switch" className="cursor-pointer">
+              Tilbyd transfer
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              Gæster kan tilkøbe transport til/fra dit ophold
+            </p>
+          </div>
+        </div>
+        {offersTransferRoutes && (
+          <TransferRouteEditor
+            cabinId={initialCabin?.id ?? "new-cabin"}
+            initialRoutes={transferRoutes}
+            onChange={setTransferRoutes}
+          />
+        )}
       </div>
 
       {/* 6. Tilvalgsydelser */}

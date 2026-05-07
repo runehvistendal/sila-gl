@@ -11,6 +11,8 @@ import {
 } from "@/lib/amenityMeta"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 import AddOnServicesEditor, { type AddOnService } from "@/components/shared/AddOnServicesEditor"
+import TransferRouteEditor from "@/components/cabins/TransferRouteEditor"
+import type { TransferRoute } from "@/types/transfer"
 import { oreToKr } from "@/lib/money"
 import CabinImageUpload from "@/components/cabins/CabinImageUpload"
 import PendingCabinImageUpload from "@/components/cabins/PendingCabinImageUpload"
@@ -54,6 +56,7 @@ export type InitialBolig = {
   transport_from: string | null
   transport_price_roundtrip_ore: number | null
   images: string[] | null
+  transfer_routes?: TransferRoute[]
 }
 
 interface Props {
@@ -100,6 +103,13 @@ export default function BoligForm({ mode, initialBolig }: Props) {
   )
   const [pendingImageUrls, setPendingImageUrls] = useState<string[]>([])
 
+  const [offersTransferRoutes, setOffersTransferRoutes] = useState(
+    () => (initialBolig?.transfer_routes?.length ?? 0) > 0,
+  )
+  const [transferRoutes, setTransferRoutes] = useState<TransferRoute[]>(
+    () => initialBolig?.transfer_routes ?? [],
+  )
+
   const [transportFrom, setTransportFrom] = useState(initialBolig?.transport_from ?? "")
   const [transportPriceKr, setTransportPriceKr] = useState(
     initialBolig?.transport_price_roundtrip_ore != null
@@ -127,6 +137,8 @@ export default function BoligForm({ mode, initialBolig }: Props) {
           ? String(Math.round(oreToKr(initialBolig.transport_price_roundtrip_ore)))
           : "",
       )
+      setTransferRoutes(initialBolig.transfer_routes ?? [])
+      setOffersTransferRoutes((initialBolig.transfer_routes?.length ?? 0) > 0)
     }
   }, [initialBolig])
 
@@ -183,6 +195,16 @@ export default function BoligForm({ mode, initialBolig }: Props) {
         type="hidden"
         name="offers_transport"
         value={offersTransport ? "on" : ""}
+      />
+      <input
+        type="hidden"
+        name="offers_transfer_routes"
+        value={offersTransferRoutes ? "on" : ""}
+      />
+      <input
+        type="hidden"
+        name="transfer_routes_json"
+        value={JSON.stringify(transferRoutes)}
       />
 
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
@@ -452,6 +474,32 @@ export default function BoligForm({ mode, initialBolig }: Props) {
             className="rounded-xl"
           />
         </div>
+      </div>
+
+      {/* Transfer til/fra ophold (ruter) */}
+      <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-4">
+        <div className="flex items-start gap-3">
+          <Switch
+            id="offers_transfer_routes_switch_bolig"
+            checked={offersTransferRoutes}
+            onCheckedChange={setOffersTransferRoutes}
+          />
+          <div className="space-y-1 min-w-0">
+            <Label htmlFor="offers_transfer_routes_switch_bolig" className="cursor-pointer">
+              Tilbyd transfer
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              Gæster kan tilkøbe transport til/fra dit ophold
+            </p>
+          </div>
+        </div>
+        {offersTransferRoutes && (
+          <TransferRouteEditor
+            cabinId={initialBolig?.id ?? "new-cabin"}
+            initialRoutes={transferRoutes}
+            onChange={setTransferRoutes}
+          />
+        )}
       </div>
 
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">

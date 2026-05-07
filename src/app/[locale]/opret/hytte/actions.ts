@@ -12,6 +12,10 @@ import { isCloudinaryImageUrl } from "@/lib/cloudinaryUrl"
 const MAX_CABIN_IMAGES = 8
 import { krToOre } from "@/lib/money"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
+import {
+  parseTransferRoutesJson,
+  syncCabinTransferRoutes,
+} from "@/lib/syncCabinTransferRoutes"
 const PLACEHOLDER_NIGHT_KR = 100
 
 // Validates that an image_url is a trusted Cloudinary URL (cabin or pending folder)
@@ -149,6 +153,24 @@ export async function createHytte(
   }
 
   const cabinId = inserted.id
+
+  const transferRoutesEnabled = formData.get("offers_transfer_routes") === "on"
+  const routesParsed = parseTransferRoutesJson(
+    (formData.get("transfer_routes_json") as string | null) ?? undefined,
+  )
+  if (routesParsed === null) {
+    return { errors: { _form: ["Ugyldig data for transferruter"] } }
+  }
+  const { error: trErr } = await syncCabinTransferRoutes(
+    supabase,
+    cabinId,
+    transferRoutesEnabled,
+    routesParsed,
+  )
+  if (trErr) {
+    console.error("[createHytte transfer_routes]", trErr)
+    return { errors: { _form: ["Kunne ikke gemme transferruter"] } }
+  }
 
   const { data: prof, error: profErr } = await supabase
     .from("profiles")
@@ -292,6 +314,24 @@ export async function updateHytte(
   if (error) {
     console.error("[updateHytte]", error)
     return { errors: { _form: ["Der opstod en fejl. Prøv igen."] } }
+  }
+
+  const transferRoutesEnabled = formData.get("offers_transfer_routes") === "on"
+  const routesParsed = parseTransferRoutesJson(
+    (formData.get("transfer_routes_json") as string | null) ?? undefined,
+  )
+  if (routesParsed === null) {
+    return { errors: { _form: ["Ugyldig data for transferruter"] } }
+  }
+  const { error: trErr } = await syncCabinTransferRoutes(
+    supabase,
+    cabin_id,
+    transferRoutesEnabled,
+    routesParsed,
+  )
+  if (trErr) {
+    console.error("[updateHytte transfer_routes]", trErr)
+    return { errors: { _form: ["Kunne ikke gemme transferruter"] } }
   }
 
   redirect("/dashboard?tab=mine-opslag&toast=cabin-updated")

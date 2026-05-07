@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
 import BoligForm, { type InitialBolig } from "../../BoligForm"
+import type { TransferRoute } from "@/types/transfer"
 
 export const metadata = {
   title: "Rediger bolig — Sila.gl",
@@ -41,6 +42,28 @@ export default async function RedigerBoligPage({
 
   if (error || !row || row.property_type !== "residence") notFound()
 
+  const { data: transferRows } = await supabase
+    .from("transfer_routes")
+    .select(
+      "id, from_arrival_point, transport_type, price_one_way_ore, price_roundtrip_ore, max_guests, description, sort_order",
+    )
+    .eq("cabin_id", id)
+    .order("sort_order", { ascending: true })
+
+  const transfer_routes: TransferRoute[] = (transferRows ?? []).map((r) => ({
+    id: r.id,
+    from_arrival_point: r.from_arrival_point,
+    transport_type:
+      r.transport_type === "boat" || r.transport_type === "car" || r.transport_type === "other"
+        ? r.transport_type
+        : "other",
+    price_one_way_ore: r.price_one_way_ore,
+    price_roundtrip_ore: r.price_roundtrip_ore,
+    max_guests: r.max_guests,
+    description: r.description ?? "",
+    sort_order: r.sort_order,
+  }))
+
   const initialBolig: InitialBolig = {
     id: row.id,
     title: row.title,
@@ -59,6 +82,7 @@ export default async function RedigerBoligPage({
     transport_from: row.transport_from,
     transport_price_roundtrip_ore: row.transport_price_roundtrip_ore,
     images: (row.images as string[] | null) ?? [],
+    transfer_routes,
   }
 
   return (

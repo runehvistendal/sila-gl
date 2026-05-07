@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
 import HytteForm from "@/app/[locale]/opret/hytte/HytteForm"
+import type { TransferRoute } from "@/types/transfer"
 
 export const metadata = {
   title: "Rediger hytte — Sila.gl",
@@ -45,6 +46,28 @@ export default async function RedigerHyttePage({ params, searchParams }: PagePro
     .single()
 
   if (error || !cabin) notFound()
+
+  const { data: transferRows } = await supabase
+    .from("transfer_routes")
+    .select(
+      "id, from_arrival_point, transport_type, price_one_way_ore, price_roundtrip_ore, max_guests, description, sort_order",
+    )
+    .eq("cabin_id", id)
+    .order("sort_order", { ascending: true })
+
+  const transfer_routes: TransferRoute[] = (transferRows ?? []).map((r) => ({
+    id: r.id,
+    from_arrival_point: r.from_arrival_point,
+    transport_type:
+      r.transport_type === "boat" || r.transport_type === "car" || r.transport_type === "other"
+        ? r.transport_type
+        : "other",
+    price_one_way_ore: r.price_one_way_ore,
+    price_roundtrip_ore: r.price_roundtrip_ore,
+    max_guests: r.max_guests,
+    description: r.description ?? "",
+    sort_order: r.sort_order,
+  }))
 
   const isNewlySaved = toastParam === "hytte-saved"
 
@@ -95,6 +118,7 @@ export default async function RedigerHyttePage({ params, searchParams }: PagePro
             transport_from: cabin.transport_from ?? null,
             transport_price_roundtrip_ore: cabin.transport_price_roundtrip_ore ?? null,
             images: (cabin.images ?? []) as string[],
+            transfer_routes,
           }}
         />
 
