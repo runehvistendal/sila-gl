@@ -18,8 +18,16 @@ Grønlands marketplace for hytteudlejning og samsejlads. «Grønland på lokale 
 ### Påmindelser inden lancering (fra produktstrategi)
 - AI SEO-strategi skal udarbejdes
 - PostHog verificeres sat op korrekt
-- Transfer-flow bygges og testes end-to-end
-- Stripe live-test inkl. transfer-linjer
+- Stripe live-test end-to-end inkl. transfer-linjer og 3 %-servicegebyr
+
+## Status (8.5.2026)
+
+### Nyt 8.5.2026 — transfer-flow ✅
+- **`transfer_routes`** + RLS, `transport_type` boat|car, booking-snapshot på `cabin_bookings`
+- **Udbyder:** TransferRouteEditor i HytteForm/BoligForm, `syncCabinTransferRoutes`, TransferRoutesDisplay i «Kom dertil»
+- **Gæst:** CabinBookingWidget + `createCabinBooking` (Stripe-linjer: ophold, transfer, 3 %-servicegebyr; `application_fee_amount` som i CLAUDE.md)
+- **Søgning:** `?transport=true` på `/ophold/i-naturen` og `/ophold/i-byen` filtrerer via `transfer_routes` (ikke `offers_transport`)
+- **Detaljer:** se CLAUDE.md — **Bygget og komplet** · **Transfer-flow (8.5.2026)**
 
 ## Status (7.5.2026)
 
@@ -102,23 +110,21 @@ Grønlands marketplace for hytteudlejning og samsejlads. «Grønland på lokale 
 
 ## Næste trin
 
-1. **Transfer-flow** (næste sprint — høj prioritet):
-   - /ophold/i-byen/[id]: transfer vises ikke selvom udbyderen har valgt det — fix display
-   - /opret/bolig: dropdown viser kun 6 byer — skal bruge LocationAutocomplete med alle byer + bygder (`isInByenCategory` = true)
-   - /opret/bolig: udbyderen kan kun vælge by, ikke ankomstpunkt (Nuuk Lufthavn/Nuuk Havn) — tilføj arrival_points-trin efter lokationsvalg
-   - Transfer-flow generelt: AddOnServicesEditor-mønster + `from_location_id` på `transport_offers`
+1. **Stripe live-test end-to-end** — kritisk; inkl. transfer-linje + 3 %-servicegebyr
 
-2. **Stripe live-test end-to-end** — kritisk inden lancering; inkl. 3%-servicegebyr-linje
+2. **from_arrival_point → dropdown** — erstat fri tekst i TransferRouteEditor med `LocationAutocomplete` filtreret på `arrival_points` fra `greenlandLocations.ts`
 
-3. **Admin /admin/hytter** — bolig-rækker skal bruge `publishedCabinDetailPath`
+3. **offers_transport ryddes op** — fjern kolonne fra DB + formularer når legacy-data afklaret
 
-4. **ESLint** — `react-hooks/set-state-in-effect` i `BoligForm.tsx`, `CreateForm.tsx`, `BaadForm.tsx`
+4. **Admin /admin/hytter** — bolig-rækker bruger forkert path
 
-5. **AI SEO-strategi** — udestår; påmind Rune inden lancering
+5. **ESLint** — `react-hooks/set-state-in-effect` i `BoligForm.tsx`, `CreateForm.tsx`, `BaadForm.tsx`
 
-6. **MobilePay til Stripe** — fase 3
+6. **AI SEO-strategi** — udestår inden lancering
 
-7. **Lancering** — første 20 udbydere
+7. **MobilePay til Stripe** — fase 3
+
+8. **Lancering** — første 20 udbydere
 
 ## Sanity CMS (5.5.2026 — reference)
 
@@ -141,7 +147,6 @@ Grønlands marketplace for hytteudlejning og samsejlads. «Grønland på lokale 
 - Stripe live-test end-to-end (**3 %-servicegebyr + transfer-linjer**)
 - AI SEO-strategi skal udarbejdes
 - PostHog verificeres sat op korrekt
-- Transfer-flow bygges og testes end-to-end
 
 ## i18n — dansk + engelsk (færdig 5.5.2026)
 
@@ -157,7 +162,7 @@ Grønlands marketplace for hytteudlejning og samsejlads. «Grønland på lokale 
 
 ## Sikkerhed
 
-- Stripe end-to-end IKKE testet live — kritisk før lancering (se **Næste trin** pkt. 7)
+- Stripe end-to-end IKKE testet live — kritisk før lancering (se **Næste trin** pkt. 1)
 - Testbrugerne (Malik, Sara, Hans, Aviaja) er fake uden auth
 - **`SANITY_API_TOKEN` må ikke commits** — behold kun i `.env.local` / Vercel
 

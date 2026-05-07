@@ -96,7 +96,7 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - **Test (kun reference, ikke primær adfærd):** rune.runesen.test@gmail.com 
  `id: 8c29ab7f-fe44-43ef-a1af-64eda151b2f7`
 
-## Bygget og komplet (5.5.–6.5.2026)
+## Bygget og komplet (5.5.–8.5.2026)
 - Landingpage (/)
 - Auth (email + Google, httpOnly cookies via @supabase/ssr)
 - Datamodel (12 tabeller inkl. boats + rate_limits, RLS, triggers)
@@ -172,6 +172,20 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - **greenlandLocations.ts udvidet (7.5.2026)** ✅ — `location_type` (city/village/nature) + `arrival_points` (airport/helipad/harbour) på alle lokationer · `inferLocationType` + `deriveArrivalPoints` · hjælpefunktioner: `getLocationsByType`, `getArrivalPoints`, `isInByenCategory` · `getLocationName` capitalize-guard
 - **Hero-søgning opdateret (7.5.2026)** ✅ — Hytter/Transport-tabs erstattet med Ophold/Samsejlads · Samsejlads-tab har nu Hvem?/antal gæster-felt · sender `guests` til `/transport?guests=X`
 - **Testdata lokationer rettet (7.5.2026)** ✅ — migration `20260507120000_test_cabin_nature_hubs.sql` · Malik→Qooqqut, Sara→Eqip Sermia, Hans→Kangerluarsunnguaq · Maliks hytte publiceret via `20260507140000_publish_malik_demo_cabin.sql`
+
+- **Transfer-flow (8.5.2026)** ✅
+  - `transfer_routes` tabel med RLS (SELECT anon+auth, INSERT/UPDATE/DELETE kun ejer)
+  - `transport_type`: `'boat' | 'car'` (atv + other fjernet i migrations `20260508010000` + `20260508020000`)
+  - `cabin_bookings`: `transfer_route_id`, `transfer_price_ore`, `transfer_is_roundtrip`
+  - `src/types/transfer.ts`: `TransferRoute` + `TransferTransportType`
+  - `src/components/cabins/TransferRouteEditor.tsx`: udbyder opretter/redigerer ruter (🚤 Båd / 🚗 Bil)
+  - `src/lib/syncCabinTransferRoutes.ts`: DELETE + INSERT ved gem
+  - HytteForm + BoligForm: Switch «Tilbyd transfer» + TransferRouteEditor
+  - Rediger-sider: henter og viser eksisterende `transfer_routes`
+  - `src/components/cabins/TransferRoutesDisplay.tsx`: server component, vises i «Kom dertil»
+  - CabinBookingWidget: transfervalg (radio + enkelttur/tur-retur-toggle), prisberegning inkl. servicegebyr
+  - `createCabinBooking`: Stripe-linjer (ophold + transfer + servicegebyr), `application_fee_amount` = 15 % af (ophold+transfer) + servicegebyr, DB-snapshot
+  - Søgefilter `?transport=true`: bruger nu EXISTS på `transfer_routes` (ikke `offers_transport`) — `src/app/[locale]/ophold/i-naturen/page.tsx` + `i-byen/page.tsx`
 
 ## Nye filer (6.5.2026)
 
@@ -279,9 +293,9 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 ## Kendte huller / teknisk gæld
 - **Placeholder-migrationer** — `20260507124840` og `20260507130619` eksisterer kun som no-op placeholders lokalt (remote kørte dem på en anden maskine). Erstat med de rigtige scripts før nye miljøer sættes op.
 - **cookies-side:** Footer linker ikke længere til `/cookies`; hvis politikken skal frem — tilføj side (evt. Sanity `page` slug `cookies`) eller link fra footer.
-- **Transfer på boligopslag** — transfer vises ikke på `/ophold/i-byen/[id]` selvom udbyderen har valgt det. Skal fixes i næste sprint.
-- **Transfer oprettelse** — `/opret/bolig` dropdown viser kun 6 største byer i stedet for alle byer og bygder fra `GREENLAND_LOCATIONS`. Skal bruge `LocationAutocomplete` med `isInByenCategory`-filter.
-- **Arrival_points i transfer-oprettelse** — udbyderen kan kun vælge by (fx Nuuk) men ikke ankomstpunkt (fx Nuuk Lufthavn / Nuuk Havn). Skal vise `arrival_points` for valgt lokation som næste trin i flowet.
+- **offers_transport forældet (delvist)** — kolonnen eksisterer stadig i DB, HytteForm + BoligForm. Legacy Stripe-gren (`transportTotalOre`) bevaret for gamle hytter. Kan droppes når `offers_transport`-data er migreret til `transfer_routes`.
+- **from_arrival_point er fri tekst** — i næste sprint erstattes med dropdown fra `arrival_points` i `greenlandLocations.ts` (`LocationAutocomplete` med ankomstpunkter).
+- **Ankomstpunkt-valg i /opret/bolig** — udbyderen kan kun skrive fri tekst; skal guides til `arrival_points` fra `greenlandLocations.ts`.
 - **Admin `/admin/hytter`** — bolig-rækker bruger stadig `/hytter/{id}` — skal bruge `publishedCabinDetailPath`
 - **ESLint `react-hooks/set-state-in-effect`** i `BoligForm.tsx`, `CreateForm.tsx`, `BaadForm.tsx` — rettes inden CI skal være grøn
 
@@ -294,9 +308,6 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - Stripe live-test end-to-end (**3 %-servicegebyr + transfer-linjer**)
 - AI SEO-strategi skal udarbejdes
 - PostHog verificeres sat op korrekt
-- Transfer-flow bygges og testes end-to-end
-
-## Aktiv arkitektur: aktiver + opslag
 - Aktiver: cabins (hytte) + boats (båd) — gemmes med `published=false` indtil opslag
 - Opslag: opret/opslag/hytte/[id] publicerer hytte, opret/opslag/sejlads/[id] poster tur
 - skipper_id alias: brug `sejler_id:skipper_id` i SQL-select — sejler_id i TypeScript
