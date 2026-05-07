@@ -13,6 +13,7 @@ export const dynamic = "force-dynamic"
 interface SearchParams {
   date?: string
   hub?: string
+  guests?: string
 }
 
 type Props = {
@@ -53,6 +54,11 @@ export default async function TransportPage({ params, searchParams }: Props) {
   const sp = await searchParams
   const dateParam = YMD_RE.test(sp.date ?? "") ? sp.date! : ""
   const hubParam = (sp.hub ?? "").trim()
+  const guestsParsed = Number.parseInt(String(sp.guests ?? ""), 10)
+  const guestsParam =
+    Number.isFinite(guestsParsed) && guestsParsed >= 1 && guestsParsed <= 20
+      ? guestsParsed
+      : 0
   const departureCutoff = dateParam ? nuukDateToUtcIso(dateParam) : null
 
   let rideShareQuery = supabase
@@ -97,6 +103,7 @@ export default async function TransportPage({ params, searchParams }: Props) {
         openRequests={openRequests}
         initialDate={dateParam}
         initialHub={hubParam}
+        initialGuests={guestsParam}
       />
     </main>
   )

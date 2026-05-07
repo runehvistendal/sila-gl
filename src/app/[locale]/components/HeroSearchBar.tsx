@@ -84,6 +84,7 @@ export default function HeroSearchBar({ tab, majorHubs }: HeroSearchBarProps) {
       if (singleDate) params.set("date", singleDate)
       const trimmedHub = hub.trim()
       if (trimmedHub) params.set("hub", trimmedHub)
+      if (guests != null && guests >= 1) params.set("guests", String(guests))
       const qs = params.toString()
       router.push(`/transport${qs ? `?${qs}` : ""}`)
     }
@@ -154,43 +155,39 @@ export default function HeroSearchBar({ tab, majorHubs }: HeroSearchBarProps) {
             </div>
           </button>
 
-          {tab === "ophold" ? (
-            <>
-              <div className="hidden md:block w-px bg-gray-200 self-stretch my-3 shrink-0" aria-hidden />
-              <div className="md:hidden h-px w-full bg-gray-200 shrink-0" aria-hidden />
+          <div className="hidden md:block w-px bg-gray-200 self-stretch my-3 shrink-0" aria-hidden />
+          <div className="md:hidden h-px w-full bg-gray-200 shrink-0" aria-hidden />
 
-              <div className="relative z-[2] flex-1 min-w-0">
-                <button
-                  type="button"
-                  onClick={openWho}
-                  className="relative z-[2] flex flex-col items-stretch justify-center text-left px-6 py-4 md:py-3 md:px-5 w-full min-h-[4.25rem] md:min-h-0 hover:bg-gray-50/80 transition-colors rounded-none"
+          <div className="relative z-[2] flex-1 min-w-0">
+            <button
+              type="button"
+              onClick={openWho}
+              className="relative z-[2] flex flex-col items-stretch justify-center text-left px-6 py-4 md:py-3 md:px-5 w-full min-h-[4.25rem] md:min-h-0 hover:bg-gray-50/80 transition-colors rounded-none"
+            >
+              <span className="text-xs font-semibold text-[#09192A] mb-1 shrink-0">{t("whoLabel")}</span>
+              <div className="min-h-9 flex w-full min-w-0 items-center">
+                <span
+                  className={cn(
+                    "text-sm truncate w-full",
+                    guests != null && guests >= 1 ? "text-[#09192A] font-medium" : "text-gray-500",
+                  )}
                 >
-                  <span className="text-xs font-semibold text-[#09192A] mb-1 shrink-0">{t("whoLabel")}</span>
-                  <div className="min-h-9 flex w-full min-w-0 items-center">
-                    <span
-                      className={cn(
-                        "text-sm truncate w-full",
-                        guests != null && guests >= 1 ? "text-[#09192A] font-medium" : "text-gray-500",
-                      )}
-                    >
-                      {guests != null && guests >= 1
-                        ? t("guestsCount", { count: guests })
-                        : t("guestsPlaceholder")}
-                    </span>
-                  </div>
-                </button>
-                {whoOpen ? (
-                  <GuestsPopover
-                    key={`who-${whoOpen}-${guests ?? "none"}`}
-                    guests={guests}
-                    onGuestsChange={setGuests}
-                    onClose={() => setActivePanel(null)}
-                    t={t}
-                  />
-                ) : null}
+                  {guests != null && guests >= 1
+                    ? t("guestsCount", { count: guests })
+                    : t("guestsPlaceholder")}
+                </span>
               </div>
-            </>
-          ) : null}
+            </button>
+            {whoOpen ? (
+              <GuestsPopover
+                key={`who-${whoOpen}-${guests ?? "none"}-${tab}`}
+                guests={guests}
+                onGuestsChange={setGuests}
+                onClose={() => setActivePanel(null)}
+                t={t}
+              />
+            ) : null}
+          </div>
 
           <div className="relative z-0 flex items-center justify-center p-3 md:pr-4 md:pl-1 shrink-0">
             <button

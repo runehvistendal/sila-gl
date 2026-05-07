@@ -59,6 +59,8 @@ interface Props {
   openRequests: OpenTransportRequest[]
   initialDate?: string
   initialHub?: string
+  /** Min. ledige pladser (fra ?guests=); 0 = ingen filtrering */
+  initialGuests?: number
 }
 
 export default function TransportClient({
@@ -66,6 +68,7 @@ export default function TransportClient({
   openRequests,
   initialDate = "",
   initialHub = "",
+  initialGuests = 0,
 }: Props) {
   const t = useTranslations("transport")
   const fmt = useFormatter()
@@ -141,7 +144,18 @@ export default function TransportClient({
 
       const matchAvailable = !filters.onlyAvailable || rs.seats_available > 0
 
-      return matchSearch && matchFrom && matchTo && matchBoat && matchCabin && matchAvailable
+      const matchGuests =
+        initialGuests < 1 || rs.seats_available >= initialGuests
+
+      return (
+        matchSearch &&
+        matchFrom &&
+        matchTo &&
+        matchBoat &&
+        matchCabin &&
+        matchAvailable &&
+        matchGuests
+      )
     })
 
     if (filters.sort === "price_asc") {
@@ -154,7 +168,7 @@ export default function TransportClient({
     }
 
     return result
-  }, [rideShares, filters])
+  }, [rideShares, filters, initialGuests])
 
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
@@ -169,13 +183,13 @@ export default function TransportClient({
         location: loc,
         check_in: filters.date,
         check_out: "",
-        guests: "",
+        guests: initialGuests >= 1 ? String(initialGuests) : "",
       })
     }, 450)
     return () => {
       if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
     }
-  }, [filters])
+  }, [filters, initialGuests])
 
   function handleFilterApplied(key: string, value: string | boolean | string[]) {
     captureEvent("filter_applied", {
