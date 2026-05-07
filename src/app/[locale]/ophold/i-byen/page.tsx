@@ -104,6 +104,23 @@ export default async function OpholdCityPage({ params, searchParams }: Props) {
     excludedCabinIds = Array.from(ids)
   }
 
+  let transferCabinIds: string[] | null = null
+  if (transport === "true") {
+    const { data: routeRows, error: trErr } = await supabase
+      .from("transfer_routes")
+      .select("cabin_id")
+    if (trErr) {
+      console.error("[ophold/i-byen] transfer_routes:", trErr)
+    }
+    transferCabinIds = [
+      ...new Set(
+        (routeRows ?? [])
+          .map((r) => r.cabin_id)
+          .filter((id): id is string => typeof id === "string" && id.length > 0),
+      ),
+    ]
+  }
+
   let query = supabase
     .from("cabins")
     .select(
@@ -125,9 +142,16 @@ export default async function OpholdCityPage({ params, searchParams }: Props) {
     .eq("published", true)
     .is("deleted_at", null)
 
+  if (transferCabinIds) {
+    if (transferCabinIds.length === 0) {
+      query = query.limit(0)
+    } else {
+      query = query.in("id", transferCabinIds)
+    }
+  }
+
   if (hub) query = query.eq("location_hub", hub)
   if (guests) query = query.gte("max_guests", Number(guests))
-  if (transport === "true") query = query.eq("offers_transport", true)
   if (residenceSubtype) query = query.eq("residence_subtype", residenceSubtype)
   if (locationSubtype) query = query.eq("location_subtype", locationSubtype)
   if (minPrice) query = query.gte("price_per_night_ore", Math.round(Number(minPrice) * 100))
