@@ -96,7 +96,7 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - **Test (kun reference, ikke primær adfærd):** rune.runesen.test@gmail.com 
  `id: 8c29ab7f-fe44-43ef-a1af-64eda151b2f7`
 
-## Bygget og komplet (5.5.–8.5.2026)
+## Bygget og komplet (5.5.–9.5.2026)
 - Landingpage (/)
 - Auth (email + Google, httpOnly cookies via @supabase/ssr)
 - Datamodel (12 tabeller inkl. boats + rate_limits, RLS, triggers)
@@ -186,6 +186,7 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
   - CabinBookingWidget: transfervalg (radio + enkelttur/tur-retur-toggle), prisberegning inkl. servicegebyr
   - `createCabinBooking`: Stripe-linjer (ophold + transfer + servicegebyr), `application_fee_amount` = 15 % af (ophold+transfer) + servicegebyr, DB-snapshot
   - Søgefilter `?transport=true`: bruger nu EXISTS på `transfer_routes` (ikke `offers_transport`) — `src/app/[locale]/ophold/i-naturen/page.tsx` + `i-byen/page.tsx`
+- **Opholdsanmodning udvidet (9.5.2026)** ✅ — `desired_property_type` (`cabin` \| `residence`) på `cabin_requests` · kalender interval-mode · opholdstype-valg · hurtige felter · `guestStayRequestHref` i `cabinPublicPaths.ts` · `/anmod?type=stay` kanonisk · `/anmod?type=transport` → redirect `/transport/anmod`
 
 ## Nye filer (6.5.2026)
 
@@ -229,15 +230,15 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - /opret/opslag/sejlads/[id] → samsejladstur
 - **OBS:** "Udlej nu/denne" findes ikke længere — publicering sker via Publicér-knappen direkte
 
-## Næste i rækkefølge
-1. ~~i18n dansk + engelsk (next-intl)~~ ✅
-2. ~~SEO grundlag~~ ✅ — `metadata.ts`, `sitemap.ts`, `robots.ts`, `/destination/[slug]`, JsonLd; polering se **Påmindelser inden lancering**
-3. ~~**Sanity:** Visual Editing + Page Builder~~ ✅ — se **Sanity CMS** + **Sanity Visual Editing** nedenfor
-4. ~~Dato-bevidst søgning~~ ✅ — se Status 7.5
-5. **i18n-oprydning** — `TYPE_LABEL`, `region_label`, øvrige hardkodede strenge → brugerens sprog / bundlet + Sanity
-6. **Lighthouse-test**
-7. **Stripe live-test end-to-end** — kritisk; **inkl. 3 %-servicegebyr-linje**
-8. **MobilePay til Stripe**
+## Næste trin i prioriteret rækkefølge
+1. **Stripe live-test end-to-end** — kritisk; inkl. transfer-linje + 3 %-servicegebyr
+2. **from_arrival_point → dropdown** — `LocationAutocomplete` + `arrival_points`
+3. **offers_transport ryddes op** — DB + formularer
+4. **Admin /admin/hytter path-fix**
+5. **ESLint-fixes** — `BoligForm.tsx`, `CreateForm.tsx`, `BaadForm.tsx`
+6. **Sanity `request.title` → «Anmod om ophold»**
+7. **AI SEO-strategi** — udestår; påmind Rune inden lancering
+8. **MobilePay til Stripe** — fase 3
 9. **Lancering** — første 20 udbydere
 
 ## Sanity CMS (5.5.2026)
@@ -291,6 +292,7 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - **Next.js dokumentation:** Læs `node_modules/next/dist/docs/` før antagelser om API (se `AGENTS.md`).
 
 ## Kendte huller / teknisk gæld
+- **Sanity `request.title`** — hvis «Anmod om hytte» stadig vises i overskriften, skal feltet opdateres i Studio til «Anmod om ophold» eller overlay fjernes for den nøgle
 - **Placeholder-migrationer** — `20260507124840` og `20260507130619` eksisterer kun som no-op placeholders lokalt (remote kørte dem på en anden maskine). Erstat med de rigtige scripts før nye miljøer sættes op.
 - **cookies-side:** Footer linker ikke længere til `/cookies`; hvis politikken skal frem — tilføj side (evt. Sanity `page` slug `cookies`) eller link fra footer.
 - **offers_transport forældet (delvist)** — kolonnen eksisterer stadig i DB, HytteForm + BoligForm. Legacy Stripe-gren (`transportTotalOre`) bevaret for gamle hytter. Kan droppes når `offers_transport`-data er migreret til `transfer_routes`.

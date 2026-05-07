@@ -20,6 +20,24 @@ Grønlands marketplace for hytteudlejning og samsejlads. «Grønland på lokale 
 - PostHog verificeres sat op korrekt
 - Stripe live-test end-to-end inkl. transfer-linjer og 3 %-servicegebyr
 
+## Status (9.5.2026)
+
+### Nyt 9.5.2026 — småfixes batch
+- **FAQ `/faq`:** Engelsk fallback komplet (intro + 5 Q&A + 3 knapper: I naturen, I byen, Transport)
+- **Navbar:** SilaLogoMark erstatter tekst-anker (desktop + mobil); Ophold-dropdown hover/focus lig bruger-menu
+- **Bolig-detalje:** Dobbelt transfer-boks fjernet — kun ét «Kom dertil»-afsnit
+- **ServiceFeeHelpIcon:** Tooltip konsistent i CabinBookingWidget, TransportDrawer, TransportDetailClient
+- **Forside:** Hytter + boliger i én `<section>` (boliger med `mt-14 pt-14 border-t`)
+- **CTA «Opret profil»:** `homeCtaCreateExperience` fjernet fra mergeSanityIntoMessages — tekst fra bundlet `home.cta.createExperience`
+- **`/opret`:** Begge kort (hytte + transport) pusher altid til fast URL — ingen konditionel logik
+- **Footer:** `footer.platformTransport` = «Transport»; FAQ-link bruger `footer.faq`
+- **`/om`:** Fallback-tekst (4 afsnit + intro + FAQ-link) når Sanity-body er tom
+- **`/anmod`:** Navbar + `pt-24` padding; kanonisk URL `?type=stay` via `guestStayRequestHref` i `cabinPublicPaths.ts`; `?type=transport` redirecter til `/transport/anmod`
+- **Opholdsanmodning:** Kalender interval-mode (DatePickerButton), opholdstype-valg (cabin|residence), hurtige felter (senge + vigtigst), beskrivelse flettes server-side
+- **DB-migration:** `20260507130000_cabin_requests_desired_property_type.sql` pushet med `--include-all`
+- **Nav:** `nav.requestCabin` = «Anmod om ophold»; plus-dropdown har separate links til `/anmod?type=stay` og `/transport/anmod`
+- **PowerShell-note:** Brug `;` ikke `&&` til kommandokæder i Cursor-terminal
+
 ## Status (8.5.2026)
 
 ### Nyt 8.5.2026 — transfer-flow ✅
