@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { formatKr } from "@/lib/money"
+import { publishedCabinDetailPath } from "@/lib/cabinPublicPaths"
 import AdminTogglePublished from "./AdminTogglePublished"
 
 export const metadata = { title: "Hytter — Admin" }
@@ -21,7 +22,7 @@ export default async function AdminHytterPage() {
 
   const { data: cabins } = await svc
     .from("cabins")
-    .select("id, title, owner_id, location_hub, price_per_night_ore, published, created_at, profiles!owner_id(full_name)")
+    .select("id, title, owner_id, location_hub, price_per_night_ore, published, created_at, property_type, profiles!owner_id(full_name)")
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
 
@@ -33,6 +34,7 @@ export default async function AdminHytterPage() {
     price_per_night_ore: number
     published: boolean
     created_at: string
+    property_type: string | null
     profiles: { full_name: string | null } | null
   }
 
@@ -63,7 +65,7 @@ export default async function AdminHytterPage() {
               <TableRow key={cabin.id} className="hover:bg-gray-50">
                 <TableCell className="font-medium">
                   <a
-                    href={`/hytter/${cabin.id}`}
+                    href={publishedCabinDetailPath(cabin.property_type, cabin.id)}
                     className="hover:underline text-blue-600"
                     target="_blank"
                     rel="noopener noreferrer"

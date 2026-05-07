@@ -13,7 +13,10 @@ export function revalidatePublishedCabinPaths(
   revalidatePath("/ophold/i-byen")
   revalidatePath("/hytter")
   revalidatePath(publishedCabinDetailPath(propertyType, cabinId))
-  if (propertyType !== "residence") {
+  if (propertyType === "residence") {
+    revalidatePath(`/ophold/i-byen/${cabinId}`)
+  } else {
+    revalidatePath(`/ophold/i-naturen/${cabinId}`)
     revalidatePath(`/hytter/${cabinId}`)
   }
 }

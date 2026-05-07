@@ -339,7 +339,13 @@
     "host": "Your host",
     "getHere": "Getting here",
     "reviews": "Reviews",
-    "noReviews": "No reviews yet"
+    "noReviews": "No reviews yet",
+    "back_to_list": "Back to listings",
+    "up_to_guests": "Up to {count} guests",
+    "transport_offered": "Transport offered",
+    "instant_book_badge": "Instant Book",
+    "no_description": "No description yet.",
+    "see_profile": "View profile →"
   },
   "transport": {
     "metaTitle": "Sailing in Greenland — Sila.gl",
@@ -967,6 +973,7 @@
       "see_profile": "View profile →",
       "transfer_title": "Transfer",
       "transfer_placeholder": "The host indicated they offer transfer. Booking and exact transfer details will open in a future update — keep arrangements on the platform.",
+      "transfer_snippet": "Transfer offered — coming soon.",
       "subtype_house": "House",
       "subtype_apartment": "Apartment",
       "subtype_room": "Room",

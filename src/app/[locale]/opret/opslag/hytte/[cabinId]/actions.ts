@@ -79,5 +79,5 @@ export async function publishCabinListing(
     return { message: "Noget gik galt. Prøv igen." }
   }
 
-  redirect(`/hytter/${cabin_id}`)
+  redirect(`/ophold/i-naturen/${cabin_id}`)
 }

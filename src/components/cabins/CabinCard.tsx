@@ -60,7 +60,7 @@ export default function CabinCard({
     setImgError(false)
   }
 
-  const href = detailHref ?? `/hytter/${cabin.id}`
+  const href = detailHref ?? `/ophold/i-naturen/${cabin.id}`
 
   return (
     <Link

@@ -339,7 +339,13 @@
     "host": "Din vært",
     "getHere": "Kom dertil",
     "reviews": "Anmeldelser",
-    "noReviews": "Ingen anmeldelser endnu"
+    "noReviews": "Ingen anmeldelser endnu",
+    "back_to_list": "Tilbage til oversigten",
+    "up_to_guests": "Op til {count} gæster",
+    "transport_offered": "Transport tilbydes",
+    "instant_book_badge": "Instant Book",
+    "no_description": "Ingen beskrivelse endnu.",
+    "see_profile": "Se profil →"
   },
   "transport": {
     "metaTitle": "Samsejlads i Grønland — Sila.gl",
@@ -967,6 +973,7 @@
       "see_profile": "Se profil →",
       "transfer_title": "Transfer",
       "transfer_placeholder": "Udbyderen har angivet at de tilbyder transfer. Booking og præcise detaljer for transfer åbner i et kommende opdatering — kontakt forløber via platformen.",
+      "transfer_snippet": "Transfer tilbydes — kommer snart.",
       "subtype_house": "Hus",
       "subtype_apartment": "Lejlighed",
       "subtype_room": "Værelse",

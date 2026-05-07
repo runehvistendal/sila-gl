@@ -7,7 +7,7 @@ import { buildMetadata } from "@/lib/metadata"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
-import HytterClient from "@/app/[locale]/hytter/HytterClient"
+import ResidenceClient from "./ResidenceClient"
 import type { FilterValues } from "@/components/cabins/CabinFilters"
 import type { CabinCardData } from "@/components/cabins/CabinCard"
 import type { CabinMapPin } from "@/lib/cabinMapRoutes"
@@ -196,14 +196,10 @@ export default async function OpholdCityPage({ params, searchParams }: Props) {
       <Navbar user={navUser} />
 
       <Suspense fallback={null}>
-        <HytterClient
+        <ResidenceClient
           cabins={cabins}
           cabinMapPins={cabinMapPins}
           initialFilters={initialFilters}
-          filterBasePath="/ophold/i-byen"
-          listingKind="residence"
-          detailHrefForId={(id) => `/ophold/i-byen/${id}`}
-          translationScope="ophold.city"
         />
       </Suspense>
 

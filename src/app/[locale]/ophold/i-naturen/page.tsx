@@ -7,7 +7,7 @@ import { buildMetadata } from "@/lib/metadata"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
-import HytterClient from "@/app/[locale]/hytter/HytterClient"
+import NatureClient from "./NatureClient"
 import type { FilterValues } from "@/components/cabins/CabinFilters"
 import type { CabinCardData } from "@/components/cabins/CabinCard"
 import type { CabinMapPin } from "@/lib/cabinMapRoutes"
@@ -184,14 +184,10 @@ export default async function OpholdNaturePage({ params, searchParams }: Props) 
       <Navbar user={navUser} />
 
       <Suspense fallback={null}>
-        <HytterClient
+        <NatureClient
           cabins={cabins}
           cabinMapPins={cabinMapPins}
           initialFilters={initialFilters}
-          filterBasePath="/ophold/i-naturen"
-          listingKind="cabin"
-          detailHrefForId={(id) => `/hytter/${id}`}
-          translationScope="ophold.nature"
         />
       </Suspense>
 
