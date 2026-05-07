@@ -31,6 +31,7 @@ Grønlands marketplace for hytteudlejning og samsejlads. «Grønland på lokale 
 - Hero: Ophold/Samsejlads tabs, Hvem?-felt i samsejlads
 - Testdata: lokationer rettet, Maliks hytte publiceret
 - Migrationer: 20260507000000, 20260507120000, 20260507140000
+- **Dato-bevidst søgning** ✅ — `/hytter?checkIn=YYYY-MM-DD&checkOut=YYYY-MM-DD` filtrerer cabins server-side via `cabin_availability` (is_available=false-overlap) + `cabin_bookings` (status='confirmed', overlap) i `src/app/[locale]/hytter/page.tsx`. `/transport?date=YYYY-MM-DD` filtrerer ride_shares server-side med `.gte("departure_at", nuukDateToUtcIso(date))` (Nuuk-midnat → UTC) i `src/app/[locale]/transport/page.tsx`. **HeroContent** / filtre: hub + datoer; **CabinFilters**: dato-inputs i popover + chips (med X). **TransportFilters**: afrejsedato i popover + chip. Bundlet keys: `home.searchTabs.*`, `home.searchDates.*`, `hero.tab_*`. Native `<input type="date">`. Mobile-first.
 
 ## Status (6.5.2026)
 

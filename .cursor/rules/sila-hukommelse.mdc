@@ -18,7 +18,15 @@ Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort 
 
 ## Status (7.5.2026)
 
-- **Dato-bevidst søgning ✅** — `/hytter?checkIn&checkOut` filtrerer server-side via `cabin_availability` (blokeret-overlap) + `cabin_bookings` (status='confirmed', overlap). `/transport?date` bruger `.gte("departure_at", nuukDateToUtcIso(date))` (Nuuk-midnat → UTC). HeroContent fået tabs (Hytter | Samsejlads). CabinFilters/TransportFilters: dato-inputs i popover + chips. Bundlet `home.searchTabs.*`, `home.searchDates.*`. Native `<input type="date">`.
+### Nyt 7.5.2026
+
+- Produktstrategi besluttet — se **CLAUDE.md** § Produktstrategi
+- Korttidsboligudlejning: `/ophold/i-naturen` + `/ophold/i-byen` + `/opret/bolig`
+- **greenlandLocations.ts:** `location_type` + `arrival_points` + hjælpefunktioner
+- Hero: Ophold/Samsejlads tabs, Hvem?/gæster i samsejlads → `/transport?guests=X`
+- Testdata: natur-hubs (Malik/Sara/Hans) + Maliks hytte publiceret
+- Migrationer: `20260507000000`, `20260507120000`, `20260507140000`
+- **Dato-bevidst søgning ✅** — `/hytter?checkIn&checkOut` + `/transport?date`; CabinFilters/TransportFilters popover + chips; `home.searchTabs.*`, `home.searchDates.*`, `hero.tab_*`; native date input
 
 ## Status (6.5.2026)
 
@@ -68,7 +76,7 @@ Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort 
 
 ## Næste fokus
 
-1. ~~Dato-bevidst søgning~~ ✅ (7.5) · 2. i18n-oprydning (`TYPE_LABEL`, `region_label`, hardkodede strenge) · 3. Lighthouse · 4. **Stripe live end-to-end** (3 %-linje) · 5. MobilePay → Stripe · 6. Lancering (20 udbydere) — se **`hukommelse.md`**
+1. **Transfer-flow** (display i-byen, LocationAutocomplete/arrival_points på /opret/bolig, `from_location_id`) — se **`hukommelse.md` § Næste trin** · 2. Stripe live e2e · 3. Admin `publishedCabinDetailPath` · 4. ESLint hooks i Bolig/Create/Baad forms · 5. i18n-oprydning · 6. Lighthouse · 7. AI SEO · 8. MobilePay → Stripe · 9. Lancering
 
 ## Vigtige beslutninger (gældende)
 
