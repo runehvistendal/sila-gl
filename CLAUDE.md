@@ -81,6 +81,11 @@ Transport er et tilvalg udbyderen aktiverer på sit opslag — uanset om det er 
 - Ingen langvarig boligudlejning — hører til separat Boligportal-platform
 - Ingen helikoptertransfer — ingen private udbydere kan tilbyde det
 
+### UX-regel — lokationsvalg ved oprettelse
+- Hytter bør have naturlokation som `location_hub` — guides i opret-flow (ikke teknisk håndhævet endnu)
+- Boliger bør have by eller bygd som `location_hub` — `LocationAutocomplete` skal filtrere på `isInByenCategory` = true
+- Samsejlads: `from_location` og `to_location` gemmes lowercase i DB — vises via `getLocationName()`
+
 ## Stack
 Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Vercel + **Sanity** (CMS)
 **Font:** Plus Jakarta Sans
@@ -163,6 +168,10 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - **`SailSection.tsx` (forsiden)** — toggle **Samsejlads|Hytter**; live **`ride_shares`** + **cabins** fra Supabase til `TransportMap` overview; **`cabinMapRoutes.ts`** (**`CabinMapPin` → ruter**, `from=to` for hytteprikker) ✅
 - **`/hytter`** — liste/**kort** (samme ikon-segment som **`/transport`**: Grid/Map, kun ikoner); **`TransportMap`** overview + klik → **`/hytter/[id]`** ✅
 - **MapWrapper.tsx slettet** — erstattet af SailSection + TransportMap ✅
+- **Korttidsboligudlejning (7.5.2026)** ✅ — `property_type` (cabin/residence) + `residence_subtype` + `location_subtype` på cabins · migration `20260507000000_add_residences.sql` · `/ophold/i-naturen` + `/ophold/i-byen` · `/opret/bolig` · `RESIDENCE_FACILITIES` i `amenityMeta.ts` · `revalidateCabinPublic.ts` · i18n `ophold.*` / `residence.*` · sitemap opdateret
+- **greenlandLocations.ts udvidet (7.5.2026)** ✅ — `location_type` (city/village/nature) + `arrival_points` (airport/helipad/harbour) på alle lokationer · `inferLocationType` + `deriveArrivalPoints` · hjælpefunktioner: `getLocationsByType`, `getArrivalPoints`, `isInByenCategory` · `getLocationName` capitalize-guard
+- **Hero-søgning opdateret (7.5.2026)** ✅ — Hytter/Transport-tabs erstattet med Ophold/Samsejlads · Samsejlads-tab har nu Hvem?/antal gæster-felt · sender `guests` til `/transport?guests=X`
+- **Testdata lokationer rettet (7.5.2026)** ✅ — migration `20260507120000_test_cabin_nature_hubs.sql` · Malik→Qooqqut, Sara→Eqip Sermia, Hans→Kangerluarsunnguaq · Maliks hytte publiceret via `20260507140000_publish_malik_demo_cabin.sql`
 
 ## Nye filer (6.5.2026)
 
@@ -269,6 +278,11 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 
 ## Kendte huller / teknisk gæld
 - **cookies-side:** Footer linker ikke længere til `/cookies`; hvis politikken skal frem — tilføj side (evt. Sanity `page` slug `cookies`) eller link fra footer.
+- **Transfer på boligopslag** — transfer vises ikke på `/ophold/i-byen/[id]` selvom udbyderen har valgt det. Skal fixes i næste sprint.
+- **Transfer oprettelse** — `/opret/bolig` dropdown viser kun 6 største byer i stedet for alle byer og bygder fra `GREENLAND_LOCATIONS`. Skal bruge `LocationAutocomplete` med `isInByenCategory`-filter.
+- **Arrival_points i transfer-oprettelse** — udbyderen kan kun vælge by (fx Nuuk) men ikke ankomstpunkt (fx Nuuk Lufthavn / Nuuk Havn). Skal vise `arrival_points` for valgt lokation som næste trin i flowet.
+- **Admin `/admin/hytter`** — bolig-rækker bruger stadig `/hytter/{id}` — skal bruge `publishedCabinDetailPath`
+- **ESLint `react-hooks/set-state-in-effect`** i `BoligForm.tsx`, `CreateForm.tsx`, `BaadForm.tsx` — rettes inden CI skal være grøn
 
 ## Påmindelser inden lancering
 - Destinationssider poleres
