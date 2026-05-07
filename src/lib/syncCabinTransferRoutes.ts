@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { TransferRoute } from "@/types/transfer"
 
-const TRANSPORT_TYPES = new Set<string>(["boat", "car", "other"])
+const TRANSPORT_TYPES = new Set<string>(["boat", "car"])
 
 /**
  * Synkroniserer transfer_routes for et opslag. Brug auth-baseret Supabase-klient (RLS).
@@ -66,7 +66,7 @@ export function parseTransferRoutesJson(raw: string | undefined): TransferRoute[
       const transport_type = o.transport_type
       const from_arrival_point = o.from_arrival_point
       if (typeof from_arrival_point !== "string") return null
-      if (transport_type !== "boat" && transport_type !== "car" && transport_type !== "other") {
+      if (transport_type !== "boat" && transport_type !== "car") {
         return null
       }
       const price_one_way_ore = Number(o.price_one_way_ore)

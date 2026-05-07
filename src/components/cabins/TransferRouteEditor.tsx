@@ -24,7 +24,6 @@ const TRANSPORT_OPTIONS: {
 }[] = [
   { value: "boat", label: "Båd", icon: "🚤" },
   { value: "car", label: "Bil", icon: "🚗" },
-  { value: "other", label: "Andet", icon: "✶" },
 ]
 
 function krInputValue(ore: number): string {

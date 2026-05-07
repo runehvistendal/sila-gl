@@ -53,10 +53,7 @@ export default async function RedigerBoligPage({
   const transfer_routes: TransferRoute[] = (transferRows ?? []).map((r) => ({
     id: r.id,
     from_arrival_point: r.from_arrival_point,
-    transport_type:
-      r.transport_type === "boat" || r.transport_type === "car" || r.transport_type === "other"
-        ? r.transport_type
-        : "other",
+    transport_type: r.transport_type === "boat" || r.transport_type === "car" ? r.transport_type : "car",
     price_one_way_ore: r.price_one_way_ore,
     price_roundtrip_ore: r.price_roundtrip_ore,
     max_guests: r.max_guests,

@@ -1,4 +1,4 @@
-export type TransferTransportType = "boat" | "car" | "other"
+export type TransferTransportType = "boat" | "car"
 
 export type TransferRoute = {
   id?: string
