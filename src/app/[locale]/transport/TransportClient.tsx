@@ -2,9 +2,10 @@
 
 import { useState, useMemo, useEffect, useRef } from "react"
 import dynamic from "next/dynamic"
+import { useSearchParams } from "next/navigation"
 import { Anchor, Grid, Map, ArrowRight, MessageSquare } from "lucide-react"
 import { useFormatter, useTranslations } from "next-intl"
-import { Link } from "@/i18n/navigation"
+import { Link, useRouter } from "@/i18n/navigation"
 import { Button } from "@/components/ui/button"
 import TransportCard, { type RideShareCardData } from "./components/TransportCard"
 import TransportFilters, { type TransportFilterValues } from "./components/TransportFilters"
@@ -46,6 +47,7 @@ const DEFAULT_FILTERS: TransportFilterValues = {
   boatTypes:     [],
   cabin:         "",
   onlyAvailable: true,
+  date:          "",
   showPanel:     false,
 }
 
@@ -54,15 +56,58 @@ const DEFAULT_FILTERS: TransportFilterValues = {
 interface Props {
   rideShares:   RideShareCardData[]
   openRequests: OpenTransportRequest[]
+  initialDate?: string
+  initialHub?: string
 }
 
-export default function TransportClient({ rideShares, openRequests }: Props) {
+export default function TransportClient({
+  rideShares,
+  openRequests,
+  initialDate = "",
+  initialHub = "",
+}: Props) {
   const t = useTranslations("transport")
   const fmt = useFormatter()
-  const [filters, setFilters]   = useState<TransportFilterValues>(DEFAULT_FILTERS)
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const hubForFilter = initialHub.trim() || null
+
+  const [localFilters, setLocalFilters] = useState<TransportFilterValues>(() => ({
+    ...DEFAULT_FILTERS,
+    fromLoc: hubForFilter ?? "all",
+  }))
+
+  useEffect(() => {
+    const h = initialHub.trim()
+    setLocalFilters((f) => ({
+      ...f,
+      fromLoc: h ? h : "all",
+    }))
+  }, [initialHub])
+
+  const filters = useMemo<TransportFilterValues>(
+    () => ({ ...localFilters, date: initialDate }),
+    [localFilters, initialDate],
+  )
   const [view, setView]         = useState<"grid" | "map">("grid")
   const [showAll, setShowAll]   = useState(false)
   const [selectedRouteId, setSelectedRouteId] = useState<string | undefined>()
+
+  function pushDateToUrl(nextDate: string) {
+    const p = new URLSearchParams(searchParams.toString())
+    if (nextDate) p.set("date", nextDate)
+    else p.delete("date")
+    const qs = p.toString()
+    router.push(`/transport${qs ? `?${qs}` : ""}`)
+  }
+
+  function handleFiltersChange(next: TransportFilterValues) {
+    if (next.date !== initialDate) {
+      pushDateToUrl(next.date)
+    }
+    setLocalFilters({ ...next, date: "" })
+  }
 
   const filtered = useMemo(() => {
     const q = filters.search.toLowerCase()
@@ -74,8 +119,12 @@ export default function TransportClient({ rideShares, openRequests }: Props) {
         rs.to_location.toLowerCase().includes(q) ||
         (rs.profiles?.full_name?.toLowerCase().includes(q) ?? false)
 
-      const matchFrom = filters.fromLoc === "all" || rs.from_location === filters.fromLoc
-      const matchTo   = filters.toLoc   === "all" || rs.to_location   === filters.toLoc
+      const matchFrom =
+        filters.fromLoc === "all" ||
+        rs.from_location.toLowerCase() === filters.fromLoc.toLowerCase()
+      const matchTo =
+        filters.toLoc === "all" ||
+        rs.to_location.toLowerCase() === filters.toLoc.toLowerCase()
 
       const boatDesc = (rs.boat_description ?? "").toLowerCase()
       const matchBoat = filters.boatTypes.length === 0 || filters.boatTypes.some((bt) => {
@@ -117,7 +166,7 @@ export default function TransportClient({ rideShares, openRequests }: Props) {
       captureEvent("search_performed", {
         type: "transport",
         location: loc,
-        check_in: "",
+        check_in: filters.date,
         check_out: "",
         guests: "",
       })
@@ -202,7 +251,7 @@ export default function TransportClient({ rideShares, openRequests }: Props) {
           </div>
           <TransportFilters
             filters={filters}
-            onChange={setFilters}
+            onChange={handleFiltersChange}
             onFilterApplied={handleFilterApplied}
           />
         </div>

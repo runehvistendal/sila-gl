@@ -82,6 +82,7 @@ export default async function Home({ params }: Props) {
     `,
       )
       .eq("published", true)
+      .eq("property_type", "cabin")
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(3),
@@ -109,6 +110,7 @@ export default async function Home({ params }: Props) {
       .from("cabins")
       .select("id, title, location_hub")
       .eq("published", true)
+      .eq("property_type", "cabin")
       .is("deleted_at", null)
       .limit(20),
   ])
@@ -158,7 +160,7 @@ export default async function Home({ params }: Props) {
     description: t("subheadline"),
     potentialAction: {
       "@type": "SearchAction",
-      target: `https://sila.gl/${locale}/hytter?q={search_term_string}`,
+      target: `https://sila.gl/${locale}/ophold/i-naturen?q={search_term_string}`,
       "query-input": "required name=search_term_string",
     },
   }
@@ -168,26 +170,29 @@ export default async function Home({ params }: Props) {
       <JsonLd data={websiteSchema} />
       <Navbar user={navUser} />
 
-      <section className="relative min-h-[90vh] flex items-center overflow-hidden">
-        <Image
-          src={heroBgSrc}
-          alt={t("heroImageAlt")}
-          fill
-          priority
-          style={{ objectFit: "cover" }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/35 to-transparent" />
-        <div className="absolute top-0 inset-x-0 h-80 overflow-hidden pointer-events-none">
-          <div className="aurora-band aurora-1" />
-          <div className="aurora-band aurora-2" />
-          <div className="aurora-band aurora-3" />
+      <section className="relative z-10 isolate min-h-[90vh] flex items-center">
+        {/* Kun baggrund klippes — ikke hero-indhold (kalender/gæster må stikke ud) */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <Image
+            src={heroBgSrc}
+            alt={t("heroImageAlt")}
+            fill
+            priority
+            style={{ objectFit: "cover" }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/35 to-transparent" />
+          <div className="absolute top-0 inset-x-0 h-80 overflow-hidden">
+            <div className="aurora-band aurora-1" />
+            <div className="aurora-band aurora-2" />
+            <div className="aurora-band aurora-3" />
+          </div>
         </div>
-        <div className="relative z-10 w-full">
+        <div className="relative z-20 w-full pointer-events-auto">
           <HeroContent />
         </div>
       </section>
 
-      <section className="bg-card py-20">
+      <section className="relative z-0 bg-card py-20">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">{t("howItWorks.title")}</h2>
@@ -222,7 +227,7 @@ export default async function Home({ params }: Props) {
               <p className="text-muted-foreground text-sm">{t("cabinsSection.subtitle")}</p>
             </div>
             <Link
-              href="/hytter"
+              href="/ophold/i-naturen"
               className="hidden sm:flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary/80 group"
             >
               {t("cabinsSection.seeAll")}{" "}
@@ -244,7 +249,7 @@ export default async function Home({ params }: Props) {
 
           <div className="mt-8 text-center sm:hidden">
             <Link
-              href="/hytter"
+              href="/ophold/i-naturen"
               className="inline-flex items-center gap-1 px-6 py-2.5 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
             >
               {t("cabinsSection.seeAllCabins")}

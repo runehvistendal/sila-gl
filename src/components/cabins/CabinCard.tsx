@@ -32,10 +32,13 @@ function isValidUrl(url: string): boolean {
 export default function CabinCard({
   cabin,
   resultIndex = 0,
+  detailHref,
 }: {
   cabin: CabinCardData
   /** 0-based position in current result list (søgning) */
   resultIndex?: number
+  /** Fuldt path inkl. id, fx /hytter/uuid eller /ophold/i-byen/uuid */
+  detailHref?: string
 }) {
   const t = useTranslations("cabins")
   const tDetail = useTranslations("cabinDetail")
@@ -57,9 +60,11 @@ export default function CabinCard({
     setImgError(false)
   }
 
+  const href = detailHref ?? `/hytter/${cabin.id}`
+
   return (
     <Link
-      href={`/hytter/${cabin.id}`}
+      href={href}
       className="group block"
       onClick={() =>
         captureEvent("search_result_clicked", {

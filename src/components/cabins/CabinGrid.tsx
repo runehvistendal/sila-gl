@@ -8,11 +8,19 @@ import CabinCard, { type CabinCardData } from "./CabinCard"
 export default function CabinGrid({
   cabins,
   total,
+  emptyClearHref = "/ophold/i-naturen",
+  detailHrefForId,
+  translationScope = "cabins",
 }: {
   cabins: CabinCardData[]
   total: number
+  /** «Vis alle» når listen er tom */
+  emptyClearHref?: string
+  detailHrefForId?: (id: string) => string
+  /** next-intl namespace til grid-tekster */
+  translationScope?: string
 }) {
-  const t = useTranslations("cabins")
+  const t = useTranslations(translationScope)
 
   if (cabins.length === 0) {
     return (
@@ -22,7 +30,7 @@ export default function CabinGrid({
         </div>
         <p className="text-lg font-medium text-foreground mb-1">{t("grid_empty_title")}</p>
         <p className="text-sm text-muted-foreground mb-6">{t("grid_empty_hint")}</p>
-        <Link href="/hytter" className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80">
+        <Link href={emptyClearHref} className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80">
           {t("grid_show_all")} <ArrowRight size={14} />
         </Link>
       </div>
@@ -34,7 +42,12 @@ export default function CabinGrid({
       <p className="text-sm text-muted-foreground mb-6">{t("grid_result_count", { count: total })}</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {cabins.map((cabin, index) => (
-          <CabinCard key={cabin.id} cabin={cabin} resultIndex={index} />
+          <CabinCard
+            key={cabin.id}
+            cabin={cabin}
+            resultIndex={index}
+            detailHref={detailHrefForId ? detailHrefForId(cabin.id) : undefined}
+          />
         ))}
       </div>
     </>

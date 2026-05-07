@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { formatKr } from "@/lib/money"
 import { confirmBooking, declineBooking } from "../actions"
 import ReviewDialog from "@/components/reviews/ReviewDialog"
+import { publishedCabinDetailPath } from "@/lib/cabinPublicPaths"
 
 export const STATUS_COLORS: Record<string, string> = {
   pending:   "bg-amber-100 text-amber-700",
@@ -49,6 +50,8 @@ export interface CabinBookingData {
   host_id?: string | null
   /** reviewee_id — cabin owner (guest view) or guest (host view) */
   reviewee_id?: string | null
+  /** cabins.property_type for public URL */
+  cabin_property_type?: string | null
 }
 
 interface Props {
@@ -131,7 +134,7 @@ export default function BookingRow({ booking, isHost, alreadyReviewed = false }:
 
           {booking.cabin_id && (
             <Link
-              href={`/hytter/${booking.cabin_id}`}
+              href={publishedCabinDetailPath(booking.cabin_property_type, booking.cabin_id)}
               className="hidden sm:inline-flex items-center gap-0.5 text-xs text-primary hover:underline font-medium"
               onClick={(e) => e.stopPropagation()}
             >
@@ -221,7 +224,7 @@ export default function BookingRow({ booking, isHost, alreadyReviewed = false }:
           {/* Se hytte — altid synlig i accordion (inkl. mobil) */}
           {booking.cabin_id && (
             <Link
-              href={`/hytter/${booking.cabin_id}`}
+              href={publishedCabinDetailPath(booking.cabin_property_type, booking.cabin_id)}
               className="inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline"
             >
               Se hytte <ArrowRight className="w-3 h-3" />

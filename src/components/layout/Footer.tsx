@@ -32,7 +32,8 @@ export default async function Footer({ locale }: FooterProps) {
           <div>
             <p className="text-xs font-bold uppercase tracking-wider mb-4 text-primary-foreground">{t("platforms")}</p>
             <div className="flex flex-col gap-2.5 text-sm text-primary-foreground/60">
-              <Link href="/hytter"    className="hover:text-primary-foreground transition-colors">{t("cabins")}</Link>
+              <Link href="/ophold/i-naturen" className="hover:text-primary-foreground transition-colors">{t("stay_nature")}</Link>
+              <Link href="/ophold/i-byen" className="hover:text-primary-foreground transition-colors">{t("stay_city")}</Link>
               <Link href="/transport" className="hover:text-primary-foreground transition-colors">{t("transport")}</Link>
             </div>
           </div>

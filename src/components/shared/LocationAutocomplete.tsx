@@ -1,6 +1,13 @@
 "use client"
 
-import { useCallback, useEffect, useId, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import { createPortal } from "react-dom"
 import { ChevronDown, Search, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -20,8 +27,8 @@ interface LocationAutocompleteProps {
   value: string
   onChange: (name_dk: string) => void
   placeholder?: string
-  /** default: card + chevron (filtre). hero: hvid forside-søgning (ikon + skygge). */
-  variant?: "default" | "hero"
+  /** default: card + chevron (filtre). hero: hvid forside-søgning (ikon + skygge). embedded: kun input (Airbnb-pille). */
+  variant?: "default" | "hero" | "embedded"
   className?: string
   inputClassName?: string
   listClassName?: string
@@ -29,6 +36,9 @@ interface LocationAutocompleteProps {
   "aria-label"?: string
   /** false: kun bynavn i forslag (hytte-/transportfiltre). Hero m.m. bruger true. */
   showOptionMeta?: boolean
+  /** Kontrolleret åben/luk (fx én dropdown ad gangen i forsøgebaren). */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 export default function LocationAutocomplete({
@@ -42,12 +52,23 @@ export default function LocationAutocomplete({
   id: idProp,
   "aria-label": ariaLabel,
   showOptionMeta = true,
+  open: openProp,
+  onOpenChange,
 }: LocationAutocompleteProps) {
   const autoId = useId()
   const listId = `${autoId}-listbox`
   const inputId = idProp ?? `${autoId}-input`
 
-  const [open, setOpen] = useState(false)
+  const isControlled = openProp !== undefined
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = isControlled ? Boolean(openProp) : internalOpen
+  const setOpenState = useCallback(
+    (next: boolean) => {
+      if (!isControlled) setInternalOpen(next)
+      onOpenChange?.(next)
+    },
+    [isControlled, onOpenChange],
+  )
   const [draft, setDraft] = useState(value)
   const [highlighted, setHighlighted] = useState(-1)
   const [prevCommittedValue, setPrevCommittedValue] = useState(value)
@@ -56,33 +77,66 @@ export default function LocationAutocomplete({
   const portalLayerRef = useRef<HTMLDivElement>(null)
   const rowRefs = useRef<(HTMLLIElement | null)[]>([])
 
-  const [mounted, setMounted] = useState(false)
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  )
   const [portalBox, setPortalBox] = useState({ top: 0, left: 0, width: 0 })
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   if (value !== prevCommittedValue) {
     setPrevCommittedValue(value)
     setDraft(value)
   }
 
+  const inputValue = isControlled && !open ? value : draft
+
   const suggestions = open ? searchLocations(draft) : []
 
   const isHero = variant === "hero"
+  const isEmbedded = variant === "embedded"
+  const isHeroShell = isHero || isEmbedded
 
   const updatePortalPosition = useCallback(() => {
     const el = wrapRef.current
     if (!el) return
     const rect = el.getBoundingClientRect()
-    const gap = isHero ? 8 : 4
+    const gap = isHeroShell ? 8 : 4
+    const scrollX = window.scrollX
+    const scrollY = window.scrollY
+    const vw = window.innerWidth
+
+    let left = rect.left + scrollX
+    let width = rect.width
+
+    if (isEmbedded) {
+      const margin = 12
+      const maxPanel = Math.max(200, vw - margin * 2)
+      const isMd = window.matchMedia("(min-width: 768px)").matches
+      if (isMd) {
+        const minDesktop = 420
+        const maxDesktop = Math.min(520, maxPanel)
+        width = Math.min(Math.max(rect.width, minDesktop), maxDesktop)
+      } else {
+        width = Math.min(Math.max(rect.width, 280), maxPanel)
+      }
+
+      const rightEdge = left + width
+      const maxRight = scrollX + vw - margin
+      if (rightEdge > maxRight) {
+        left = Math.max(scrollX + margin, maxRight - width)
+      }
+      if (left < scrollX + margin) {
+        left = scrollX + margin
+      }
+    }
+
     setPortalBox({
-      left: rect.left + window.scrollX,
-      top: rect.bottom + window.scrollY + gap,
-      width: rect.width,
+      left,
+      top: rect.bottom + scrollY + gap,
+      width,
     })
-  }, [isHero])
+  }, [isHeroShell, isEmbedded])
 
   useEffect(() => {
     if (!open) return
@@ -96,19 +150,19 @@ export default function LocationAutocomplete({
   }, [open, updatePortalPosition])
 
   const close = useCallback(() => {
-    setOpen(false)
+    setOpenState(false)
     setHighlighted(-1)
     setDraft(value)
-  }, [value])
+  }, [value, setOpenState])
 
   const commit = useCallback(
     (loc: GreenlandLocation) => {
       onChange(loc.name_dk)
       setDraft(loc.name_dk)
-      setOpen(false)
+      setOpenState(false)
       setHighlighted(-1)
     },
-    [onChange],
+    [onChange, setOpenState],
   )
 
   useEffect(() => {
@@ -131,14 +185,16 @@ export default function LocationAutocomplete({
     if (!open) {
       if (e.key === "ArrowDown") {
         e.preventDefault()
-        setOpen(true)
+        setDraft(value)
+        setOpenState(true)
         setHighlighted(suggestions.length > 0 ? 0 : -1)
         return
       }
-      /* hero: lukket liste + Enter → lad overliggende formular submitte */
-      if (e.key === "Enter" && variant === "hero") return
+      /* hero/embedded: lukket liste + Enter → lad overliggende formular submitte */
+      if (e.key === "Enter" && (variant === "hero" || variant === "embedded")) return
       if (e.key === "Enter") {
-        setOpen(true)
+        setDraft(value)
+        setOpenState(true)
         setHighlighted(suggestions.length > 0 ? 0 : -1)
       }
       return
@@ -177,7 +233,7 @@ export default function LocationAutocomplete({
       ref={wrapRef}
       className={cn(
         "relative",
-        !isHero && "min-w-[min(100%,11rem)]",
+        variant === "default" && "min-w-[min(100%,11rem)]",
         className,
       )}
     >
@@ -186,12 +242,13 @@ export default function LocationAutocomplete({
           "relative flex items-center",
           isHero &&
             "gap-2.5 px-4 py-4 md:py-3.5 bg-white rounded-2xl shadow-2xl w-full min-w-0",
+          isEmbedded && "w-full min-w-0",
         )}
       >
         {isHero ? (
           <Search size={17} className="text-gray-400 shrink-0 pointer-events-none" aria-hidden />
         ) : null}
-        <div className={cn("relative flex flex-1 items-center min-w-0", !isHero && "w-full")}>
+        <div className={cn("relative flex flex-1 items-center min-w-0", variant === "default" && "w-full")}>
           <Input
             id={inputId}
             role="combobox"
@@ -200,15 +257,16 @@ export default function LocationAutocomplete({
             aria-autocomplete="list"
             aria-label={ariaLabel}
             placeholder={placeholder}
-            value={draft}
+            value={inputValue}
             onChange={(e) => {
               const v = e.target.value
               setDraft(v)
-              setOpen(true)
+              setOpenState(true)
               setHighlighted(0)
             }}
             onFocus={() => {
-              setOpen(true)
+              setDraft(value)
+              setOpenState(true)
               setHighlighted(0)
             }}
             onBlur={() => {
@@ -221,20 +279,20 @@ export default function LocationAutocomplete({
                   return
                 }
                 setDraft(value)
-                setOpen(false)
+                setOpenState(false)
                 setHighlighted(-1)
               }, 120)
             }}
             onKeyDown={onKeyDown}
             autoComplete="off"
             className={cn(
-              isHero
+              isHeroShell
                 ? "h-9 border-0 bg-transparent shadow-none focus-visible:border-transparent focus-visible:ring-0 text-sm text-gray-700 placeholder:text-gray-400 rounded-none px-0 py-0 pr-9"
                 : "h-10 rounded-xl pr-16",
               inputClassName,
             )}
           />
-          {!isHero ? (
+          {variant === "default" ? (
             <ChevronDown
               className="pointer-events-none absolute right-10 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
               aria-hidden
@@ -247,7 +305,7 @@ export default function LocationAutocomplete({
               aria-label="Ryd destination"
               className={cn(
                 "absolute right-0 top-1/2 -translate-y-1/2 rounded-md p-1",
-                isHero
+                isHeroShell
                   ? "text-gray-400 hover:text-gray-600"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
@@ -255,7 +313,7 @@ export default function LocationAutocomplete({
               onClick={() => {
                 onChange("")
                 setDraft("")
-                setOpen(false)
+                setOpenState(false)
                 setHighlighted(-1)
               }}
             >
@@ -272,6 +330,7 @@ export default function LocationAutocomplete({
         createPortal(
           <div
             ref={portalLayerRef}
+            data-location-autocomplete-portal
             style={{
               position: "absolute",
               left: portalBox.left,
@@ -286,7 +345,7 @@ export default function LocationAutocomplete({
                 role="listbox"
                 className={cn(
                   "max-h-[min(18rem,50vh)] overflow-auto py-1",
-                  isHero
+                  isHeroShell
                     ? "rounded-2xl border border-gray-100 bg-white text-gray-800 shadow-2xl"
                     : "rounded-xl border border-border bg-popover text-popover-foreground shadow-md",
                   listClassName,
@@ -306,7 +365,7 @@ export default function LocationAutocomplete({
                         "flex cursor-pointer px-3 py-2 text-sm",
                         showOptionMeta &&
                           "flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2",
-                        isHero
+                        isHeroShell
                           ? active
                             ? "bg-gray-100"
                             : "hover:bg-gray-50"
@@ -321,7 +380,7 @@ export default function LocationAutocomplete({
                       <span
                         className={cn(
                           "font-medium",
-                          isHero ? "text-gray-800" : "text-foreground",
+                          isHeroShell ? "text-gray-800" : "text-foreground",
                         )}
                       >
                         {loc.name_dk}
@@ -331,7 +390,7 @@ export default function LocationAutocomplete({
                           <span
                             className={cn(
                               "inline-flex shrink-0 rounded-md border px-1.5 py-0 text-[10px] font-semibold uppercase tracking-wide",
-                              isHero
+                              isHeroShell
                                 ? active
                                   ? "border-gray-300 text-gray-600"
                                   : "border-gray-200 text-gray-500"
@@ -347,7 +406,7 @@ export default function LocationAutocomplete({
                           <span
                             className={cn(
                               "text-xs",
-                              isHero ? "text-gray-400" : "text-muted-foreground",
+                              isHeroShell ? "text-gray-400" : "text-muted-foreground",
                             )}
                           >
                             {loc.region_label}
@@ -363,7 +422,7 @@ export default function LocationAutocomplete({
               <div
                 className={cn(
                   "px-3 py-2 text-sm shadow-md",
-                  isHero
+                  isHeroShell
                     ? "rounded-2xl border border-gray-100 bg-white text-gray-500 shadow-2xl"
                     : "rounded-xl border border-border bg-popover text-muted-foreground shadow-md",
                 )}

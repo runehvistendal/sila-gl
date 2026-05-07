@@ -9,10 +9,12 @@ import {
   Check, X, User, ArrowRight,
 } from "lucide-react"
 import { format } from "date-fns"
+import { useTranslations } from "next-intl"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatKr } from "@/lib/money"
+import { publishedCabinDetailPath } from "@/lib/cabinPublicPaths"
 import BookingRow, { STATUS_COLORS, STATUS_LABELS, type CabinBookingData } from "./components/BookingRow"
 import {
   acceptTransportRequest, declineTransportRequest,
@@ -51,6 +53,7 @@ interface CabinData {
   price_per_night_ore: number
   images: string[]
   published: boolean
+  property_type: string | null
 }
 
 interface RideShareData {
@@ -136,6 +139,7 @@ export default function DashboardClient({
   reviews,
   unreadMessages,
 }: Props) {
+  const tDash = useTranslations("dashboard")
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -436,7 +440,7 @@ export default function DashboardClient({
                         ))}
                       </div>
                     ) : (
-                      <EmptyState icon={Calendar} message="Ingen aktive bookinger" cta="Udforsk hytter" ctaHref="/hytter" />
+                      <EmptyState icon={Calendar} message="Ingen aktive bookinger" cta="Udforsk hytter" ctaHref="/ophold/i-naturen" />
                     )
                   ) : historyMyBookings.length > 0 ? (
                     <div className="space-y-3">
@@ -445,7 +449,7 @@ export default function DashboardClient({
                       ))}
                     </div>
                   ) : (
-                    <EmptyState icon={Clock} message="Ingen historik endnu" cta="Udforsk hytter" ctaHref="/hytter" />
+                    <EmptyState icon={Clock} message="Ingen historik endnu" cta="Udforsk hytter" ctaHref="/ophold/i-naturen" />
                   )}
                 </div>
               )}
@@ -579,7 +583,7 @@ export default function DashboardClient({
                 {/* ── Mine hytter ── */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-foreground">Mine hytter</h3>
+                    <h3 className="font-semibold text-foreground">{tDash("my_cabins")}</h3>
                     <Button size="sm" asChild className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg gap-1.5">
                       <Link href="/opret/hytte">
                         <PlusCircle className="w-3.5 h-3.5" /> Ny hytte
@@ -588,14 +592,23 @@ export default function DashboardClient({
                   </div>
 
                   {myCabins.length === 0 ? (
-                    <EmptyState icon={Home} message="Ingen hytter endnu" cta="Opret hytte" ctaHref="/opret/hytte" />
+                    <EmptyState icon={Home} message="Ingen hytter eller boliger endnu" cta="Opret hytte" ctaHref="/opret/hytte" />
                   ) : (
                     <div className="space-y-3">
-                      {myCabins.map((c) => (
-                        <div key={c.id} className="bg-white rounded-xl border border-border p-4 flex gap-4 items-center">
+                      {myCabins.map((c) => {
+                        const isRes = c.property_type === "residence"
+                        const publicPath = publishedCabinDetailPath(c.property_type, c.id)
+                        const editPath = isRes
+                          ? `/opret/bolig/${c.id}/rediger`
+                          : `/opret/hytte/${c.id}/rediger`
+                        const availPath = isRes
+                          ? `/opret/bolig/${c.id}/tilgaengelighed`
+                          : `/opret/hytte/${c.id}/tilgaengelighed`
+                        return (
+                        <div key={c.id} className="bg-white rounded-xl border border-border p-4 flex gap-4 items-center flex-wrap sm:flex-nowrap">
                           {/* Klikbart billede */}
                           <Link
-                            href={c.published ? `/hytter/${c.id}` : `/opret/hytte/${c.id}/rediger`}
+                            href={c.published ? publicPath : editPath}
                             className="shrink-0 group"
                           >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -607,7 +620,7 @@ export default function DashboardClient({
                           </Link>
                           {/* Klikbart navn + lokation */}
                           <Link
-                            href={c.published ? `/hytter/${c.id}` : `/opret/hytte/${c.id}/rediger`}
+                            href={c.published ? publicPath : editPath}
                             className="flex-1 min-w-0 group"
                           >
                             <p className="font-semibold text-sm text-foreground truncate group-hover:underline">{c.title}</p>
@@ -618,17 +631,20 @@ export default function DashboardClient({
                               {formatKr(c.price_per_night_ore)}/nat
                             </p>
                           </Link>
-                          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end w-full sm:w-auto">
+                            <Badge variant="outline" className="border-0 bg-muted text-foreground text-xs">
+                              {isRes ? tDash("listing_badge_residence") : tDash("listing_badge_cabin")}
+                            </Badge>
                             <Badge className={c.published ? "bg-green-100 text-green-700 border-0" : "bg-gray-100 text-gray-500 border-0"}>
                               {c.published ? "Aktiv" : "Kladde"}
                             </Badge>
                             {/* Rediger */}
                             <Button size="sm" variant="outline" asChild className="rounded-lg">
-                              <Link href={`/opret/hytte/${c.id}/rediger`}>Rediger</Link>
+                              <Link href={editPath}>Rediger</Link>
                             </Button>
                             {/* Tilgængelighed */}
                             <Button size="sm" variant="outline" asChild className="rounded-lg">
-                              <Link href={`/opret/hytte/${c.id}/tilgaengelighed`}>Tilgængelighed</Link>
+                              <Link href={availPath}>Tilgængelighed</Link>
                             </Button>
                             {!c.published ? (
                               /* Kladde → Publicér */
@@ -725,7 +741,7 @@ export default function DashboardClient({
                             </Button>
                           </div>
                         </div>
-                      ))}
+                      )})}
                     </div>
                   )}
                 </div>

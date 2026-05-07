@@ -1,4 +1,4 @@
-import Link from "next/link"
+import { Link } from "@/i18n/navigation"
 import { Suspense } from "react"
 import { CheckCircle2 } from "lucide-react"
 import { BookingSuccessTracker } from "@/components/analytics/BookingSuccessTracker"
@@ -26,7 +26,7 @@ export default function BookingSuccessPage() {
           også spam hvis du ikke ser den med det samme.
         </p>
         <Link
-          href="/hytter"
+          href="/ophold/i-naturen"
           className="inline-flex w-full sm:w-auto justify-center h-12 items-center rounded-xl px-6 font-semibold text-primary-foreground bg-primary hover:bg-primary/90 transition-colors"
         >
           Tilbage til hytter

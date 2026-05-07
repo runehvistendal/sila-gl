@@ -57,7 +57,7 @@ export default async function FaqPage({ params }: Props) {
         ) : (
           <div className="text-center py-16">
             <p className="text-muted-foreground mb-6">{tStatic("coming_soon")}</p>
-            <Link href="/hytter" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+            <Link href="/ophold/i-naturen" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
               {tStatic("explore_cabins")} <ArrowRight className="w-4 h-4" />
             </Link>
           </div>

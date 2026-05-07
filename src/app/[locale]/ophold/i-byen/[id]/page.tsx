@@ -1,11 +1,9 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { Link } from "@/i18n/navigation"
-import {
-  ChevronLeft, MapPin, Users, Anchor, User,
-  AlertTriangle,
-} from "lucide-react"
+import Link from "next/link"
+import { ChevronLeft, MapPin, Users, User, AlertTriangle } from "lucide-react"
 import { addDays, format, parseISO } from "date-fns"
+import { getTranslations, setRequestLocale } from "next-intl/server"
 import { AMENITY_META } from "@/lib/amenityMeta"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
@@ -19,13 +17,16 @@ import CabinReviews from "@/components/cabins/CabinReviews"
 import CabinDetailLayout from "@/components/cabins/CabinDetailLayout"
 import { CabinViewTracker } from "@/components/analytics/CabinViewTracker"
 
-export type CabinDetailData = {
+export type ResidenceDetailData = {
   id: string
   title: string
   description: string
   location_hub: string
   max_guests: number
   bedrooms: number
+  bathrooms: number
+  residence_subtype: string | null
+  location_subtype: string | null
   price_per_night_ore: number
   cleaning_fee_ore: number
   amenities: string[]
@@ -40,7 +41,6 @@ export type CabinDetailData = {
   profiles: { full_name: string | null; avatar_url: string | null } | null
 }
 
-
 export async function generateMetadata({
   params,
 }: {
@@ -50,9 +50,10 @@ export async function generateMetadata({
   const supabase = await createClient()
   const { data: cabin } = await supabase
     .from("cabins")
-    .select("title, description, images")
+    .select("title, description, images, property_type")
     .eq("id", id)
     .eq("published", true)
+    .eq("property_type", "residence")
     .is("deleted_at", null)
     .single()
 
@@ -62,20 +63,23 @@ export async function generateMetadata({
     locale,
     title: cabin.title,
     description: cabin.description ?? "",
-    path: `/hytter/${id}`,
+    path: `/ophold/i-byen/${id}`,
     image: (cabin.images as string[] | null)?.[0],
   })
 }
 
-export default async function CabinDetailPage({
+export default async function ResidenceDetailPage({
   params,
 }: {
   params: Promise<{ id: string; locale: string }>
 }) {
   const { id, locale } = await params
+  setRequestLocale(locale)
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   const navUser = user ? await getNavUserForPage(supabase, user) : null
 
   const { data: cabinRaw, error: cabinError } = await supabase
@@ -83,7 +87,8 @@ export default async function CabinDetailPage({
     .select(
       `
       id, title, description, location_hub,
-      max_guests, bedrooms,
+      max_guests, bedrooms, bathrooms,
+      residence_subtype, location_subtype,
       price_per_night_ore, cleaning_fee_ore,
       amenities, images,
       instant_book, offers_transport, transport_price_per_person_ore,
@@ -93,40 +98,27 @@ export default async function CabinDetailPage({
     )
     .eq("id", id)
     .eq("published", true)
+    .eq("property_type", "residence")
     .is("deleted_at", null)
     .single()
 
   if (cabinError || !cabinRaw) notFound()
 
-  const cabin = cabinRaw as unknown as CabinDetailData
+  const cabin = cabinRaw as unknown as ResidenceDetailData
 
-  const [{ data: occRows }, { data: blockRows }, { data: transportRows }] =
-    await Promise.all([
-      supabase.rpc("get_cabin_occupancy", { p_cabin_id: id }),
-      supabase
-        .from("cabin_availability")
-        .select("date")
-        .eq("cabin_id", id)
-        .eq("is_available", false)
-        .is("deleted_at", null),
-      supabase
-        .from("ride_shares")
-        .select(
-          `id, from_location, to_location, departure_at,
-           seats_available, total_seats, price_per_seat_ore,
-           profiles!skipper_id ( full_name )`,
-        )
-        .eq("to_location", cabin.location_hub.toLowerCase())
-        .in("status", ["active", "full"])
-        .gt("departure_at", new Date().toISOString())
-        .order("departure_at", { ascending: true })
-        .limit(5),
-    ])
+  const [{ data: occRows }, { data: blockRows }] = await Promise.all([
+    supabase.rpc("get_cabin_occupancy", { p_cabin_id: id }),
+    supabase
+      .from("cabin_availability")
+      .select("date")
+      .eq("cabin_id", id)
+      .eq("is_available", false)
+      .is("deleted_at", null),
+  ])
 
   const bookingRows = (occRows ?? []) as { check_in: string; check_out: string }[]
   const occupied = nightsFromBookings(bookingRows)
 
-  // Forberedelsestid: blokér preparation_days dage efter hvert booking check_out
   const prepDays = cabin.preparation_days ?? 0
   if (prepDays > 0) {
     for (const b of bookingRows) {
@@ -144,7 +136,7 @@ export default async function CabinDetailPage({
   }
   const disabledYmd = Array.from(occupied).sort()
 
-  const hostName   = cabin.profiles?.full_name ?? null
+  const hostName = cabin.profiles?.full_name ?? null
   const hostAvatar = cabin.profiles?.avatar_url ?? null
 
   const lodgingSchema = {
@@ -152,7 +144,7 @@ export default async function CabinDetailPage({
     "@type": "LodgingBusiness",
     name: cabin.title,
     description: cabin.description,
-    url: `https://sila.gl/${locale}/hytter/${id}`,
+    url: `https://sila.gl/${locale}/ophold/i-byen/${id}`,
     image: (cabin.images as string[])?.[0],
     address: {
       "@type": "PostalAddress",
@@ -161,6 +153,8 @@ export default async function CabinDetailPage({
     },
     priceRange: `${oreToKr(cabin.price_per_night_ore)} DKK / nat`,
   }
+
+  const tDetail = await getTranslations("residence.detail")
 
   return (
     <main className="min-h-screen bg-background" style={{ fontFamily: "var(--font-jakarta, system-ui)" }}>
@@ -175,30 +169,39 @@ export default async function CabinDetailPage({
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
         <Link
-          href="/ophold/i-naturen"
+          href="/ophold/i-byen"
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
         >
           <ChevronLeft className="w-4 h-4" />
-          Tilbage til hytter
+          {tDetail("back_to_list")}
         </Link>
 
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">{cabin.title}</h1>
-          <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
+          <div className="flex flex-wrap gap-2 text-xs">
+            {cabin.residence_subtype ? (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-foreground font-medium">
+                {tDetail(`subtype_${cabin.residence_subtype}` as "subtype_house")}
+              </span>
+            ) : null}
+            {cabin.location_subtype ? (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-foreground font-medium">
+                {tDetail(`loc_${cabin.location_subtype}` as "loc_city")}
+              </span>
+            ) : null}
+          </div>
+          <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap mt-3">
             <span className="flex items-center gap-1">
               <MapPin className="w-4 h-4" />
               {cabin.location_hub}
             </span>
             <span className="flex items-center gap-1">
               <Users className="w-4 h-4" />
-              Op til {cabin.max_guests} gæster
+              {tDetail("up_to_guests", { count: cabin.max_guests })}
             </span>
-            {cabin.offers_transport && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border-0">
-                <Anchor className="w-3 h-3" />
-                Transport tilbydes
-              </span>
-            )}
+            <span className="text-muted-foreground">
+              {cabin.bedrooms} {tDetail("bedrooms_short")} · {cabin.bathrooms} {tDetail("bathrooms_short")}
+            </span>
             {cabin.instant_book && (
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
                 Instant Book
@@ -207,11 +210,7 @@ export default async function CabinDetailPage({
           </div>
         </div>
 
-        <ListingImageGallery
-          images={cabin.images}
-          title={cabin.title}
-          cabinId={cabin.id}
-        />
+        <ListingImageGallery images={cabin.images} title={cabin.title} cabinId={cabin.id} />
 
         <CabinDetailLayout
           bookingCabin={{
@@ -227,28 +226,26 @@ export default async function CabinDetailPage({
           transportCabin={{
             id: cabin.id,
             location_hub: cabin.location_hub,
-            offers_transport: cabin.offers_transport,
-            transport_price_per_person_ore: cabin.transport_price_per_person_ore,
+            offers_transport: false,
+            transport_price_per_person_ore: null,
             profiles: cabin.profiles,
           }}
-          transports={(transportRows ?? []) as unknown as import("@/components/cabins/CabinTransportSection").RideShareData[]}
+          transports={[]}
           isLoggedIn={!!user}
-          loginNextPath={`/hytter/${cabin.id}`}
+          loginNextPath={`/ophold/i-byen/${cabin.id}`}
           disabledYmd={disabledYmd}
           leftContent={
             <>
-              {/* Om hytten */}
               <div>
-                <h2 className="text-xl font-bold text-foreground mb-3">Om hytten</h2>
+                <h2 className="text-xl font-bold text-foreground mb-3">{tDetail("about_title")}</h2>
                 <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
-                  {cabin.description || "Ingen beskrivelse endnu."}
+                  {cabin.description || tDetail("no_description")}
                 </p>
               </div>
 
-              {/* Inkluderet */}
               {cabin.amenities?.length > 0 && (
                 <div>
-                  <h2 className="text-xl font-bold text-foreground mb-4">Inkluderet</h2>
+                  <h2 className="text-xl font-bold text-foreground mb-4">{tDetail("included_title")}</h2>
                   <div className="grid grid-cols-2 gap-3">
                     {cabin.amenities.map((a, i) => {
                       const meta = AMENITY_META[a]
@@ -265,10 +262,9 @@ export default async function CabinDetailPage({
                 </div>
               )}
 
-              {/* Din vært */}
               {hostName && (
                 <div>
-                  <h2 className="text-xl font-bold text-foreground mb-3">Din vært</h2>
+                  <h2 className="text-xl font-bold text-foreground mb-3">{tDetail("host_title")}</h2>
                   <Link
                     href={`/profil/${cabin.owner_id}`}
                     className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-border hover:border-primary/30 hover:shadow-card transition-all"
@@ -283,9 +279,16 @@ export default async function CabinDetailPage({
                     </div>
                     <div>
                       <p className="font-semibold text-foreground">{hostName}</p>
-                      <p className="text-sm text-primary">Se profil →</p>
+                      <p className="text-sm text-primary">{tDetail("see_profile")}</p>
                     </div>
                   </Link>
+                </div>
+              )}
+
+              {cabin.offers_transport && (
+                <div className="rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-5 space-y-2">
+                  <h2 className="text-lg font-bold text-foreground">{tDetail("transfer_title")}</h2>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{tDetail("transfer_placeholder")}</p>
                 </div>
               )}
             </>

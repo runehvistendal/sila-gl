@@ -1,8 +1,8 @@
 "use server"
 
 import { createClient } from "@/lib/supabase-server"
-import { revalidatePath } from "next/cache"
 import { notifyNewReview } from "@/lib/notifications"
+import { revalidatePublishedCabinPaths } from "@/lib/revalidateCabinPublic"
 
 export type BookingType = "cabin" | "transport" | "ride_share"
 export type ReviewerRole = "guest" | "provider"
@@ -41,14 +41,21 @@ export async function createReview(data: ReviewInput): Promise<{ error?: string 
   if (data.booking_type === "cabin") {
     const { data: booking } = await supabase
       .from("cabin_bookings")
-      .select("id, status, updated_at, guest_id, cabin_id, cabins!inner(owner_id)")
+      .select(
+        "id, status, updated_at, guest_id, cabin_id, cabins!inner(owner_id, property_type)",
+      )
       .eq("id", data.booking_id)
       .eq("status", "completed")
       .maybeSingle()
 
     if (!booking) return { error: "Booking ikke fundet eller ikke afsluttet" }
 
-    const typed = booking as unknown as { guest_id: string; updated_at: string; cabin_id: string; cabins: { owner_id: string } }
+    const typed = booking as unknown as {
+      guest_id: string
+      updated_at: string
+      cabin_id: string
+      cabins: { owner_id: string; property_type?: string | null }
+    }
     const isGuest = typed.guest_id === user.id
     const isOwner = typed.cabins?.owner_id === user.id
 
@@ -88,7 +95,7 @@ export async function createReview(data: ReviewInput): Promise<{ error?: string 
     if (insertErr) return { error: "Fejl ved gemning af anmeldelse" }
 
     await notifyNewReview(review.id)
-    revalidatePath(`/hytter/${typed.cabin_id}`)
+    revalidatePublishedCabinPaths(typed.cabin_id, typed.cabins?.property_type)
     return {}
   }
 

@@ -398,7 +398,7 @@ export async function createCabinBooking(
 }
 
 export type CancelPendingBookingResult =
-  | { cabin_id: string; check_in: string; check_out: string }
+  | { cabin_id: string; check_in: string; check_out: string; property_type?: string | null }
   | { error: string }
 
 export async function cancelPendingBooking(
@@ -410,7 +410,12 @@ export async function cancelPendingBooking(
 
   const { data: row, error: fetchErr } = await supabase
     .from("cabin_bookings")
-    .select("id, status, guest_id, cabin_id, check_in, check_out, stripe_session_id")
+    .select(
+      `
+      id, status, guest_id, cabin_id, check_in, check_out, stripe_session_id,
+      cabins(property_type)
+    `,
+    )
     .eq("id", bookingId)
     .maybeSingle()
 
@@ -424,6 +429,7 @@ export async function cancelPendingBooking(
     check_in: string
     check_out: string
     stripe_session_id: string | null
+    cabins: { property_type?: string | null } | null
   }
 
   if (b.guest_id !== user.id) return { error: "Ikke autoriseret" }
@@ -456,5 +462,6 @@ export async function cancelPendingBooking(
     cabin_id: b.cabin_id,
     check_in: b.check_in,
     check_out: b.check_out,
+    property_type: b.cabins?.property_type ?? null,
   }
 }

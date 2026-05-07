@@ -157,7 +157,29 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
 
           {/* ── Nav links — desktop ── */}
           <div className={`hidden md:flex items-center gap-8 text-sm font-medium ${textNav}`}>
-            <Link href="/hytter"    className="transition-colors">{t("cabins")}</Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className={`inline-flex items-center gap-1 transition-colors ${textNav}`}
+                >
+                  {t("stay")}
+                  <ChevronDown size={14} className="opacity-70" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48 rounded-2xl p-1.5">
+                <DropdownMenuItem asChild>
+                  <Link href="/ophold/i-naturen" className="rounded-xl cursor-pointer">
+                    {t("stayNature")}
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/ophold/i-byen" className="rounded-xl cursor-pointer">
+                    {t("stayCity")}
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Link href="/transport" className="transition-colors">{t("transport")}</Link>
 
             {user && (
@@ -360,8 +382,12 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
 
           {/* Nav links */}
           <div className="flex-1 flex flex-col items-center justify-center">
-            <Link href="/hytter"    onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">{t("cabins")}</Link>
-            <Link href="/transport" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">{t("transport")}</Link>
+            <p className="text-white/50 text-xs font-semibold uppercase tracking-wider mb-1 w-full text-center">
+              {t("stay")}
+            </p>
+            <Link href="/ophold/i-naturen" onClick={() => setMobileOpen(false)} className="w-full text-center py-3 text-lg font-medium text-white/90 hover:text-primary transition-colors">{t("stayNature")}</Link>
+            <Link href="/ophold/i-byen" onClick={() => setMobileOpen(false)} className="w-full text-center py-3 text-lg font-medium text-white/90 hover:text-primary transition-colors">{t("stayCity")}</Link>
+            <Link href="/transport" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors border-t border-white/10 mt-2">{t("transport")}</Link>
 
             {user ? (
               <>

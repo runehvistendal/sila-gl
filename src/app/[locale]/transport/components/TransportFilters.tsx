@@ -1,9 +1,11 @@
 "use client"
 
 import { useRef, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { Input } from "@/components/ui/input"
 import { Search, SlidersHorizontal, X } from "lucide-react"
 import LocationAutocomplete from "@/components/shared/LocationAutocomplete"
+import DatePickerButton from "@/components/shared/DatePickerButton"
 
 export interface TransportFilterValues {
   search:        string
@@ -13,6 +15,7 @@ export interface TransportFilterValues {
   boatTypes:     string[]   // multi-select
   cabin:         string     // "" | "with" | "without"
   onlyAvailable: boolean
+  date:          string     // YYYY-MM-DD
   showPanel:     boolean
 }
 
@@ -33,6 +36,7 @@ const BOAT_TYPE_OPTIONS = [
 
 export default function TransportFilters({ filters, onChange, onFilterApplied }: Props) {
   const panelRef = useRef<HTMLDivElement>(null)
+  const tHome = useTranslations("home")
 
   const set = <K extends keyof TransportFilterValues>(key: K, val: TransportFilterValues[K]) => {
     onChange({ ...filters, [key]: val })
@@ -53,6 +57,7 @@ export default function TransportFilters({ filters, onChange, onFilterApplied }:
       boatTypes:     [],
       cabin:         "",
       onlyAvailable: true,
+      date:          "",
       showPanel:     false,
     })
     onFilterApplied?.("reset", true)
@@ -74,7 +79,8 @@ export default function TransportFilters({ filters, onChange, onFilterApplied }:
   const activeCount =
     filters.boatTypes.length +
     (filters.cabin !== "" ? 1 : 0) +
-    (filters.onlyAvailable ? 0 : 1) // "off" is non-default → count it
+    (filters.onlyAvailable ? 0 : 1) + // "off" is non-default → count it
+    (filters.date ? 1 : 0)
 
   return (
     <div className="space-y-3">
@@ -106,6 +112,15 @@ export default function TransportFilters({ filters, onChange, onFilterApplied }:
           className="w-full min-w-0 sm:w-[min(100%,11rem)]"
           aria-label="Destination"
           showOptionMeta={false}
+        />
+
+        <DatePickerButton
+          mode="single"
+          date={filters.date}
+          placeholder={tHome("searchDates.departure")}
+          aria-label={tHome("searchDates.departure")}
+          onDateChange={(d) => set("date", d)}
+          className="w-full shrink-0 basis-full sm:basis-auto sm:w-auto"
         />
 
         {/* Filtrer-knap */}

@@ -26,6 +26,7 @@ import {
   publishCabin,
   unpublishCabin,
 } from "@/app/[locale]/dashboard/actions"
+import { publishedCabinDetailPath } from "@/lib/cabinPublicPaths"
 import { captureEvent } from "@/lib/analytics/posthog-events"
 
 export interface CabinRow {
@@ -33,6 +34,7 @@ export interface CabinRow {
   title: string
   location_hub: string
   published: boolean
+  property_type: string | null
 }
 
 export interface BoatRow {
@@ -50,6 +52,7 @@ interface Props {
 export default function OpretPageClient({ cabins, boats }: Props) {
   const t = useTranslations("create")
   const tCommon = useTranslations("common")
+  const tDash = useTranslations("dashboard")
   const router = useRouter()
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -137,7 +140,7 @@ export default function OpretPageClient({ cabins, boats }: Props) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         <button
           type="button"
           onClick={onHytteCardClick}
@@ -150,6 +153,22 @@ export default function OpretPageClient({ cabins, boats }: Props) {
             <h2 className="font-bold text-foreground">{t("cabin_card_title")}</h2>
             <p className="text-sm text-muted-foreground mt-0.5">
               {t("cabin_card_subtitle")}
+            </p>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => router.push("/opret/bolig")}
+          className="text-left border-2 border-border rounded-2xl p-5 sm:p-6 bg-white flex flex-col gap-3 min-h-0 min-w-0 hover:border-primary/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-lg shrink-0">
+            🏢
+          </div>
+          <div>
+            <h2 className="font-bold text-foreground">{t("residence_card_title")}</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {t("residence_card_subtitle")}
             </p>
           </div>
         </button>
@@ -176,19 +195,30 @@ export default function OpretPageClient({ cabins, boats }: Props) {
           <ul className="space-y-2 break-words">
             {cabins.map((c) => {
               const busy = isPending && pendingId === c.id
+              const isResidence = c.property_type === "residence"
+              const publicPath = publishedCabinDetailPath(c.property_type, c.id)
+              const editPath = isResidence
+                ? `/opret/bolig/${c.id}/rediger`
+                : `/opret/hytte/${c.id}/rediger`
+              const availPath = isResidence
+                ? `/opret/bolig/${c.id}/tilgaengelighed`
+                : `/opret/hytte/${c.id}/tilgaengelighed`
               return (
                 <li
                   key={c.id}
                   className="flex flex-col gap-2 rounded-xl border border-border p-3 bg-white"
                 >
                   <Link
-                    href={c.published ? `/hytter/${c.id}` : `/opret/hytte/${c.id}/rediger`}
+                    href={c.published ? publicPath : editPath}
                     className="min-w-0 group"
                   >
                     <p className="font-semibold text-foreground break-words group-hover:underline">{c.title}</p>
                     <p className="text-xs text-muted-foreground break-words">{c.location_hub}</p>
                   </Link>
                   <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="secondary" className="border-0 bg-primary/10 text-foreground">
+                      {isResidence ? tDash("listing_badge_residence") : tDash("listing_badge_cabin")}
+                    </Badge>
                     <Badge
                       className={
                         c.published
@@ -200,10 +230,10 @@ export default function OpretPageClient({ cabins, boats }: Props) {
                     </Badge>
                     <div className="flex flex-wrap gap-2">
                       <Button asChild size="sm" variant="outline" className="rounded-lg text-xs h-8">
-                        <Link href={`/opret/hytte/${c.id}/rediger`}>{tCommon("edit")}</Link>
+                        <Link href={editPath}>{tCommon("edit")}</Link>
                       </Button>
                       <Button asChild size="sm" variant="outline" className="rounded-lg text-xs h-8">
-                        <Link href={`/opret/hytte/${c.id}/tilgaengelighed`}>{t("availability")}</Link>
+                        <Link href={availPath}>{t("availability")}</Link>
                       </Button>
 
                       {!c.published ? (
@@ -277,9 +307,12 @@ export default function OpretPageClient({ cabins, boats }: Props) {
               )
             })}
           </ul>
-          <div className="pt-3 border-t border-border mt-3">
+          <div className="pt-3 border-t border-border mt-3 flex flex-col sm:flex-row gap-3 sm:gap-6">
             <Link href="/opret/hytte" className="text-sm font-medium text-primary hover:underline">
               {t("add_new_cabin")}
+            </Link>
+            <Link href="/opret/bolig" className="text-sm font-medium text-primary hover:underline">
+              {t("add_new_residence")}
             </Link>
           </div>
         </section>

@@ -227,11 +227,11 @@ export default function TransportMap({
     })
 
     // HTML-markører placeret præcist på koordinaterne
-    new mapboxgl.Marker({ element: makeMarkerEl("#22c55e", "⚓") })
+    new mapboxgl.Marker({ element: makeMarkerEl("#4A9CC7", "⚓") })
       .setLngLat(from)
       .addTo(map)
 
-    new mapboxgl.Marker({ element: makeMarkerEl("#ef4444", "🏁") })
+    new mapboxgl.Marker({ element: makeMarkerEl("#2563a8", "🏁") })
       .setLngLat(to)
       .addTo(map)
 
@@ -293,10 +293,28 @@ export default function TransportMap({
       type: "geojson",
       data: { type: "FeatureCollection", features: dotFeatures },
     })
-    // Departure dot (green) — styled via circle layer
     map.addLayer({
-      id: "route-dot-bg", type: "circle", source: "route-dots",
-      paint: { "circle-radius": 9, "circle-color": "#22c55e", "circle-stroke-width": 2, "circle-stroke-color": "#ffffff", "circle-opacity": 0.9 },
+      id: "route-dot-glow",
+      type: "circle",
+      source: "route-dots",
+      paint: {
+        "circle-radius": 16,
+        "circle-color": "#4A9CC7",
+        "circle-opacity": 0.2,
+        "circle-blur": 0.75,
+      },
+    })
+    map.addLayer({
+      id: "route-dot-bg",
+      type: "circle",
+      source: "route-dots",
+      paint: {
+        "circle-radius": 6.5,
+        "circle-color": "#3d8eb8",
+        "circle-opacity": 1,
+        "circle-stroke-width": 1.25,
+        "circle-stroke-color": "#ffffff",
+      },
     })
 
     let hoverPopup: mapboxgl.Popup | null = null

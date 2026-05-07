@@ -1,7 +1,24 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase-server"
 import { requireCabinOwner } from "@/lib/requireCabinOwner"
+import { revalidatePublishedCabinPaths } from "@/lib/revalidateCabinPublic"
+
+async function revalidateAfterCabinCalendarSave(supabase: Awaited<ReturnType<typeof createClient>>, cabinId: string) {
+  const { data: cab } = await supabase
+    .from("cabins")
+    .select("property_type")
+    .eq("id", cabinId)
+    .maybeSingle()
+
+  revalidatePath(`/opret/hytte/${cabinId}/tilgaengelighed`)
+  revalidatePath(`/opret/bolig/${cabinId}/tilgaengelighed`)
+  revalidatePath(`/opret/hytte/${cabinId}/rediger`)
+  revalidatePath(`/opret/bolig/${cabinId}/rediger`)
+  revalidatePath("/dashboard")
+  revalidatePublishedCabinPaths(cabinId, cab?.property_type)
+}
 
 export async function saveAvailability(
   cabinId: string,
@@ -41,6 +58,8 @@ export async function saveAvailability(
     if (error) return { error: error.message }
   }
 
+  await revalidateAfterCabinCalendarSave(supabase, cabinId)
+
   return { redirectTo: "/opret" }
 }
 
@@ -76,6 +95,7 @@ export async function saveCabinSettings(
     .eq("owner_id", session.user.id)
 
   if (error) return { error: error.message }
+  await revalidateAfterCabinCalendarSave(supabase, cabinId)
   return { ok: true }
 }
 
@@ -136,6 +156,8 @@ export async function saveAll(
       .eq("owner_id", session.user.id)
     if (error) return { error: error.message }
   }
+
+  await revalidateAfterCabinCalendarSave(supabase, cabinId)
 
   return { redirectTo: "/opret" }
 }

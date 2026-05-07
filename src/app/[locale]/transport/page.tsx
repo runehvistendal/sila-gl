@@ -10,8 +10,24 @@ import type { OpenTransportRequest } from "./TransportClient"
 
 export const dynamic = "force-dynamic"
 
+interface SearchParams {
+  date?: string
+  hub?: string
+}
+
 type Props = {
   params: Promise<{ locale: string }>
+  searchParams: Promise<SearchParams>
+}
+
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
+
+/** Konvertér YYYY-MM-DD til UTC ISO ved midnat i Nuuk-tid (UTC-3, ingen sommertid). */
+function nuukDateToUtcIso(ymd: string): string | null {
+  if (!YMD_RE.test(ymd)) return null
+  const d = new Date(`${ymd}T00:00:00-03:00`)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toISOString()
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -25,7 +41,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   })
 }
 
-export default async function TransportPage({ params }: Props) {
+export default async function TransportPage({ params, searchParams }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
 
@@ -34,20 +50,32 @@ export default async function TransportPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   const navUser = user ? await getNavUserForPage(supabase, user) : null
 
+  const sp = await searchParams
+  const dateParam = YMD_RE.test(sp.date ?? "") ? sp.date! : ""
+  const hubParam = (sp.hub ?? "").trim()
+  const departureCutoff = dateParam ? nuukDateToUtcIso(dateParam) : null
+
+  let rideShareQuery = supabase
+    .from("ride_shares")
+    .select(`
+      id, sejler_id:skipper_id, from_location, to_location, departure_at,
+      seats_available, total_seats, price_per_seat_ore,
+      boat_description, description, status,
+      from_latitude, from_longitude, to_latitude, to_longitude,
+      return_ride_share_id,
+      profiles!skipper_id ( full_name, avatar_url ),
+      return_trip:return_ride_share_id ( id, from_location, to_location, departure_at, seats_available, price_per_seat_ore, status )
+    `)
+    .in("status", ["active", "full"])
+
+  if (departureCutoff) {
+    rideShareQuery = rideShareQuery.gte("departure_at", departureCutoff)
+  }
+
+  rideShareQuery = rideShareQuery.order("departure_at", { ascending: true })
+
   const [{ data: rideShareData }, { data: requestData }] = await Promise.all([
-    supabase
-      .from("ride_shares")
-      .select(`
-        id, sejler_id:skipper_id, from_location, to_location, departure_at,
-        seats_available, total_seats, price_per_seat_ore,
-        boat_description, description, status,
-        from_latitude, from_longitude, to_latitude, to_longitude,
-        return_ride_share_id,
-        profiles!skipper_id ( full_name, avatar_url ),
-        return_trip:return_ride_share_id ( id, from_location, to_location, departure_at, seats_available, price_per_seat_ore, status )
-      `)
-      .in("status", ["active", "full"])
-      .order("departure_at", { ascending: true }),
+    rideShareQuery,
 
     supabase
       .from("transport_requests")
@@ -64,7 +92,12 @@ export default async function TransportPage({ params }: Props) {
   return (
     <main>
       <Navbar user={navUser} />
-      <TransportClient rideShares={rideShares} openRequests={openRequests} />
+      <TransportClient
+        rideShares={rideShares}
+        openRequests={openRequests}
+        initialDate={dateParam}
+        initialHub={hubParam}
+      />
     </main>
   )
 }

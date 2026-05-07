@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { requireCabinOwner } from "@/lib/requireCabinOwner"
 import { requireSession } from "@/lib/requireSession"
+import { revalidatePublishedCabinPaths } from "@/lib/revalidateCabinPublic"
 
 function parseYmd(s: string): { ok: true; d: string } | { ok: false } {
   const t = s.trim()
@@ -37,6 +38,12 @@ export async function toggleCabinAvailability(
   const { supabase, user } = await requireSession()
   await requireCabinOwner(supabase, cabinId, user.id)
 
+  const { data: cabMeta } = await supabase
+    .from("cabins")
+    .select("property_type")
+    .eq("id", cabinId)
+    .maybeSingle()
+
   if (blocked) {
     const { error: upErr } = await supabase.from("cabin_availability").upsert(
       {
@@ -64,7 +71,10 @@ export async function toggleCabinAvailability(
   }
 
   revalidatePath(`/opret/hytte/${cabinId}/rediger`)
-  revalidatePath(`/hytter/${cabinId}`)
+  revalidatePath(`/opret/bolig/${cabinId}/rediger`)
+  revalidatePath(`/opret/hytte/${cabinId}/tilgaengelighed`)
+  revalidatePath(`/opret/bolig/${cabinId}/tilgaengelighed`)
   revalidatePath("/dashboard")
+  revalidatePublishedCabinPaths(cabinId, cabMeta?.property_type)
   return { success: true }
 }

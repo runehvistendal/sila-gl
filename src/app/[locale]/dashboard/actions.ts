@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase-server"
 import { requireSession } from "@/lib/requireSession"
+import { revalidatePublishedCabinPaths } from "@/lib/revalidateCabinPublic"
 
 export async function confirmBooking(bookingId: string) {
   const supabase = await createClient()
@@ -125,6 +126,16 @@ export async function duplicateCabin(cabinId: string): Promise<{ error?: string 
 
 export async function publishCabin(cabinId: string): Promise<{ error?: string }> {
   const { supabase, user } = await requireSession()
+  const { data: row, error: rowErr } = await supabase
+    .from("cabins")
+    .select("property_type")
+    .eq("id", cabinId)
+    .eq("owner_id", user.id)
+    .is("deleted_at", null)
+    .maybeSingle()
+
+  if (rowErr || !row) return { error: "Hytte ikke fundet" }
+
   const { error } = await supabase
     .from("cabins")
     .update({ published: true })
@@ -134,11 +145,22 @@ export async function publishCabin(cabinId: string): Promise<{ error?: string }>
   if (error) return { error: error.message }
   revalidatePath("/dashboard")
   revalidatePath("/opret")
+  revalidatePublishedCabinPaths(cabinId, row.property_type)
   return {}
 }
 
 export async function unpublishCabin(cabinId: string): Promise<{ error?: string }> {
   const { supabase, user } = await requireSession()
+  const { data: row, error: rowErr } = await supabase
+    .from("cabins")
+    .select("property_type")
+    .eq("id", cabinId)
+    .eq("owner_id", user.id)
+    .is("deleted_at", null)
+    .maybeSingle()
+
+  if (rowErr || !row) return { error: "Hytte ikke fundet" }
+
   const { error } = await supabase
     .from("cabins")
     .update({ published: false })
@@ -148,11 +170,19 @@ export async function unpublishCabin(cabinId: string): Promise<{ error?: string 
   if (error) return { error: error.message }
   revalidatePath("/dashboard")
   revalidatePath("/opret")
+  revalidatePublishedCabinPaths(cabinId, row.property_type)
   return {}
 }
 
 export async function deleteCabin(cabinId: string): Promise<{ error?: string }> {
   const { supabase, user } = await requireSession()
+  const { data: row } = await supabase
+    .from("cabins")
+    .select("property_type")
+    .eq("id", cabinId)
+    .eq("owner_id", user.id)
+    .maybeSingle()
+
   const { error } = await supabase
     .from("cabins")
     .update({ deleted_at: new Date().toISOString() })
@@ -160,6 +190,9 @@ export async function deleteCabin(cabinId: string): Promise<{ error?: string }> 
     .eq("owner_id", user.id)
   if (error) return { error: error.message }
   revalidatePath("/dashboard")
+  if (row) {
+    revalidatePublishedCabinPaths(cabinId, row.property_type)
+  }
   return {}
 }
 

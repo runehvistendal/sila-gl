@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation"
-import Link from "next/link"
 import { XCircle } from "lucide-react"
 import { cancelPendingBooking } from "@/app/actions/bookings"
 import { BookingCancelledTracker } from "@/components/analytics/BookingCancelledTracker"
+import { createClient } from "@/lib/supabase-server"
+import { publishedCabinDetailPath } from "@/lib/cabinPublicPaths"
+import { Link } from "@/i18n/navigation"
 
 export const metadata = { title: "Booking annulleret — Sila.gl" }
 
@@ -24,7 +26,7 @@ export default async function BookingCancelledPage({ searchParams }: Props) {
   const checkIn = sp.check_in?.trim() ?? ""
   const checkOut = sp.check_out?.trim() ?? ""
 
-  let redirectTo = "/hytter"
+  let redirectTo = "/ophold/i-naturen"
 
   if (bookingId) {
     const result = await cancelPendingBooking(bookingId)
@@ -39,15 +41,23 @@ export default async function BookingCancelledPage({ searchParams }: Props) {
         if (ci) qs.set("check_in", ci)
         if (co) qs.set("check_out", co)
         const q = qs.toString()
-        redirect(`/hytter/${cid}${q ? `?${q}` : ""}`)
+        const base = publishedCabinDetailPath(result.property_type, cid)
+        redirect(`${base}${q ? `?${q}` : ""}`)
       }
     }
   } else if (cabinId) {
+    const supabase = await createClient()
+    const { data: cab } = await supabase
+      .from("cabins")
+      .select("property_type")
+      .eq("id", cabinId)
+      .maybeSingle()
     const qs = new URLSearchParams()
     if (checkIn) qs.set("check_in", checkIn)
     if (checkOut) qs.set("check_out", checkOut)
     const q = qs.toString()
-    redirectTo = `/hytter/${cabinId}${q ? `?${q}` : ""}`
+    const base = publishedCabinDetailPath(cab?.property_type, cabinId)
+    redirectTo = `${base}${q ? `?${q}` : ""}`
   }
 
   return (

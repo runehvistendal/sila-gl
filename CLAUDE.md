@@ -2,6 +2,16 @@
 
 > **Claude Code & udviklerkontekst** — dette dokument er autoritativt for agent og mennesker. Kort agent-hukommelse: se `hukommelse.md` i roden.
 
+## Status (7.5.2026)
+
+- **Dato-bevidst søgning ✅** — Server-side filtrering på check-in/check-out (`/hytter`) og afrejsedato (`/transport`).
+  - **`src/app/[locale]/hytter/page.tsx`** læser `checkIn` + `checkOut` (YYYY-MM-DD), validerer rækkefølge, og udelukker cabins med ikke-ledige rækker i `cabin_availability` (`is_available=false`, dato i `[checkIn, checkOut)`) eller bekræftede `cabin_bookings` (`status='confirmed'`, `check_in < checkOut AND check_out > checkIn`). Implementeret som `.not("id", "in", "(...)")` på cabins-querien.
+  - **`src/app/[locale]/transport/page.tsx`** læser `date` (YYYY-MM-DD) og filtrerer ride_shares med `.gte("departure_at", nuukDateToUtcIso(date))` (Nuuk-midnat → UTC).
+  - **`HeroContent`** har nu tabs (Hytter | Samsejlads). Hytter-tab: hub + indtjek + udtjek; Samsejlads-tab: afrejsedato. Native `<input type="date">`. Mobile-first stack, desktop side-by-side.
+  - **CabinFilters**: indtjek/udtjek-input i popover + chips med X-knap under søgefeltet. `FilterValues` udvidet med `checkIn` + `checkOut`.
+  - **TransportFilters**: afrejsedato-input i popover + aktiv-chip under filterrækken. `TransportFilterValues` udvidet med `date`. URL er sandhed for `date`; `TransportClient` deriver merged filters via `useMemo` og pusher URL via `@/i18n/navigation`.
+  - **Bundlet:** `home.searchTabs.{aria,cabins,transport}`, `home.searchDates.{checkIn,checkOut,departure}`.
+
 ## Projekt
 Grønlands marketplace for hytteudlejning og samsejlads. 
 "Grønland på lokale vilkår"
@@ -10,6 +20,66 @@ Grønlands marketplace for hytteudlejning og samsejlads.
 - Lokalt: `C:\Users\rune\sila-gl`
 - Base44-ref: github.com/runehvistendal/sila-2 (lokalt: `C:\Users\rune\sila-2-ref\src\`)
 - Supabase: pngpelcaodbwwggaeyue (West EU Ireland)
+
+## Produktstrategi — besluttet 7.5.2026
+
+### Navigation (to primære kategorier i navbar)
+- **Ophold** — korttidsudlejning af hytter og boliger
+- **Samsejlads** — selvstændig kategori for sejlads med lokale
+
+Oplevelser kommer i fase 4 som tredje navigationspunkt — ikke i MVP.
+
+### Ophold — to underkategorier i UI
+- **I naturen** — hytter, fjordboliger, fåreavlersteder (primært adgang med båd)
+- **I byen** — boliger i byer og bygder (filtrerbart på by vs. bygd bagved i DB)
+
+Kategorien handler om oplevelsen — ikke adgangsformen.  
+En bygd er altid "I byen" uanset om man ankommer med båd eller fly.
+
+### Transportmodel — tilvalg på alle opholdstyper
+Transport er et tilvalg udbyderen aktiverer på sit opslag — uanset om det er "I naturen" eller "I byen". Udbyderen definerer selv sine ruter og priser.
+
+**To transporttyper:**
+
+1. **Transfer** — organiseret afhentning/aflevering ved ankomstpunkt
+   - Udbyderen opretter én eller flere transferruter pr. opslag
+   - Hver rute indeholder:
+     - Fra: ankomstpunkt (dropdown fra GREENLAND_LOCATIONS — lufthavn, havn, helipad)
+     - Til: boligens lokation (auto-udfyldt fra opslaget)
+     - Transportform: båd, bil, ATV, andet (valgfrit)
+     - Pris enkelttur (øre)
+     - Pris tur/retur (øre) — auto-forslag 1,8x enkelttur
+     - Maks. antal gæster
+     - Fri tekst — udbyderen beskriver præcist hvad gæsten kan forvente
+   - Gæsten vælger hvilken rute der passer til deres ankomst — eller fravælger
+   - UI: ikon (🚤 🚗) + kort beskrivelse synlig på opslaget
+   - Teknisk: genbruger AddOnServicesEditor-mønsteret — flere ruter pr. opslag
+   - Ny DB-kolonne: from_location_id på transport_offers
+
+2. **Samsejlads** — sejlads med lokal der alligevel tager ud
+   - Knyttet til hytteopslag (transport til/fra hytte) ELLER fri (uafhængig tur)
+   - Samme tabel og flow — forskellig kontekst
+   - Forbliver under Samsejlads-kategorien i navbar
+
+**Eksempel på transferruter for én udbyder:**
+- Rute 1: Sisimiut havn → Sarfannguit | Båd | 350 kr / 600 kr t/r
+- Rute 2: Sisimiut lufthavn → Sarfannguit | Båd | 400 kr / 700 kr t/r
+
+### SEO-strategi (udestår — påmind Rune inden lancering)
+- UI-kategorier: «I naturen» og «I byen»
+- Metadata + sidetitler bruger: hytte, cabin, sommerhus, bygd, bolig, Grønland
+- AI SEO (Gemini, ChatGPT, Perplexity) prioriteres parallelt med Google SEO
+
+### Påmindelser inden lancering
+- AI SEO-strategi skal udarbejdes
+- PostHog verificeres sat op korrekt
+- Transfer-flow bygges og testes end-to-end
+- Stripe live-test inkl. transfer-linjer
+
+### Hvad Sila.gl IKKE er (endnu)
+- Ingen oplevelseskategori i MVP
+- Ingen langvarig boligudlejning — hører til separat Boligportal-platform
+- Ingen helikoptertransfer — ingen private udbydere kan tilbyde det
 
 ## Stack
 Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **shadcn/ui** + Supabase + Vercel + **Sanity** (CMS)
@@ -21,7 +91,7 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - **Test (kun reference, ikke primær adfærd):** rune.runesen.test@gmail.com 
  `id: 8c29ab7f-fe44-43ef-a1af-64eda151b2f7`
 
-## Bygget og komplet (5.5.2026)
+## Bygget og komplet (5.5.–6.5.2026)
 - Landingpage (/)
 - Auth (email + Google, httpOnly cookies via @supabase/ssr)
 - Datamodel (12 tabeller inkl. boats + rate_limits, RLS, triggers)
@@ -55,7 +125,7 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - **Transportanmodninger:** /transport/anmod (tur-type, returdato, passagerer), /transport/anmodninger/[id] (Realtime chat, tilbudskort, accept → Stripe Checkout med servicegebyr-linje + `transport_offers.service_fee_ore`, webhook) ✅
 - **Anmeldelsessystem:** dobbelt-blind (trigger), 30-dages vindue (pg_cron), alle 3 booking-typer, ReviewForm + ReviewDialog, dashboard review-knap, /profil/[id] offentlig ✅
 - **Samsejlads bookingflow:** fusioneret ind i /transport (`/api/transport/checkout`) — **`ride_share_bookings.service_fee_ore`**; samme 3 %-logik — /samsejlads eksisterer ikke længere ✅
-- **Mapbox kortvisning:** `TransportMap.tsx` (streets-v12, buet linje via createArc, ⚓/🏁 HTML-markorer, fitBounds, flyTo, lazy load overview / direct load detail) på /transport og /transport/[id] ✅
+- **Mapbox kortvisning:** `TransportMap.tsx` (streets-v12; **detail** `/transport/[id]`: buet linje + HTML-markører ⚓/🏁 med blå toner; **overview** (forside, /transport, /hytter-kort): destinations-prik, ikke rute-midtpunkt; capitalize i popups; blå prik + lys hvid stroke; `isolation:isolate` på kort-wrapper) ✅
 - **Returture:** `return_ride_share_id` på ride_shares, badge på listekort, alternative ture fra andre sejlere på /transport/[id] ✅
 - **Timezone:** `src/lib/nuukTime.ts` — America/Godthab (UTC-3), alle departure_at vises i Nuuk-tid ✅
 - **Testdata:** 4 profiler (Malik, Sara, Hans, Aviaja), 3 hytter, 8 transportture ✅
@@ -70,7 +140,6 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - **/opret/hytte/[id]/tilgaengelighed** — kalender (to måneder, klik-baseret periodevalg), blokér datoer (grøn=ledig standard, grå=blokeret, blå=booket), hover-preview, infobox, legende, "Gem tilgængelighed" + "Gem indstillinger" + "Gem og publicér hytte →" ✅
 - **cabin_availability semantik vendt** — gemmer nu BLOKEREDE datoer (is_available=false). Alle fremtidige datoer er ledige som standard ✅
 - **Æ-fix i mappenavn** — `tilgaengelighed` (ASCII-safe, undgår Windows-fejl) ✅
-- **Duplicate location keys** — 7 dubletter slettet fra `greenlandLocations.ts` (Qeqertarsuaq ×3, Tasiilaq ×2, Uummannaq ×4, Sisimiut ×2 → én by pr. navn). React-keys opdateret til `postal_code-name_dk` i alle 4 dropdown-filer ✅
 - **Request proxy:** `src/proxy.ts` (Next.js 16) — next-intl + Supabase; `/studio` før intl (intet `/da`-prefix). Eksporterer `proxy` + `matcher` ✅
 - **AvailabilityCalendar** — rent klik-baseret (ingen drag): klik 1 = periodestart (mørk markering), klik 2 = fuldfør periode. Hover-preview viser påvirkede datoer. Annuller-banner. Farver via inline style ✅
 - **saveAvailability / saveAll** — returnerer `{ redirectTo }` / `{ error }`, aldrig `redirect()` direkte. `saveAll` gemmer settings + tilgængelighed + publicering i ét kald ✅
@@ -85,10 +154,23 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - **Øje-symbol fjernet** — navigation via klikbart billede/navn ✅
 - **Rediger-siden renset** — kun HytteForm (inkl. AddOnServicesEditor) + "Administrer tilgængelighed →" link. Ingen kalender-queries ✅
 - **PostHog analytics** ✅ — `posthog-js` installeret; `PostHogProvider.tsx` initialiserer kun hvis **`NEXT_PUBLIC_POSTHOG_KEY`** og **`NEXT_PUBLIC_POSTHOG_HOST`** er sat. Provider wrappes i **`src/app/[locale]/layout.tsx`**. Events via **`src/lib/analytics/posthog-events.ts`** (booking, transport, login, kort m.fl.). Kræver env-variabler i **`.env.local`** + **Vercel** inden lancering.
+- **Grønlands lokationsdata** — `greenlandLocations.ts`: udvidet med byer, bygder, hytte-/naturområder, fåreholdersteder; **`aliases`**, **`region_label`**, typer inkl. hyttested/naturområde/fåreholdersted; **`getLocationsByRegion`**, **`getAllRegionLabels`**, **`representativeHubForRegion`** (region-chips + hub). Tidligere dublet-nøgler (fx postnummer+navn) er indarbejdet i den samlede liste ✅
+- **Fusionsøgning lokationer** — `fuse.js`; **`src/lib/locationSearch.ts`** → **`searchLocations()`** (threshold **0.4**, boost **`is_major_hub`**, sortering: hubs → typeorden → population) ✅
+- **`LocationAutocomplete.tsx`** — `variant` **default|hero**, **`showOptionMeta`**, portal (`createPortal`), keyboard; **`HeroContent`** bruger **hero** + fuzzy + `?hub=`; **`HeroSearch.tsx` fjernet** ✅
+- **CabinFilters + TransportFilters** — `LocationAutocomplete` erstatter rå selects på destination; **`showOptionMeta={false}`** i filterrækker (kun bynavn i listen) ✅
+- **Region-chips** på **`/hytter`** (Vestgrønland, Diskobugten, …) via **`representativeHubForRegion`** ✅
+- **`Navbar`** **`z-40`** + kort `isolation:isolate` — stacking mod Mapbox-lag ✅
+- **`SailSection.tsx` (forsiden)** — toggle **Samsejlads|Hytter**; live **`ride_shares`** + **cabins** fra Supabase til `TransportMap` overview; **`cabinMapRoutes.ts`** (**`CabinMapPin` → ruter**, `from=to` for hytteprikker) ✅
+- **`/hytter`** — liste/**kort** (samme ikon-segment som **`/transport`**: Grid/Map, kun ikoner); **`TransportMap`** overview + klik → **`/hytter/[id]`** ✅
+- **MapWrapper.tsx slettet** — erstattet af SailSection + TransportMap ✅
 
 ## Nye filer (6.5.2026)
 
 - `supabase/migrations/20260506000000_service_fee.sql` — `service_fee_ore` på `cabin_bookings`, `ride_share_bookings`, `transport_offers`; udvider `cabin_bookings_guard_update` med immutable `service_fee_ore`
+- **`src/lib/locationSearch.ts`** (+ afhængighed **`fuse.js`**)
+- **`src/lib/cabinMapRoutes.ts`**
+- **`src/app/[locale]/components/SailSection.tsx`**
+- **Fjernet:** `src/app/[locale]/components/MapWrapper.tsx`, `HeroSearch.tsx`
 
 ## Nye filer (5.5.2026)
 - `supabase/migrations/20260505120000_min_nights_preparation.sql` — min_nights (default 1) + preparation_days (default 0, IN 0-3) på cabins
@@ -128,8 +210,12 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 1. ~~i18n dansk + engelsk (next-intl)~~ ✅
 2. ~~SEO grundlag~~ ✅ — `metadata.ts`, `sitemap.ts`, `robots.ts`, `/destination/[slug]`, JsonLd; polering se **Påmindelser inden lancering**
 3. ~~**Sanity:** Visual Editing + Page Builder~~ ✅ — se **Sanity CMS** + **Sanity Visual Editing** nedenfor
-4. Stripe live-test end-to-end — kritisk inden lancering
-5. Lancering — første 20 udbydere
+4. ~~Dato-bevidst søgning~~ ✅ — se Status 7.5
+5. **i18n-oprydning** — `TYPE_LABEL`, `region_label`, øvrige hardkodede strenge → brugerens sprog / bundlet + Sanity
+6. **Lighthouse-test**
+7. **Stripe live-test end-to-end** — kritisk; **inkl. 3 %-servicegebyr-linje**
+8. **MobilePay til Stripe**
+9. **Lancering** — første 20 udbydere
 
 ## Sanity CMS (5.5.2026)
 - Sanity Studio kører på `/studio` — beskyttet af `is_admin` (`proxy.ts`: studio **før** next-intl, ellers `/da/studio`-404)
@@ -165,7 +251,7 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - **Navigation:** Brug **`Link`, `redirect`, `useRouter`, `usePathname`** fra `@/i18n/navigation` — ikke `next/navigation` — så URLs får korrekt `/da/` eller `/en/`-prefix.
 - **Sprog i DB:** `profiles.language` som `'da' | 'en'`; Navbar kalder **`updateLanguage`** (`src/app/actions/language.ts`).
 - **Efter OAuth:** `src/app/auth/callback/route.ts` omdirigerer til brugerens foretrukne locale (`profiles.language`) og stripper evt. forkert prefixed `next`-URL.
-- **Oversættelser / next-intl:** `messages/da.json` + `messages/en.json` (kan være tomme eller minimale til init); **kanonisk bundlet fallback-struktur:** `src/i18n/bundled/da.json` + `src/i18n/bundled/en.json` · Runtime: `mergeSanityIntoMessages` lægger **Sanity `globalSettings`** ovenpå før **`getTranslations`** / **`useTranslations`**. Ved nye strenge til redaktør- og global UI-copy: tilføj som **Sanity-felt** eller `stringOverrides` — se **Sanity Visual Editing** + **Sikkerhedsregler** (indhold fra Sanity).
+- **Oversættelser / next-intl:** `messages/da.json` + `messages/en.json` (kan være tomme eller minimale til init); **kanonisk bundlet fallback-struktur:** `src/i18n/bundled/da.json` + `src/i18n/bundled/en.json` · Runtime: `mergeSanityIntoMessages` lægger **Sanity `globalSettings`** ovenpå før **`getTranslations`** / **`useTranslations`**. Ved nye strenge til redaktør- og global UI-copy: tilføj som **Sanity-felt** eller `stringOverrides` — se **Sanity Visual Editing** + **Sikkerhedsregler** (indhold fra Sanity). **Ny (6.5, kort/UI):** bl.a. `home.sailMapTabs`, `home.cabinMapSection` (titleLead/titleHighlight), `cabins.view_on_map` / `view_list`.
 - **Dato/pris:** Klient: **`useFormatter()`** fra `next-intl` og **`useFormatPrice()`** (`src/hooks/useFormatPrice.ts`). Server: `getFormatter()` hvor relevant. Penge i DB forbliver **øre** (`src/lib/money.ts`).
 - **Lokationsnavne (transport):** `getLocationName()` i `src/lib/greenlandLocations.ts` — DB gemmer lowercase nøgle; vis **`name_dk`**.
 
@@ -190,7 +276,10 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - Lighthouse-test
 - MobilePay til Stripe
 - ~~Udbyderguide~~ → opdateret 6.5 (evt. Sanity-overlay / flersprog senere)
-- Stripe live-test end-to-end (**inkl. 3 %-servicegebyr-linje**)
+- Stripe live-test end-to-end (**3 %-servicegebyr + transfer-linjer**)
+- AI SEO-strategi skal udarbejdes
+- PostHog verificeres sat op korrekt
+- Transfer-flow bygges og testes end-to-end
 
 ## Aktiv arkitektur: aktiver + opslag
 - Aktiver: cabins (hytte) + boats (båd) — gemmes med `published=false` indtil opslag

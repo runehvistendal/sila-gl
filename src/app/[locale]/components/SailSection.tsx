@@ -105,6 +105,10 @@ export default function SailSection({ rideShares, cabinPins }: Props) {
       })),
     [t],
   )
+  const transportHeadLead = useMemo(
+    () => t("sailSection.title").replace(/\s*[—–-]\s*$/, "").trim(),
+    [t],
+  )
 
   return (
     <section className="py-20 bg-background">
@@ -153,9 +157,12 @@ export default function SailSection({ rideShares, cabinPins }: Props) {
                 <div className="inline-flex items-center gap-2 text-primary/70 text-xs font-bold tracking-widest uppercase mb-5">
                   <Anchor size={14} /> {t("sailSection.uniqueLabel")}
                 </div>
-                <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4 leading-tight">
-                  {t("sailSection.title")}{" "}
-                  <em className="font-normal text-primary">{t("sailSection.titleHighlight")}</em>
+                <h2 className="text-3xl sm:text-4xl font-bold mb-4 leading-tight">
+                  <span className="text-foreground">{transportHeadLead}</span>
+                  <em className="font-normal italic text-primary">
+                    {" "}
+                    — {t("sailSection.titleHighlight")}
+                  </em>
                 </h2>
                 <p className="text-muted-foreground text-lg leading-relaxed mb-8">{t("sailSection.desc")}</p>
                 <div className="flex flex-col gap-3 mb-8">
@@ -189,8 +196,12 @@ export default function SailSection({ rideShares, cabinPins }: Props) {
                 <div className="inline-flex items-center gap-2 text-primary/70 text-xs font-bold tracking-widest uppercase mb-5">
                   <HomeLucide size={14} /> {t("cabinMapSection.badge")}
                 </div>
-                <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4 leading-tight">
-                  {t("cabinMapSection.title")}
+                <h2 className="text-3xl sm:text-4xl font-bold mb-4 leading-tight">
+                  <span className="text-foreground">{t("cabinMapSection.titleLead")}</span>
+                  <em className="font-normal italic text-primary">
+                    {" "}
+                    — {t("cabinMapSection.titleHighlight")}
+                  </em>
                 </h2>
                 <p className="text-muted-foreground text-lg leading-relaxed mb-8">{t("cabinMapSection.desc")}</p>
                 <div className="flex flex-col gap-3 mb-8">
@@ -213,7 +224,7 @@ export default function SailSection({ rideShares, cabinPins }: Props) {
                   })}
                 </div>
                 <Link
-                  href="/hytter"
+                  href="/ophold/i-naturen"
                   className="inline-flex items-center gap-2 px-8 py-3 rounded-full text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                 >
                   {t("cabinMapSection.seeAll")} <ArrowRight size={15} />

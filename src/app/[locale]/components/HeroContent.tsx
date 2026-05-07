@@ -1,33 +1,19 @@
 "use client"
 
-import { FormEvent, useState } from "react"
+import { useState } from "react"
 import { motion } from "framer-motion"
 import { useTranslations } from "next-intl"
-import { useRouter } from "@/i18n/navigation"
-import LocationAutocomplete from "@/components/shared/LocationAutocomplete"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
-import type { GreenlandLocation } from "@/lib/greenlandLocations"
+import { cn } from "@/lib/utils"
+import HeroSearchBar from "./HeroSearchBar"
 
 const majorHubs = GREENLAND_LOCATIONS.filter((l) => l.is_major_hub)
 
+type HeroTab = "cabins" | "transport"
+
 export default function HeroContent() {
   const t = useTranslations("home")
-  const router = useRouter()
-  const [hub, setHub] = useState("")
-
-  function goToLocation(loc: GreenlandLocation) {
-    router.push(`/hytter?hub=${encodeURIComponent(loc.name_dk)}`)
-  }
-
-  function submitSearch(e?: FormEvent) {
-    e?.preventDefault()
-    const trimmed = hub.trim()
-    if (!trimmed) {
-      router.push("/hytter")
-      return
-    }
-    router.push(`/hytter?hub=${encodeURIComponent(trimmed)}`)
-  }
+  const [tab, setTab] = useState<HeroTab>("cabins")
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-20 pb-16 md:pt-28 md:pb-24">
@@ -66,52 +52,48 @@ export default function HeroContent() {
         {t("subheadline")}
       </motion.p>
 
-      {/* Søgefelt + separat Søg-knap */}
+      {/* Tabs + Airbnb-pille søgebaren */}
       <motion.div
-        className="relative w-full md:max-w-[480px]"
+        className="w-full max-w-[860px]"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.35 }}
       >
-        <form className="flex items-center gap-2" onSubmit={submitSearch}>
-          <LocationAutocomplete
-            variant="hero"
-            className="flex-1 min-w-0"
-            value={hub}
-            onChange={setHub}
-            placeholder={t("searchPlaceholder")}
-            aria-label={t("searchPlaceholder")}
-          />
-          <button
-            type="submit"
-            className="px-5 py-4 md:py-3.5 rounded-2xl text-sm font-semibold text-primary-foreground bg-primary shrink-0 hover:bg-primary/90 transition-colors shadow-2xl whitespace-nowrap"
-          >
-            {t("searchButton")}
-          </button>
-        </form>
-      </motion.div>
+        <div
+          role="tablist"
+          aria-label={t("searchTabs.aria")}
+          className="inline-flex rounded-full p-1 mb-3"
+          style={{
+            backgroundColor: "rgba(255,255,255,0.12)",
+            border: "1px solid rgba(255,255,255,0.18)",
+          }}
+        >
+          {(
+            [
+              { key: "cabins" as const, label: t("searchTabs.cabins") },
+              { key: "transport" as const, label: t("searchTabs.transport") },
+            ] as const
+          ).map(({ key, label }) => {
+            const active = tab === key
+            return (
+              <button
+                key={key}
+                role="tab"
+                type="button"
+                aria-selected={active}
+                onClick={() => setTab(key)}
+                className={cn(
+                  "rounded-full px-4 py-1.5 text-sm font-semibold transition-colors",
+                  active ? "bg-white text-foreground shadow-sm" : "text-white/85 hover:text-white",
+                )}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
 
-      <motion.div
-        className="flex flex-wrap gap-2 mt-6 w-full md:max-w-[480px]"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.5 }}
-      >
-        {majorHubs.map((loc) => (
-          <button
-            key={`${loc.postal_code}-${loc.name_dk}`}
-            type="button"
-            onClick={() => goToLocation(loc)}
-            className="text-xs px-3 py-2 rounded-full transition-all hover:bg-white/20 active:scale-95"
-            style={{
-              backgroundColor: "rgba(255,255,255,0.1)",
-              border: "1px solid rgba(255,255,255,0.2)",
-              color: "rgba(255,255,255,0.85)",
-            }}
-          >
-            {loc.name_dk}
-          </button>
-        ))}
+        <HeroSearchBar tab={tab} majorHubs={majorHubs} />
       </motion.div>
     </div>
   )

@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next"
 import { createClient } from "@supabase/supabase-js"
 import { DESTINATION_SLUGS } from "@/lib/destinations"
 import { getAllPosts } from "@/lib/sanity.queries"
+import { publishedCabinDetailPath } from "@/lib/cabinPublicPaths"
 
 const BASE_URL = "https://sila.gl"
 const LOCALES = ["da", "en"] as const
@@ -16,29 +17,38 @@ function createPublicClient() {
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Statiske sider
   const staticPaths = [
-    "", "/hytter", "/transport", "/anmod",
-    "/om", "/faq", "/vilkaar", "/privatlivspolitik", "/udbyderguide", "/blog",
+    "",
+    "/ophold/i-naturen",
+    "/ophold/i-byen",
+    "/transport",
+    "/anmod",
+    "/om",
+    "/faq",
+    "/vilkaar",
+    "/privatlivspolitik",
+    "/udbyderguide",
+    "/blog",
   ]
   const staticUrls: MetadataRoute.Sitemap = staticPaths.flatMap((path) =>
     LOCALES.map((locale) => ({
       url: `${BASE_URL}/${locale}${path}`,
       lastModified: new Date(),
       changeFrequency: (path === "" ? "weekly" : "monthly") as "weekly" | "monthly",
-      priority: path === "" ? 1 : path === "/hytter" || path === "/transport" ? 0.8 : 0.6,
+      priority: (path === "" ? 1 : path === "/ophold/i-naturen" || path === "/ophold/i-byen" || path === "/transport" ? 0.8 : 0.6),
     }))
   )
 
-  // Publicerede hytter fra Supabase
+  // Publicerede hytter og boliger fra Supabase
   const supabase = createPublicClient()
   const { data: cabins } = await supabase
     .from("cabins")
-    .select("id, updated_at")
+    .select("id, updated_at, property_type")
     .eq("published", true)
     .is("deleted_at", null)
 
   const cabinUrls: MetadataRoute.Sitemap = (cabins ?? []).flatMap((cabin) =>
     LOCALES.map((locale) => ({
-      url: `${BASE_URL}/${locale}/hytter/${cabin.id}`,
+      url: `${BASE_URL}/${locale}${publishedCabinDetailPath(cabin.property_type, cabin.id)}`,
       lastModified: new Date(cabin.updated_at),
       changeFrequency: "weekly" as const,
       priority: 0.7,

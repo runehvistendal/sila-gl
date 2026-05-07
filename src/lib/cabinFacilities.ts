@@ -32,6 +32,12 @@ export const CABIN_FACILITIES = {
     { value: "first_aid",         label: "Førstehjælpskasse" },
     { value: "lockable_door",     label: "Låsbar dør" },
   ],
+  /** Ikke i /hytter-filtre — kun visning på hytteside */
+  guests_pets: [
+    { value: "family_friendly",    label: "Børnevenlig" },
+    { value: "baby_crib_available", label: "Børnesenge til rådighed" },
+    { value: "pets_allowed",       label: "Kæledyr tilladt" },
+  ],
 } as const
 
 export function getFixedFacilityValueSet(): Set<string> {
@@ -46,8 +52,9 @@ export function getFixedFacilityValueSet(): Set<string> {
 
 export type FacilityKey = keyof typeof CABIN_FACILITIES
 export const FACILITY_SECTION_LABELS: Record<FacilityKey, string> = {
-  basis:     "Basis",
-  udendoors: "Udendørs",
-  komfort:   "Komfort",
-  sikkerhed: "Sikkerhed",
+  basis:       "Basis",
+  udendoors:   "Udendørs",
+  komfort:     "Komfort",
+  sikkerhed:   "Sikkerhed",
+  guests_pets: "Gæster & kæledyr",
 }

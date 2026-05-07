@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 const PREDEFINED_VALUES = new Set([
   "cabin", "toilet", "kitchen", "heater", "dinghy",
   "fishing_gear", "binoculars",
+  "kids_welcome_lifejackets", "pets_allowed",
 ])
 
 function splitEquipment(equipment: string[] | null | undefined) {
@@ -51,6 +52,11 @@ export default function BaadForm({ mode, initialBoat }: Props) {
   const EXTRA_CHIPS = [
     { value: "fishing_gear", label: t("extra_fishing") },
     { value: "binoculars", label: t("extra_binoculars") },
+  ]
+
+  const GUEST_PET_CHIPS = [
+    { value: "kids_welcome_lifejackets", label: t("equipment_kids_welcome") },
+    { value: "pets_allowed", label: t("equipment_pets_allowed") },
   ]
 
   const action = mode === "edit" ? updateBaad : createBaad
@@ -273,6 +279,27 @@ export default function BaadForm({ mode, initialBoat }: Props) {
           <p className="text-xs font-semibold text-muted-foreground mb-2">{t("equipment_extra")}</p>
           <div className="flex flex-wrap gap-2">
             {EXTRA_CHIPS.map((chip) => (
+              <button
+                key={chip.value}
+                type="button"
+                onClick={() => toggleEquipment(chip.value)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition-all ${
+                  selectedEquipment.includes(chip.value)
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-white border-border hover:border-primary/40"
+                }`}
+              >
+                {selectedEquipment.includes(chip.value) && <span>✓</span>}
+                {chip.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground mb-2">{t("equipment_guests_pets")}</p>
+          <div className="flex flex-wrap gap-2">
+            {GUEST_PET_CHIPS.map((chip) => (
               <button
                 key={chip.value}
                 type="button"

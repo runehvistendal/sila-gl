@@ -1,5 +1,32 @@
 ﻿# Sila.gl — Hukommelse
 
+## Projekt
+
+Grønlands marketplace for hytteudlejning og samsejlads. «Grønland på lokale vilkår» — fuld teknisk kontekst: **[CLAUDE.md](CLAUDE.md)**.
+
+## Produktstrategi — besluttet 7.5.2026
+
+**Kanonisk fuld tekst:** [CLAUDE.md](CLAUDE.md) — afsnit **Produktstrategi — besluttet 7.5.2026**.
+
+### Kort reference
+- **Navbar:** **Ophold** (korttidsudlejning) · **Samsejlads** (sejlads med lokale). **Oplevelser** = fase 4, tredje navigationspunkt — ikke MVP.
+- **Ophold UI:** **I naturen** / **I byen** — kategorien er oplevelse, ikke adgangsform; **bygd = altid «I byen»** (båd/fly underordnet).
+- **Transportmodel:** tilvalg på alle opholdstyper. **Transfer** (ankomst-ruter, mønster som AddOnServicesEditor; planlagt bl.a. `from_location_id` på `transport_offers`) vs **Samsejlads** (til hytte eller fri; samme tabel/flow, navbar under Samsejlads).
+- **SEO (udestår — påmind Rune):** UI som ovenfor; metadata: hytte, cabin, sommerhus, bygd, bolig, Grønland; AI SEO parallelt med Google.
+- **Ikke endnu:** oplevelseskategori i MVP; langvarig udlejning (Boligportal); helikoptertransfer (private udbydere).
+
+### Påmindelser inden lancering (fra produktstrategi)
+- AI SEO-strategi skal udarbejdes
+- PostHog verificeres sat op korrekt
+- Transfer-flow bygges og testes end-to-end
+- Stripe live-test inkl. transfer-linjer
+
+## Status (7.5.2026)
+
+### Nyt 7.5.2026
+
+- **Dato-bevidst søgning** ✅ — `/hytter?checkIn=YYYY-MM-DD&checkOut=YYYY-MM-DD` filtrerer cabins server-side via `cabin_availability` (is_available=false-overlap) + `cabin_bookings` (status='confirmed', overlap) i `src/app/[locale]/hytter/page.tsx`. `/transport?date=YYYY-MM-DD` filtrerer ride_shares server-side med `.gte("departure_at", nuukDateToUtcIso(date))` (Nuuk-midnat → UTC) i `src/app/[locale]/transport/page.tsx`. **HeroContent** har tabs (Hytter | Samsejlads) — Hytter-tab: hub + indtjek + udtjek; Samsejlads-tab: afrejsedato. **CabinFilters**: dato-inputs i popover + chips for aktive datoer (med X). **TransportFilters**: afrejsedato i popover + chip. Bundlet keys: `home.searchTabs.*`, `home.searchDates.*`. Native `<input type="date">`. Mobile-first.
+
 ## Status (6.5.2026)
 
 ### Nyt 6.5.2026
@@ -8,9 +35,11 @@
 - **Checkout (server autoritativ):** Hytte `createCabinBooking` (`src/app/actions/bookings.ts`) — Stripe-linjer: hytte-subtotal (+ evt. beskrivelse ved transport) + «Servicegebyr (3%)» hvor fee > 0 · `payment_intent_data.application_fee_amount` = `platform_fee_ore + service_fee_ore`. Samme mønster: `src/app/api/transport/checkout/route.ts` · transporttilbud `acceptTransportOffer` i `src/app/[locale]/transport/anmodninger/[id]/actions.ts` (`transport_offers.service_fee_ore` ved session).
 - **Booking-UI:** `CabinBookingWidget.tsx`, `TransportDetailClient.tsx`, `TransportDrawer.tsx` — prisopdeling + tooltip (bundlet DA/EN: `cabins.booking_service_fee_*`, `transport.booking_service_fee_*`); klient matcher `calcServiceFee` kun til estimat/display.
 - **/udbyderguide** (`src/app/[locale]/udbyderguide/page.tsx`): tekst/process/økonomi kort oprullet; hero med tre ikon-flow (Megaphone, Users, Banknote), separate betaling-sektion fjernet; CTA **«Klar til at begynde?»** + Opret profil + PDF-print nederst i økonomi-sektionen; **mobile-first** typografi/spacing/tabeller/stackede rækker på small screens.
+- **Lokation & kort (sen 6.5):** Se **CLAUDE.md** «Bygget og komplet» — kort: udvidet **`greenlandLocations.ts`** (`aliases`, `region_label`, typer inkl. **hyttested / naturområde / fåreholdersted**, region-utils), **`fuse.js` + `locationSearch.ts`**, **`LocationAutocomplete`** (hero/default, portal, keyboard), **HeroContent** (HeroSearch fjernet), filtre med **`showOptionMeta={false}`**, **region-chips /hytter**, **Navbar z-40** + kort **`isolation:isolate`**, **SailSection** + live data, **`cabinMapRoutes`**, **/hytter** kort/liste (Grid/Map som transport), **MapWrapper** fjernet, **TransportMap** overview (destinations-prik, blå toner, smal hvid stroke, capitalize).
 
 ## Bygget og komplet
 
+- **Ovenstående lokation/kort-funktionalitet** ✅ (detaljer i CLAUDE.md)
 - **PostHog analytics** ✅ — `posthog-js` installeret; `PostHogProvider.tsx` initialiserer kun hvis **`NEXT_PUBLIC_POSTHOG_KEY`** og **`NEXT_PUBLIC_POSTHOG_HOST`** er sat. Provider wrappes i **`src/app/[locale]/layout.tsx`**. Events via **`src/lib/analytics/posthog-events.ts`** (booking, transport, login, kort m.fl.). Kræver env-variabler i **`.env.local`** + **Vercel** inden lancering.
 
 ---
@@ -67,11 +96,18 @@
 
 ## Næste trin
 
-1. ~~i18n — dansk + engelsk med next-intl~~ ✅ FÆRDIG — se nedenfor
-2. ~~SEO grundlag~~ ✅ FÆRDIG — `src/lib/metadata.ts`, `sitemap.ts`, `robots.ts`, `/destination/[slug]`, JsonLd (forside, hytte, transport, destination); polering + indhold se **Påmindelser**
-3. ~~Sanity: Visual Editing + Page Builder + globalSettings~~ ✅ FÆRDIG — se blokken ovenfor
-4. **Stripe live-test end-to-end** — næste opgave · kritisk inden lancering
-5. Lancering — første 20 udbydere
+1. ~~i18n — dansk + engelsk med next-intl~~ ✅
+2. ~~SEO grundlag~~ ✅ — `src/lib/metadata.ts`, `sitemap.ts`, `robots.ts`, `/destination/[slug]`, JsonLd (forside, hytte, transport, destination); polering + indhold se **Påmindelser**
+3. ~~Sanity: Visual Editing + Page Builder + globalSettings~~ ✅ — se blokken ovenfor
+4. ~~Dato-bevidst søgning~~ ✅ — se Status 7.5
+5. **i18n-oprydning** — `TYPE_LABEL`, `region_label`, øvrige hardkodede strenge til brugerens sprog
+6. **Lighthouse-test**
+7. **Stripe live-test end-to-end** — kritisk; **inkl. 3 %-servicegebyr-linje**
+8. **MobilePay til Stripe**
+9. **Lancering** — første 20 udbydere
+10. **Produktstrategi** besluttet 7.5.2026 — se CLAUDE.md ## Produktstrategi
+11. **Transfer-flow** skal bygges (AddOnServicesEditor-mønster + `from_location_id` på `transport_offers`)
+12. **Korttidsboligudlejning** tilføjes som kategori under Ophold (I naturen / I byen)
 
 ## Sanity CMS (5.5.2026 — reference)
 
@@ -91,7 +127,10 @@
 - Lighthouse-test
 - MobilePay til Stripe
 - Udbyderguide — indhold/UX opdateret 6.5; eventuel Sanity-overlay senere · se Status 6.5
-- Stripe live-test end-to-end (**næste opgave**); inkluder 3 %-linje i test
+- Stripe live-test end-to-end (**3 %-servicegebyr + transfer-linjer**)
+- AI SEO-strategi skal udarbejdes
+- PostHog verificeres sat op korrekt
+- Transfer-flow bygges og testes end-to-end
 
 ## i18n — dansk + engelsk (færdig 5.5.2026)
 
@@ -107,7 +146,7 @@
 
 ## Sikkerhed
 
-- Stripe end-to-end IKKE testet live — kritisk før lancering (**næste opgave**)
+- Stripe end-to-end IKKE testet live — kritisk før lancering (se **Næste trin** pkt. 7)
 - Testbrugerne (Malik, Sara, Hans, Aviaja) er fake uden auth
 - **`SANITY_API_TOKEN` må ikke commits** — behold kun i `.env.local` / Vercel
 
@@ -118,6 +157,6 @@
 - **Studio:** Kun `https://…/studio` (øverst i domænet, ikke `/da/studio`). Kræver login + `is_admin`.
 - **Sanity-projekt:** `lu0y9jmk` + `production`; seed: `npm run seed:sanity` · Editor-token
 - **SEO-filer:** `src/lib/metadata.ts`, `src/app/sitemap.ts`, `src/app/robots.ts`, `src/components/seo/JsonLd.tsx`.
-- **Transport-stednavne:** `getLocationName()` i `greenlandLocations.ts`.
+- **Transport-stednavne:** `getLocationName()` + **`searchLocations()`** (`locationSearch.ts`, fuse) + **`LocationAutocomplete`**
 - **Servicegebyr gæst (3 %):** `calcServiceFee` i `src/lib/money.ts` · kolonner + migration **`20260506000000_service_fee.sql`**
 - **PostHog:** se **Bygget og komplet**

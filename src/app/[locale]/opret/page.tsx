@@ -24,7 +24,7 @@ export default async function OpretPage() {
   const [{ data: cabinsRaw }, { data: boatsRaw }] = await Promise.all([
     supabase
       .from("cabins")
-      .select("id, title, location_hub, published")
+      .select("id, title, location_hub, published, property_type")
       .eq("owner_id", user.id)
       .is("deleted_at", null)
       .order("created_at", { ascending: false }),

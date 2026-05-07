@@ -46,7 +46,7 @@ export default async function DashboardPage() {
   const [{ data: myCabinsRaw }, { data: myBoatsRaw }] = await Promise.all([
     supabase
       .from("cabins")
-      .select("id, title, location_hub, price_per_night_ore, images, published")
+      .select("id, title, location_hub, price_per_night_ore, images, published, property_type")
       .eq("owner_id", user.id)
       .is("deleted_at", null)
       .order("created_at", { ascending: false }),
@@ -205,7 +205,7 @@ export default async function DashboardPage() {
         id, cabin_id, status, check_in, check_out, num_guests,
         total_price_ore, platform_fee_ore, stripe_payment_intent_id,
         guest_message, created_at,
-        cabins!cabin_id(title, owner_id, price_per_night_ore, profiles!owner_id(full_name))
+        cabins!cabin_id(title, owner_id, price_per_night_ore, property_type, profiles!owner_id(full_name))
       `)
       .eq("guest_id", user.id)
       .is("deleted_at", null)
@@ -220,7 +220,7 @@ export default async function DashboardPage() {
             id, cabin_id, guest_id, status, check_in, check_out, num_guests,
             total_price_ore, platform_fee_ore, stripe_payment_intent_id,
             guest_message, created_at,
-            cabins!cabin_id(title, price_per_night_ore),
+            cabins!cabin_id(title, price_per_night_ore, property_type),
             profiles!guest_id(id, full_name, avatar_url)
           `)
           .in("cabin_id", cabinIds)
@@ -308,8 +308,8 @@ export default async function DashboardPage() {
   )
 
   /* ── Shape data ── */
-  type CabinJoinGuest = { title?: string; owner_id?: string; price_per_night_ore?: number; profiles?: { full_name?: string } | null } | null
-  type CabinJoinHost  = { title?: string; price_per_night_ore?: number } | null
+  type CabinJoinGuest = { title?: string; owner_id?: string; price_per_night_ore?: number; property_type?: string | null; profiles?: { full_name?: string } | null } | null
+  type CabinJoinHost  = { title?: string; price_per_night_ore?: number; property_type?: string | null } | null
   type GuestProfile   = { id?: string; full_name?: string; avatar_url?: string | null } | null
 
   const myBookings: CabinBookingData[] = (myBookingsRaw ?? []).map((b: Record<string, unknown>) => {
@@ -328,6 +328,7 @@ export default async function DashboardPage() {
       created_at:               b.created_at as string,
       cabin_title:              cabin?.title ?? null,
       cabin_price_per_night_ore: cabin?.price_per_night_ore ?? null,
+      cabin_property_type:      cabin?.property_type ?? null,
       guest_name:               null,
       guest_id:                 null,
       host_name:                cabin?.profiles?.full_name ?? null,
@@ -353,6 +354,7 @@ export default async function DashboardPage() {
       created_at:               b.created_at as string,
       cabin_title:              cabin?.title ?? null,
       cabin_price_per_night_ore: cabin?.price_per_night_ore ?? null,
+      cabin_property_type:      cabin?.property_type ?? null,
       guest_name:               guestPr?.full_name ?? null,
       guest_id:                 (b.guest_id as string | null) ?? null,
       guest_avatar_url:         guestPr?.avatar_url ?? null,
