@@ -277,6 +277,7 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - **Next.js dokumentation:** Læs `node_modules/next/dist/docs/` før antagelser om API (se `AGENTS.md`).
 
 ## Kendte huller / teknisk gæld
+- **Placeholder-migrationer** — `20260507124840` og `20260507130619` eksisterer kun som no-op placeholders lokalt (remote kørte dem på en anden maskine). Erstat med de rigtige scripts før nye miljøer sættes op.
 - **cookies-side:** Footer linker ikke længere til `/cookies`; hvis politikken skal frem — tilføj side (evt. Sanity `page` slug `cookies`) eller link fra footer.
 - **Transfer på boligopslag** — transfer vises ikke på `/ophold/i-byen/[id]` selvom udbyderen har valgt det. Skal fixes i næste sprint.
 - **Transfer oprettelse** — `/opret/bolig` dropdown viser kun 6 største byer i stedet for alle byer og bygder fra `GREENLAND_LOCATIONS`. Skal bruge `LocationAutocomplete` med `isInByenCategory`-filter.
