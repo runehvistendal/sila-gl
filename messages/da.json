@@ -125,6 +125,9 @@
       "loc_village": "Bygd"
     }
   },
+  "request": {
+    "whole_region": "Hele {region}"
+  },
   "amenities": {
     "residence": {
       "wifi": "Wifi",

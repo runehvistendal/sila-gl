@@ -9,17 +9,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { getAllLocationsSorted } from "@/lib/greenlandLocations"
 import DatePickerButton from "@/components/shared/DatePickerButton"
-import { GroupedLocationSelect } from "@/components/shared/GroupedLocationSelect"
+import { HierarchicalLocationSelect } from "@/components/shared/HierarchicalLocationSelect"
 import { guestStayRequestHref } from "@/lib/cabinPublicPaths"
 import { createCabinRequest } from "./actions"
 import { cn } from "@/lib/utils"
-
-const LOCATIONS_FOR_REQUEST = getAllLocationsSorted().map((l) => ({
-  name: l.name_dk,
-  isHub: l.is_major_hub,
-}))
 
 export default function AnmodClient() {
   const t = useTranslations("request")
@@ -141,14 +135,13 @@ export default function AnmodClient() {
               <MapPin className="w-3.5 h-3.5 inline mr-1 text-muted-foreground" />
               {t("destination")} <span className="text-destructive">*</span>
             </Label>
-            <GroupedLocationSelect
+            <HierarchicalLocationSelect
               id="stay-destination"
               value={location}
               onChange={setLocation}
-              locations={LOCATIONS_FOR_REQUEST}
+              allLabel={t("all_destinations")}
+              formatRegionSummaryLabel={(r) => t("whole_region", { region: r })}
               placeholder={t("select_city")}
-              majorGroupLabel={t("location_group_major")}
-              otherGroupLabel={t("location_group_other")}
             />
           </div>
 

@@ -1,17 +1,17 @@
 "use client"
 
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react"
+import { FormEvent, useEffect, useRef, useState } from "react"
 import { Minus, Plus, Search } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "@/i18n/navigation"
-import LocationAutocomplete from "@/components/shared/LocationAutocomplete"
+import { HierarchicalLocationSelect } from "@/components/shared/HierarchicalLocationSelect"
 import { CalendarDropdown } from "@/components/shared/CalendarDropdown"
 import { formatRangeSummary, localTodayYmd, parseYmd } from "@/components/shared/DatePickerButton"
 import type { GreenlandLocation } from "@/lib/greenlandLocations"
 import { cn } from "@/lib/utils"
 
 type HeroTab = "ophold" | "samsejlads"
-type ActivePanel = "where" | "when" | "who" | null
+type ActivePanel = "when" | "who" | null
 
 interface HeroSearchBarProps {
   tab: HeroTab
@@ -20,6 +20,7 @@ interface HeroSearchBarProps {
 
 export default function HeroSearchBar({ tab, majorHubs }: HeroSearchBarProps) {
   const t = useTranslations("home.heroSearch")
+  const tRequest = useTranslations("request")
   const locale = useLocale()
   const router = useRouter()
 
@@ -35,16 +36,8 @@ export default function HeroSearchBar({ tab, majorHubs }: HeroSearchBarProps) {
 
   const today = localTodayYmd()
 
-  const locOpen = activePanel === "where"
   const whenOpen = activePanel === "when"
   const whoOpen = activePanel === "who"
-
-  const setWhereOpen = useCallback((open: boolean) => {
-    setActivePanel((p) => {
-      if (open) return "where"
-      return p === "where" ? null : p
-    })
-  }, [])
 
   function openWho() {
     setActivePanel((p) => (p === "who" ? null : "who"))
@@ -54,7 +47,6 @@ export default function HeroSearchBar({ tab, majorHubs }: HeroSearchBarProps) {
     function onDocMouseDown(e: MouseEvent) {
       const target = e.target as Node
       if (target instanceof Element) {
-        if (target.closest("[data-location-autocomplete-portal]")) return
         if (target.closest("[data-date-picker-dropdown]")) return
         if (rootRef.current?.contains(target)) return
       }
@@ -121,10 +113,9 @@ export default function HeroSearchBar({ tab, majorHubs }: HeroSearchBarProps) {
         >
           <SearchSection
             label={t("whereLabel")}
-            placeholder={t("wherePlaceholder")}
+            allLabel={tRequest("all_destinations")}
+            formatRegionSummaryLabel={(r) => tRequest("whole_region", { region: r })}
             value={hub}
-            open={locOpen}
-            onOpenChange={setWhereOpen}
             onChange={setHub}
             ariaLabel={t("wherePlaceholder")}
           />
@@ -248,41 +239,31 @@ export default function HeroSearchBar({ tab, majorHubs }: HeroSearchBarProps) {
 
 function SearchSection({
   label,
-  placeholder,
+  allLabel,
+  formatRegionSummaryLabel,
   value,
-  open,
-  onOpenChange,
   onChange,
   ariaLabel,
 }: {
   label: string
-  placeholder: string
+  allLabel: string
+  formatRegionSummaryLabel: (regionLabel: string) => string
   value: string
-  open: boolean
-  onOpenChange: (open: boolean) => void
   onChange: (v: string) => void
   ariaLabel: string
 }) {
   return (
-    <div
-      className="relative z-[1] flex flex-col items-stretch justify-center px-6 py-4 md:py-3 md:px-5 flex-[1.15] min-w-0 min-h-[4.25rem] md:min-h-0"
-      onMouseDown={() => onOpenChange(true)}
-    >
-      <span className="text-xs font-semibold text-[#09192A] mb-1 shrink-0 pointer-events-none">{label}</span>
-      <div
-        className="min-h-9 flex w-full min-w-0 items-center -mx-1"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <LocationAutocomplete
-          variant="embedded"
-          className="w-full min-w-0"
+    <div className="relative z-[1] flex flex-col items-stretch justify-center px-6 py-4 md:py-3 md:px-5 flex-[1.15] min-w-0 min-h-[4.25rem] md:min-h-0">
+      <span className="text-xs font-semibold text-[#09192A] mb-1 shrink-0">{label}</span>
+      <div className="min-h-9 flex w-full min-w-0 items-center">
+        <HierarchicalLocationSelect
           value={value}
           onChange={onChange}
-          placeholder={placeholder}
+          allLabel={allLabel}
+          formatRegionSummaryLabel={formatRegionSummaryLabel}
+          placeholder={allLabel}
           aria-label={ariaLabel}
-          showOptionMeta={true}
-          open={open}
-          onOpenChange={onOpenChange}
+          className="w-full min-w-0 border-0 shadow-none bg-transparent h-9 px-0 sm:px-1 text-[#09192A] font-medium rounded-lg md:rounded-full"
         />
       </div>
     </div>

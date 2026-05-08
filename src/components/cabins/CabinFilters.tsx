@@ -5,7 +5,7 @@ import { useRouter } from "@/i18n/navigation"
 import { useTranslations } from "next-intl"
 import { Search, SlidersHorizontal, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import LocationAutocomplete from "@/components/shared/LocationAutocomplete"
+import { HierarchicalLocationSelect } from "@/components/shared/HierarchicalLocationSelect"
 import DatePickerButton from "@/components/shared/DatePickerButton"
 import {
   AMENITY_META,
@@ -66,6 +66,7 @@ export default function CabinFilters({
   const router = useRouter()
   const tHero = useTranslations("home.heroSearch")
   const tFilters = useTranslations("ophold.filters")
+  const tRequest = useTranslations("request")
   const tAmenity = useTranslations("amenities.residence")
   const [filters, setFilters] = useState<FilterValues>(initialFilters)
   const [showAdvanced, setShowAdvanced] = useState(
@@ -210,13 +211,14 @@ export default function CabinFilters({
           />
         </form>
 
-        <LocationAutocomplete
+        <HierarchicalLocationSelect
           value={filters.hub}
           onChange={(name_dk) => set("hub", name_dk)}
+          allLabel={tFilters("all_destinations")}
+          formatRegionSummaryLabel={(r) => tRequest("whole_region", { region: r })}
           placeholder={tFilters("all_destinations")}
-          className="w-full sm:w-[min(100%,14rem)]"
           aria-label="Destination"
-          showOptionMeta={false}
+          className="w-full sm:w-[min(100%,14rem)]"
         />
 
         <DatePickerButton

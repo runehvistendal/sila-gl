@@ -11,6 +11,7 @@ import ResidenceClient from "./ResidenceClient"
 import type { FilterValues } from "@/components/cabins/CabinFilters"
 import type { CabinCardData } from "@/components/cabins/CabinCard"
 import type { CabinMapPin } from "@/lib/cabinMapRoutes"
+import { cabinHubFilterForQuery } from "@/lib/greenlandLocations"
 
 interface SearchParams {
   hub?: string
@@ -150,7 +151,16 @@ export default async function OpholdCityPage({ params, searchParams }: Props) {
     }
   }
 
-  if (hub) query = query.eq("location_hub", hub)
+  const hubF = cabinHubFilterForQuery(hub)
+  if (hubF.op === "in") {
+    if (hubF.values.length === 0) {
+      query = query.limit(0)
+    } else {
+      query = query.in("location_hub", hubF.values)
+    }
+  } else if (hubF.op === "eq") {
+    query = query.eq("location_hub", hubF.value)
+  }
   if (guests) query = query.gte("max_guests", Number(guests))
   if (residenceSubtype) query = query.eq("residence_subtype", residenceSubtype)
   if (locationSubtype) query = query.eq("location_subtype", locationSubtype)

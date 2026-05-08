@@ -4,7 +4,7 @@ import { useRef, useEffect } from "react"
 import { useTranslations } from "next-intl"
 import { Input } from "@/components/ui/input"
 import { Search, SlidersHorizontal, X } from "lucide-react"
-import LocationAutocomplete from "@/components/shared/LocationAutocomplete"
+import { HierarchicalLocationSelect } from "@/components/shared/HierarchicalLocationSelect"
 import DatePickerButton from "@/components/shared/DatePickerButton"
 
 export interface TransportFilterValues {
@@ -37,6 +37,7 @@ const BOAT_TYPE_OPTIONS = [
 export default function TransportFilters({ filters, onChange, onFilterApplied }: Props) {
   const panelRef = useRef<HTMLDivElement>(null)
   const tHome = useTranslations("home")
+  const tRequest = useTranslations("request")
 
   const set = <K extends keyof TransportFilterValues>(key: K, val: TransportFilterValues[K]) => {
     onChange({ ...filters, [key]: val })
@@ -96,22 +97,24 @@ export default function TransportFilters({ filters, onChange, onFilterApplied }:
           />
         </div>
 
-        <LocationAutocomplete
+        <HierarchicalLocationSelect
           value={filters.fromLoc === "all" ? "" : filters.fromLoc}
           onChange={(name_dk) => set("fromLoc", name_dk || "all")}
-          placeholder="Alle afgange"
-          className="w-full min-w-0 sm:w-[min(100%,11rem)]"
+          allLabel={tRequest("all_departures")}
+          formatRegionSummaryLabel={(r) => tRequest("whole_region", { region: r })}
+          placeholder={tRequest("all_departures")}
           aria-label="Afgangsted"
-          showOptionMeta={false}
+          className="w-full min-w-0 sm:w-[min(100%,11rem)]"
         />
 
-        <LocationAutocomplete
+        <HierarchicalLocationSelect
           value={filters.toLoc === "all" ? "" : filters.toLoc}
           onChange={(name_dk) => set("toLoc", name_dk || "all")}
-          placeholder="Alle destinationer"
-          className="w-full min-w-0 sm:w-[min(100%,11rem)]"
+          allLabel={tRequest("all_destinations")}
+          formatRegionSummaryLabel={(r) => tRequest("whole_region", { region: r })}
+          placeholder={tRequest("all_destinations")}
           aria-label="Destination"
-          showOptionMeta={false}
+          className="w-full min-w-0 sm:w-[min(100%,11rem)]"
         />
 
         <DatePickerButton

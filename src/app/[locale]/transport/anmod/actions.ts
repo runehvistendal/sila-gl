@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation"
 import { requireSession } from "@/lib/requireSession"
-import { getAllLocationsSorted, findLocation } from "@/lib/greenlandLocations"
+import { getAllLocationsSorted, REGION_HUB_PREFIX } from "@/lib/greenlandLocations"
 
 export type TripType = "one_way" | "round_trip"
 
@@ -22,6 +22,13 @@ export async function createTransportRequest(
   input: CreateTransportRequestInput,
 ): Promise<CreateTransportRequestResult> {
   const { supabase, user } = await requireSession()
+
+  if (
+    input.from_location.startsWith(REGION_HUB_PREFIX) ||
+    input.to_location.startsWith(REGION_HUB_PREFIX)
+  ) {
+    return { error: "Vælg et konkret sted for fra og til." }
+  }
 
   // Validate locations
   const allLocations = getAllLocationsSorted()
@@ -77,6 +84,3 @@ export async function createTransportRequest(
   )
 }
 
-export async function getLocations() {
-  return getAllLocationsSorted().map((l) => ({ name: l.name_dk, isHub: l.is_major_hub }))
-}

@@ -9,15 +9,12 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { createTransportRequest, type TripType } from "./actions"
-import { GroupedLocationSelect, type GroupedLocationOption } from "@/components/shared/GroupedLocationSelect"
+import { HierarchicalLocationSelect } from "@/components/shared/HierarchicalLocationSelect"
 import DatePickerButton from "@/components/shared/DatePickerButton"
 import { guestStayRequestHref } from "@/lib/cabinPublicPaths"
+import { REGION_HUB_PREFIX } from "@/lib/greenlandLocations"
 import { Link } from "@/i18n/navigation"
 import { cn } from "@/lib/utils"
-
-interface Props {
-  locations: GroupedLocationOption[]
-}
 
 const TRIP_TYPES: { value: TripType; labelKey: string }[] = [
   { value: "one_way", labelKey: "transport_trip_one_way" },
@@ -30,7 +27,7 @@ function ymdDayAfter(ymd: string): string {
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`
 }
 
-export default function AnmodForm({ locations }: Props) {
+export default function AnmodForm() {
   const t = useTranslations("request")
   const tCommon = useTranslations("common")
   const router = useRouter()
@@ -104,18 +101,18 @@ export default function AnmodForm({ locations }: Props) {
           <Label htmlFor="transport-from" className="text-sm font-medium text-foreground">
             {t("transport_from")} <span className="text-destructive">*</span>
           </Label>
-          <GroupedLocationSelect
+          <HierarchicalLocationSelect
             id="transport-from"
             required
+            includeRegionOption={false}
             value={fromLoc}
             onChange={(v) => {
               setFromLoc(v)
               if (v === toLoc) setToLoc("")
             }}
-            locations={locations}
+            allLabel={t("transport_pick_place")}
+            formatRegionSummaryLabel={(r) => t("whole_region", { region: r })}
             placeholder={t("transport_pick_place")}
-            majorGroupLabel={t("location_group_major")}
-            otherGroupLabel={t("location_group_other")}
           />
         </div>
 
@@ -123,16 +120,18 @@ export default function AnmodForm({ locations }: Props) {
           <Label htmlFor="transport-to" className="text-sm font-medium text-foreground">
             {t("transport_to")} <span className="text-destructive">*</span>
           </Label>
-          <GroupedLocationSelect
+          <HierarchicalLocationSelect
             id="transport-to"
             required
+            includeRegionOption={false}
             value={toLoc}
             onChange={setToLoc}
-            locations={locations}
-            excludeNames={[fromLoc]}
+            excludeValues={
+              fromLoc && !fromLoc.startsWith(REGION_HUB_PREFIX) ? [fromLoc] : []
+            }
+            allLabel={t("transport_pick_place")}
+            formatRegionSummaryLabel={(r) => t("whole_region", { region: r })}
             placeholder={t("transport_pick_place")}
-            majorGroupLabel={t("location_group_major")}
-            otherGroupLabel={t("location_group_other")}
           />
         </div>
       </div>

@@ -1043,10 +1043,20 @@ export function findLocationById(
   )
 }
 
-/** Alle byer/bygder — sorteret efter dansk navn (A-Å). */
+/** Sorteringsnøgle: «Aa» bevares som Aa (ikke dansk Å), derefter æ/ø/å som latinske serier. */
+function normalizeForSort(s: string): string {
+  return s
+    .replace(/^Aa/, "Aa")
+    .toLowerCase()
+    .replace(/æ/g, "ae")
+    .replace(/ø/g, "oz")
+    .replace(/å/g, "zz")
+}
+
+/** Alle byer/bygder — Aa som bogstav A; æ/ø/å foldes; sammenligning med 'en' efter normalisering. */
 export function getAllLocationsSorted(): GreenlandLocation[] {
   return [...GREENLAND_LOCATIONS].sort((a, b) =>
-    a.name_dk.localeCompare(b.name_dk, "da"),
+    normalizeForSort(a.name_dk).localeCompare(normalizeForSort(b.name_dk), "en"),
   )
 }
 
@@ -1084,6 +1094,56 @@ export function isInByenCategory(locationId: string): boolean {
 /** Alle lokationer for en given region_label */
 export function getLocationsByRegion(regionLabel: string): GreenlandLocation[] {
   return GREENLAND_LOCATIONS.filter((l) => l.region_label === regionLabel)
+}
+
+/** region → sorterede lokationer; regioner sorteret med normalizeForSort. */
+export function getLocationsGroupedByRegion(): {
+  regionLabel: string
+  locations: GreenlandLocation[]
+}[] {
+  const labels = [...new Set(GREENLAND_LOCATIONS.map((l) => l.region_label))]
+  return labels
+    .sort((a, b) => normalizeForSort(a).localeCompare(normalizeForSort(b), "en"))
+    .map((regionLabel) => ({
+      regionLabel,
+      locations: getLocationsByRegion(regionLabel).sort((a, b) =>
+        normalizeForSort(a.name_dk).localeCompare(normalizeForSort(b.name_dk), "en"),
+      ),
+    }))
+}
+
+/** Prefix for hele-region valg i URL/state (fx hub=region:Diskobugten). */
+export const REGION_HUB_PREFIX = "region:"
+
+export type CabinHubFilter =
+  | { op: "none" }
+  | { op: "in"; values: string[] }
+  | { op: "eq"; value: string }
+
+/** Til Supabase cabins.location_hub — tom | region:* | præcis name_dk. */
+export function cabinHubFilterForQuery(hub: string | undefined | null): CabinHubFilter {
+  const h = hub?.trim() ?? ""
+  if (!h) return { op: "none" }
+  if (h.startsWith(REGION_HUB_PREFIX)) {
+    const label = h.slice(REGION_HUB_PREFIX.length).trim()
+    const values = getLocationsByRegion(label).map((l) => l.name_dk)
+    return { op: "in", values }
+  }
+  const canon = GREENLAND_LOCATIONS.find(
+    (l) => l.name_dk.toLowerCase() === h.toLowerCase(),
+  )?.name_dk
+  return { op: "eq", value: canon ?? h }
+}
+
+/** Til ride_shares from_location / to_location (lowercase i DB). null = ingen filter. */
+export function rideShareKeysForLocationFilter(value: string | undefined | null): Set<string> | null {
+  const raw = value?.trim() ?? ""
+  if (!raw || raw === "all") return null
+  if (raw.startsWith(REGION_HUB_PREFIX)) {
+    const label = raw.slice(REGION_HUB_PREFIX.length).trim()
+    return new Set(getLocationsByRegion(label).map((l) => l.name_dk.toLowerCase()))
+  }
+  return new Set([raw.toLowerCase()])
 }
 
 /** Ét “anker” navn til region-chip (prioriter storby / folketal). */

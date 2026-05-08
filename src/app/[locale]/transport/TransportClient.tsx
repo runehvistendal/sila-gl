@@ -11,7 +11,7 @@ import TransportCard, { type RideShareCardData } from "./components/TransportCar
 import TransportFilters, { type TransportFilterValues } from "./components/TransportFilters"
 import type { TransportMapRoute } from "@/components/map/TransportMap"
 import { captureEvent } from "@/lib/analytics/posthog-events"
-import { getLocationName } from "@/lib/greenlandLocations"
+import { getLocationName, rideShareKeysForLocationFilter } from "@/lib/greenlandLocations"
 
 function MapLoading() {
   const t = useTranslations("transport")
@@ -123,12 +123,17 @@ export default function TransportClient({
         rs.to_location.toLowerCase().includes(q) ||
         (rs.profiles?.full_name?.toLowerCase().includes(q) ?? false)
 
+      const fromKeys = rideShareKeysForLocationFilter(
+        filters.fromLoc === "all" ? "" : filters.fromLoc,
+      )
+      const toKeys = rideShareKeysForLocationFilter(
+        filters.toLoc === "all" ? "" : filters.toLoc,
+      )
+
       const matchFrom =
-        filters.fromLoc === "all" ||
-        rs.from_location.toLowerCase() === filters.fromLoc.toLowerCase()
+        !fromKeys || fromKeys.has(rs.from_location.toLowerCase())
       const matchTo =
-        filters.toLoc === "all" ||
-        rs.to_location.toLowerCase() === filters.toLoc.toLowerCase()
+        !toKeys || toKeys.has(rs.to_location.toLowerCase())
 
       const boatDesc = (rs.boat_description ?? "").toLowerCase()
       const matchBoat = filters.boatTypes.length === 0 || filters.boatTypes.some((bt) => {
