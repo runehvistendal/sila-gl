@@ -207,7 +207,7 @@ export default function ProfileForm({
       if (changed.length > 0) {
         captureEvent("profile_updated", { fields_changed: changed })
       }
-      toast.success(t("save_success"))
+      toast.success(t("save_success"), { duration: 2000 })
     })
   }
 

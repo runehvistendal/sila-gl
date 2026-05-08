@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useTransition, useEffect, useRef } from "react"
-import Link from "next/link"
+import NextLink from "next/link"
+import { Link } from "@/i18n/navigation"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   Calendar, Clock, Inbox, Home, Briefcase,
@@ -9,7 +10,7 @@ import {
   Check, X, User, ArrowRight,
 } from "lucide-react"
 import { format } from "date-fns"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -170,14 +171,25 @@ export default function DashboardClient({
         title: "Båd gemt",
         description: "Vælg 'Tilbyd transport' for at poste en tur.",
       },
-      "boat-updated":                  { title: "Ændringer gemt" },
-      "transport-request-created":  { title: "Transportanmodning sendt", description: "Sejlere vil svare med tilbud." },
-      "cabin-request-created":      { title: tRequest("submitted"), description: tRequest("submitted_body") },
+      "boat-updated": { title: "Ændringer gemt" },
+      "transport-request-created": {
+        title: tRequest("transport_submitted_toast"),
+      },
+      "cabin-request-created": { title: tRequest("submitted") },
     }
 
     const msg = map[t]
     if (msg) {
-      toast(msg.title, msg.description ? { description: msg.description } : undefined)
+      const shortToast =
+        t === "cabin-request-created" || t === "transport-request-created"
+      if (shortToast) {
+        toast.success(msg.title, { duration: 2000 })
+      } else {
+        toast.success(msg.title, {
+          duration: 2000,
+          ...(msg.description ? { description: msg.description } : {}),
+        })
+      }
     }
 
     const sp = new URLSearchParams(searchParams.toString())
@@ -307,7 +319,7 @@ export default function DashboardClient({
           <div className="flex gap-2 flex-wrap">
             {isTraveler && (
               <Button variant="outline" asChild className="rounded-xl gap-2 text-sm">
-                <Link href={guestStayRequestHref}><MapPin className="w-4 h-4" /> {tNav("requestCabin")}</Link>
+                <Link href={guestStayRequestHref}><MapPin className="w-4 h-4" /> {tNav("requestStay")}</Link>
               </Button>
             )}
             {isTraveler && (
@@ -982,6 +994,8 @@ function CabinRequestRow({ r, isHost }: { r: CabinRequestData; isHost: boolean }
 /* ── Transport request row with offer count and chat link ── */
 function TransportRequestRow({ r }: { r: { id: string; from_location: string; to_location: string; desired_date: string; num_passengers: number; status: string; offer_count?: number } }) {
   const [isPending, startTransition] = useTransition()
+  const locale = useLocale()
+  const detailHref = `/${locale}/transport/anmodninger/${r.id}`
 
   return (
     <div className={`bg-white rounded-xl border p-4 ${r.status === "matched" ? "border-green-200" : "border-border"}`}>
@@ -1006,9 +1020,12 @@ function TransportRequestRow({ r }: { r: { id: string; from_location: string; to
 
       <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border flex-wrap">
         <Button size="sm" asChild variant="outline" className="rounded-lg gap-1.5 text-primary border-primary/30 hover:bg-primary/5">
-          <Link href={`/transport/anmodninger/${r.id}`}>
+          <NextLink
+            href={detailHref}
+            onClick={() => console.log("[Dashboard transportanmodning] URL:", detailHref)}
+          >
             <Eye className="w-3.5 h-3.5" /> Se chat og tilbud
-          </Link>
+          </NextLink>
         </Button>
 
         {r.status === "matched" && (

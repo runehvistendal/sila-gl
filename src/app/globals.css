@@ -148,18 +148,6 @@
   opacity: 0.5;
 }
 
-/* ── DayPicker: optagede datoer (Airbnb-stil — grå + strikethrough) ── */
-.rdp-day_booked {
-  color: hsl(215 10% 75%) !important;
-  text-decoration: line-through !important;
-  text-decoration-thickness: 2px !important;
-  background-color: hsl(215 25% 93%) !important;
-  cursor: not-allowed !important;
-  pointer-events: none;
-  border-radius: 4px;
-  font-size: 0.85em !important;
-}
-
 /* Profil: react-phone-number-input (matcher øvrige felter) */
 .PhoneInput {
   display: flex;

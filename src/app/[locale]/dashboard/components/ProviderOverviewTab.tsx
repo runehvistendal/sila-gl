@@ -1,9 +1,10 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import Link from "next/link"
+import NextLink from "next/link"
+import { Link } from "@/i18n/navigation"
 import { Anchor, Home, Filter, X } from "lucide-react"
-import { useFormatter } from "next-intl"
+import { useFormatter, useLocale } from "next-intl"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -202,6 +203,7 @@ export default function ProviderOverviewTab({ transportRequests, hostBookings }:
 
 function ItemCard({ item }: { item: NormItem }) {
   const fmt = useFormatter()
+  const locale = useLocale()
   const isRequest = item.type === "transport-request"
   const statusColor = isRequest
     ? (REQUEST_STATUS[item.status] ?? "bg-gray-100 text-gray-500")
@@ -210,13 +212,12 @@ function ItemCard({ item }: { item: NormItem }) {
     ? (REQUEST_LABELS[item.status] ?? item.status)
     : (BOOKING_LABELS[item.status] ?? item.status)
 
-  const href = isRequest ? `/transport/${item.id}` : `/mine-hytter`
+  const transportDetailHref = `/${locale}/transport/anmodninger/${item.id}`
+  const cardClass =
+    "block w-full text-left bg-white rounded-xl border border-border p-4 hover:shadow-md transition-shadow"
 
-  return (
-    <Link
-      href={href}
-      className="block w-full text-left bg-white rounded-xl border border-border p-4 hover:shadow-md transition-shadow"
-    >
+  const inner = (
+    <>
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-start gap-3 flex-1 min-w-0">
           <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${isRequest ? "bg-accent/10" : "bg-primary/10"}`}>
@@ -238,6 +239,20 @@ function ItemCard({ item }: { item: NormItem }) {
         </div>
         <Badge className={`${statusColor} border-0 text-xs shrink-0`}>{statusLabel}</Badge>
       </div>
+    </>
+  )
+
+  if (isRequest) {
+    return (
+      <NextLink href={transportDetailHref} className={cardClass}>
+        {inner}
+      </NextLink>
+    )
+  }
+
+  return (
+    <Link href="/mine-hytter" className={cardClass}>
+      {inner}
     </Link>
   )
 }

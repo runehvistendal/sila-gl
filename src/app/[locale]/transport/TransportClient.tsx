@@ -354,7 +354,10 @@ export default function TransportClient({
                 <p className="text-xs text-muted-foreground mt-1">
                   {fmt.dateTime(new Date(r.desired_date), { day: "numeric", month: "short", year: "numeric" })}
                   {" · "}{t(r.num_passengers === 1 ? "passenger_one" : "passenger_other", { count: r.num_passengers })}
-                  {" · "}{t(`tripTypes.${r.trip_type as "one_way" | "round_trip" | "return"}` as const) ?? r.trip_type}
+                  {" · "}
+                  {t(
+                    `tripTypes.${(r.trip_type === "return" ? "round_trip" : r.trip_type) as "one_way" | "round_trip"}`,
+                  )}
                 </p>
                 <div className="flex items-center gap-1 mt-3 text-primary text-xs font-semibold">
                   <MessageSquare className="w-3 h-3" />

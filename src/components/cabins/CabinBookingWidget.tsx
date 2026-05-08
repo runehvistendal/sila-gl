@@ -1,19 +1,12 @@
 "use client"
 
-import { useEffect, useMemo, useState, useTransition } from "react"
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import Link from "next/link"
-import { DayPicker, type DateRange } from "react-day-picker"
-import { da, enUS } from "date-fns/locale"
 import { useLocale, useTranslations } from "next-intl"
 import { useFormatPrice } from "@/hooks/useFormatPrice"
-import {
-  format as formatDate,
-  isBefore,
-  startOfDay,
-  parseISO,
-} from "date-fns"
+import { format as formatDate, parseISO } from "date-fns"
 import { Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -26,7 +19,8 @@ import { captureEvent, PH_STORE } from "@/lib/analytics/posthog-events"
 import { calcServiceFee, oreToKr } from "@/lib/money"
 import type { TransferRoute } from "@/types/transfer"
 import ServiceFeeHelpIcon from "@/components/shared/ServiceFeeHelpIcon"
-import "react-day-picker/style.css"
+import { CalendarDropdown } from "@/components/shared/CalendarDropdown"
+import { localTodayYmd } from "@/lib/calendarYmd"
 
 const DRAFT_KEY = "sila_cabin_booking_draft_v1"
 
@@ -88,19 +82,20 @@ export default function CabinBookingWidget({
 }: Props) {
   const router = useRouter()
   const locale = useLocale()
-  const dayPickerLocale = locale === "en" ? enUS : da
   const t = useTranslations("cabins")
   const tCommon = useTranslations("common")
   const formatPrice = useFormatPrice()
   const [pending, start] = useTransition()
-  const today = startOfDay(new Date())
+  const todayYmd = localTodayYmd()
 
   const disabledSet = useMemo(
     () => new Set(disabledYmd),
     [disabledYmd],
   )
 
-  const [range, setRange] = useState<DateRange | undefined>(undefined)
+  const [range, setRange] = useState<
+    { from: Date; to?: Date } | undefined
+  >(undefined)
   const [guestsInput, setGuestsInput] = useState("1")
   const [transport, setTransport] = useState<TransportTrip>(
     cabin.offers_transport ? "outbound" : "none"
@@ -219,17 +214,10 @@ export default function CabinBookingWidget({
     }
   }, [cabin.id])
 
-  const disabledMatch = (date: Date) => {
-    if (isBefore(startOfDay(date), today)) return true
-    const y = formatDate(date, "yyyy-MM-dd")
-    return disabledSet.has(y)
-  }
-
-  const bookedMatcher = (date: Date) => {
-    if (isBefore(startOfDay(date), today)) return false
-    const y = formatDate(date, "yyyy-MM-dd")
-    return disabledSet.has(y)
-  }
+  const isUnavailableDay = useCallback(
+    (ymd: string) => disabledSet.has(ymd),
+    [disabledSet],
+  )
 
   function persistDraft() {
     if (typeof window === "undefined") return
@@ -360,20 +348,26 @@ export default function CabinBookingWidget({
               {t("booking_dates_label")}
             </span>
             <div className="flex justify-center py-1 rounded-xl border border-border/80 bg-muted/20">
-              <DayPicker
+              <CalendarDropdown
                 mode="range"
-                numberOfMonths={1}
-                pagedNavigation
-                locale={dayPickerLocale}
-                selected={range}
-                onSelect={setRange}
-                disabled={disabledMatch}
-                modifiers={{ booked: bookedMatcher }}
-                modifiersClassNames={{
-                  booked: "rdp-day_booked",
+                today={todayYmd}
+                checkIn={checkIn}
+                checkOut={checkOut}
+                singleDate=""
+                onRangeChange={(ci, co) => {
+                  if (!ci) {
+                    setRange(undefined)
+                    return
+                  }
+                  setRange({
+                    from: parseYmdLocal(ci),
+                    to: co ? parseYmdLocal(co) : undefined,
+                  })
                 }}
-                fromDate={today}
-                className="m-0"
+                onSingleChange={() => {}}
+                isUnavailable={isUnavailableDay}
+                showSingleMonth
+                className="w-full max-w-md border-0 bg-transparent p-1 shadow-none md:p-2"
               />
             </div>
             <p className="text-xs text-muted-foreground mt-2">

@@ -1,38 +1,51 @@
 import { redirect } from "next/navigation"
+import type { Metadata } from "next"
+import { getTranslations, setRequestLocale } from "next-intl/server"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
 import { getAllLocationsSorted } from "@/lib/greenlandLocations"
+import { buildMetadata } from "@/lib/metadata"
 import Navbar from "@/components/layout/Navbar"
 import AnmodForm from "./AnmodForm"
+import TransportAnmodShell from "./TransportAnmodShell"
+import type { GroupedLocationOption } from "@/components/shared/GroupedLocationSelect"
 
-export const metadata = {
-  title: "Anmod om transport — Sila.gl",
+type Props = { params: Promise<{ locale: string }> }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params
+  const t = await getTranslations({ locale, namespace: "request" })
+  return buildMetadata({
+    locale,
+    title: t("transport_title"),
+    description: t("transport_subtitle"),
+    path: "/transport/anmod",
+  })
 }
 
-export default async function AnmodPage() {
+export default async function AnmodPage({ params }: Props) {
+  const { locale } = await params
+  setRequestLocale(locale)
+
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   if (!user) redirect("/login?next=/transport/anmod")
 
   const navUser = await getNavUserForPage(supabase, user)
-  const locations = getAllLocationsSorted().map((l) => ({
+  const locations: GroupedLocationOption[] = getAllLocationsSorted().map((l) => ({
     name: l.name_dk,
     isHub: l.is_major_hub,
   }))
 
   return (
-    <main className="min-h-screen bg-background">
+    <>
       <Navbar user={navUser} />
-      <div className="pt-20 pb-16 max-w-xl mx-auto px-4 sm:px-6">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground mb-1">Anmod om transport</h1>
-          <p className="text-muted-foreground text-sm">
-            Fortæl lokale sejlere hvad du har brug for — de svarer med tilbud.
-          </p>
-        </div>
+      <TransportAnmodShell>
         <AnmodForm locations={locations} />
-      </div>
-    </main>
+      </TransportAnmodShell>
+    </>
   )
 }

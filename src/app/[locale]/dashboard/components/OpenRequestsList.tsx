@@ -1,8 +1,8 @@
 "use client"
 
-import Link from "next/link"
-import { Anchor, Home, Inbox } from "lucide-react"
-import { useFormatter } from "next-intl"
+import NextLink from "next/link"
+import { Anchor, Inbox } from "lucide-react"
+import { useFormatter, useLocale } from "next-intl"
 import { Badge } from "@/components/ui/badge"
 import { getLocationName } from "@/lib/greenlandLocations"
 
@@ -25,9 +25,13 @@ interface Props {
 }
 
 function RequestCard({ r, highlight, fmtDate }: { r: TransportRequestData; highlight?: boolean; fmtDate: (d: Date) => string }) {
+  const locale = useLocale()
+  const href = `/${locale}/transport/anmodninger/${r.id}`
+
   return (
-    <Link
-      href={`/transport/anmodninger/${r.id}`}
+    <NextLink
+      href={href}
+      onClick={() => console.log("[Gæsteønsker] transport detail URL:", href)}
       className={`block w-full text-left bg-white rounded-xl border p-4 ${
         highlight ? "border-primary/30 shadow-sm" : "border-border"
       } hover:shadow-md hover:border-primary/20 transition-all`}
@@ -54,7 +58,7 @@ function RequestCard({ r, highlight, fmtDate }: { r: TransportRequestData; highl
           Åben
         </Badge>
       </div>
-    </Link>
+    </NextLink>
   )
 }
 

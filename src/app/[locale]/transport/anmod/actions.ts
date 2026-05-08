@@ -4,7 +4,7 @@ import { redirect } from "next/navigation"
 import { requireSession } from "@/lib/requireSession"
 import { getAllLocationsSorted, findLocation } from "@/lib/greenlandLocations"
 
-export type TripType = "one_way" | "return" | "round_trip"
+export type TripType = "one_way" | "round_trip"
 
 export interface CreateTransportRequestInput {
   from_location:    string
@@ -73,7 +73,7 @@ export async function createTransportRequest(
   }
 
   redirect(
-    `/dashboard?tab=requests&new_tr=${data.id}&tr_from=${encodeURIComponent(input.from_location)}&tr_to=${encodeURIComponent(input.to_location)}&tr_np=${passengers}`,
+    `/dashboard?tab=requests&toast=transport-request-created&new_tr=${data.id}&tr_from=${encodeURIComponent(input.from_location)}&tr_to=${encodeURIComponent(input.to_location)}&tr_np=${passengers}`,
   )
 }
 

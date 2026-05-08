@@ -9,7 +9,8 @@
     "listing_badge_residence": "Bolig"
   },
   "create": {
-    "add_new_residence": "+ Opret ny bolig"
+    "add_new_residence": "+ Opret ny bolig",
+    "blocked_count": "{count, plural, one {# dato blokeret af dig.} other {# datoer blokeret af dig.}}"
   },
   "hero": {
     "tab_ophold": "Ophold",

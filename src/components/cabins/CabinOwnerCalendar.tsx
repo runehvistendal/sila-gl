@@ -1,16 +1,19 @@
 "use client"
 
-import { useMemo, useState, useTransition } from "react"
-import { DayPicker } from "react-day-picker"
-import { da } from "date-fns/locale"
-import { format as formatDate } from "date-fns"
+import { useCallback, useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { useLocale, useTranslations } from "next-intl"
 import { nightsFromBookings } from "@/lib/cabinBookingDates"
 import { toggleCabinAvailability } from "@/app/[locale]/opret/hytte/availability-actions"
 import { cn } from "@/lib/utils"
-import "react-day-picker/style.css"
+import {
+  CalendarMonthPanel,
+  addCalendarMonths,
+  type DayOverride,
+} from "@/components/shared/CalendarMonthPanel"
+import { localTodayYmd, yearMonthKey } from "@/lib/calendarYmd"
 
 type BookingRow = { check_in: string; check_out: string; status: string }
 
@@ -21,14 +24,29 @@ type Props = {
   manualBlockedYmd: string[]
 }
 
+const OWNER_FLOOR_YMD = "2000-01-01"
+
 export default function CabinOwnerCalendar({
   cabinId,
   bookings,
   manualBlockedYmd,
 }: Props) {
   const router = useRouter()
+  const locale = useLocale()
+  const loc = locale === "en" ? "en-GB" : "da-DK"
+  const t = useTranslations("create")
+  const weekShort =
+    locale === "en"
+      ? (["M", "T", "W", "T", "F", "S", "S"] as const)
+      : (["M", "T", "O", "T", "F", "L", "S"] as const)
+
+  const tMonthNav = (key: string) =>
+    key === "prevMonth" ? t("prev_month") : t("next_month")
+
   const [pending, start] = useTransition()
-  const [month, setMonth] = useState(new Date())
+  const todayYmd = localTodayYmd()
+  const [cursorY, setCursorY] = useState(() => new Date().getFullYear())
+  const [cursorM, setCursorM] = useState(() => new Date().getMonth())
 
   const bookedNights = useMemo(
     () => nightsFromBookings(bookings),
@@ -39,21 +57,26 @@ export default function CabinOwnerCalendar({
     [manualBlockedYmd],
   )
 
-  const ymd = (d: Date) => formatDate(d, "yyyy-MM-dd")
-  const bookedMatcher = (date: Date) => bookedNights.has(ymd(date))
-  const manualMatcher = (date: Date) => manualSet.has(ymd(date)) && !bookedNights.has(ymd(date))
-  const freeMatcher = (date: Date) => !bookedNights.has(ymd(date)) && !manualSet.has(ymd(date))
+  const minYm = yearMonthKey(2000, 0)
+  function canPrev(): boolean {
+    return yearMonthKey(cursorY, cursorM) > minYm
+  }
 
-  function onDayClick(date: Date) {
-    const ymd = formatDate(date, "yyyy-MM-dd")
+  function handleDayPick(ymd: string) {
     if (bookedNights.has(ymd)) {
-      toast.message("Denne dato er booket af en gæst og kan ikke ændres her.")
+      toast.message(
+        "Denne dato er booket af en gæst og kan ikke ændres her.",
+      )
       return
     }
     const currentlyBlocked = manualSet.has(ymd)
     start(async () => {
       try {
-        const r = await toggleCabinAvailability(cabinId, ymd, !currentlyBlocked)
+        const r = await toggleCabinAvailability(
+          cabinId,
+          ymd,
+          !currentlyBlocked,
+        )
         if ("error" in r) {
           toast.error(r.error)
           return
@@ -66,6 +89,17 @@ export default function CabinOwnerCalendar({
     })
   }
 
+  const getDayOverride = useCallback(
+    (ymd: string): DayOverride | null => {
+      if (bookedNights.has(ymd)) return { visual: "booked", disabled: true }
+      if (manualSet.has(ymd)) {
+        return { visual: "blocked", disabled: false, showX: true }
+      }
+      return { visual: "selectable", disabled: false }
+    },
+    [bookedNights, manualSet],
+  )
+
   return (
     <div
       className="rounded-2xl border border-border bg-card p-4 sm:p-6"
@@ -73,32 +107,43 @@ export default function CabinOwnerCalendar({
     >
       <h2 className="text-lg font-bold text-foreground mb-1">Kalender</h2>
       <p className="text-sm text-muted-foreground mb-4">
-        Blå: booket. Rød: manuelt blokeret. Grøn/klar: ledig. Klik på en ledig
-        dato for at blokere; klik på rød for at frigive.
+        Grå med gennemstregning: booket (låst) eller manuelt blokeret (klik for
+        at frigive). Ledig dato: klik for at blokere. Ring omkring dagens dato
+        hjælper med hurtig orientering.
       </p>
       <div
         className={cn(
-          "flex justify-center py-2 rounded-xl border border-border/60 bg-muted/10",
-          "[&_.rdp-day]:!h-9 [&_.rdp-day]:!w-9",
+          "rounded-xl border border-border/60 bg-muted/10 p-2 sm:p-3",
         )}
       >
-        <DayPicker
+        <CalendarMonthPanel
+          year={cursorY}
+          monthIndex={cursorM}
+          floorYmd={OWNER_FLOOR_YMD}
+          todayYmd={todayYmd}
+          weekShort={weekShort}
+          loc={loc}
           mode="single"
-          month={month}
-          onMonthChange={setMonth}
-          locale={da}
-          onDayClick={onDayClick}
-          modifiers={{
-            booked: bookedMatcher,
-            manual: manualMatcher,
-            free: freeMatcher,
+          checkIn=""
+          checkOut=""
+          singleDate=""
+          onDayPick={handleDayPick}
+          onPrev={() => {
+            if (!canPrev()) return
+            const p = addCalendarMonths(cursorY, cursorM, -1)
+            setCursorY(p.y)
+            setCursorM(p.m)
           }}
-          modifiersClassNames={{
-            booked: "!bg-blue-100 !text-blue-900 hover:!bg-blue-200",
-            manual: "!bg-red-100 !text-red-900 hover:!bg-red-200",
-            free: "!bg-emerald-50 !text-emerald-900 hover:!bg-emerald-100",
+          onNext={() => {
+            const n = addCalendarMonths(cursorY, cursorM, 1)
+            setCursorY(n.y)
+            setCursorM(n.m)
           }}
-          className="!m-0"
+          showNav="both"
+          canPrev={canPrev()}
+          showWeekdayRow
+          tMonth={tMonthNav}
+          getDayOverride={(ymd) => getDayOverride(ymd)}
         />
       </div>
       {pending && (
@@ -109,16 +154,16 @@ export default function CabinOwnerCalendar({
       )}
       <ul className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
         <li className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-3 rounded-sm bg-blue-100 border border-blue-200" />
+          <span className="inline-block w-3 h-3 rounded-sm bg-background border border-border" />
+          Ledig
+        </li>
+        <li className="flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded-sm bg-gray-100 border border-gray-300" />
           Booket
         </li>
         <li className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-3 rounded-sm bg-red-100 border border-red-200" />
+          <span className="inline-block w-3 h-3 rounded-sm bg-gray-200 border border-gray-400" />
           Blokeret
-        </li>
-        <li className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-3 rounded-sm bg-background border border-border" />
-          Ledig
         </li>
       </ul>
     </div>

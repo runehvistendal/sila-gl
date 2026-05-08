@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useTransition } from "react"
-import { ChevronLeft, ChevronRight, Loader2, X } from "lucide-react"
-import { useTranslations } from "next-intl"
+import { useCallback, useMemo, useState, useTransition } from "react"
+import { Loader2 } from "lucide-react"
+import { useLocale, useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,16 +15,16 @@ import {
 } from "@/components/ui/select"
 import { saveAvailability, saveCabinSettings, saveAll } from "./actions"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
+import {
+  CalendarMonthPanel,
+  addCalendarMonths,
+  type DayOverride,
+} from "@/components/shared/CalendarMonthPanel"
+import { parseYmd, yearMonthKey } from "@/lib/calendarYmd"
 
 function toYMD(d: Date): string {
   return d.toISOString().split("T")[0]
-}
-
-function addMonths(d: Date, n: number): Date {
-  const r = new Date(d)
-  r.setDate(1)
-  r.setMonth(r.getMonth() + n)
-  return r
 }
 
 function eachDayOfRange(a: string, b: string): string[] {
@@ -39,25 +39,12 @@ function eachDayOfRange(a: string, b: string): string[] {
   return dates
 }
 
-function buildMonthDays(year: number, month: number): (string | null)[] {
-  const firstDay = new Date(year, month, 1)
-  const lastDay = new Date(year, month + 1, 0)
-  const startOffset = (firstDay.getDay() + 6) % 7
-  const days: (string | null)[] = []
-  for (let i = 0; i < startOffset; i++) days.push(null)
-  for (let d = 1; d <= lastDay.getDate(); d++) {
-    days.push(toYMD(new Date(year, month, d)))
-  }
-  return days
-}
-
 interface Props {
   cabinId: string
   initialBlocked: string[]
   bookedDates: string[]
   initialMinNights?: number
   initialPreparationDays?: number
-  /** Vises kun på tilgængeligheds-siden (trin 2), ikke på rediger-siden */
   showPublishButton?: boolean
 }
 
@@ -71,18 +58,22 @@ export default function AvailabilityCalendar({
 }: Props) {
   const t = useTranslations("create")
   const tCommon = useTranslations("common")
+  const locale = useLocale()
+  const loc = locale === "en" ? "en-GB" : "da-DK"
+  const weekShort =
+    locale === "en"
+      ? (["M", "T", "W", "T", "F", "S", "S"] as const)
+      : (["M", "T", "O", "T", "F", "L", "S"] as const)
 
   const today = toYMD(new Date())
-  const [firstMonth, setFirstMonth] = useState<Date>(() => {
-    const d = new Date()
-    d.setDate(1)
-    return d
-  })
+  const tStart = parseYmd(today)
+  const [cursorY, setCursorY] = useState(tStart.getFullYear())
+  const [cursorM, setCursorM] = useState(tStart.getMonth())
 
   const [blockedDates, setBlockedDates] = useState<Set<string>>(
     () => new Set(initialBlocked),
   )
-  const bookedSet = new Set(bookedDates)
+  const bookedSet = useMemo(() => new Set(bookedDates), [bookedDates])
 
   const [minNights, setMinNights] = useState(initialMinNights)
   const [preparationDays, setPreparationDays] = useState(initialPreparationDays)
@@ -92,11 +83,19 @@ export default function AvailabilityCalendar({
 
   const [isPending, startTransition] = useTransition()
 
-  const previewRange: Set<string> = new Set()
-  if (pendingStart && hoveredDate && pendingStart !== hoveredDate) {
-    eachDayOfRange(pendingStart, hoveredDate).forEach((d) => {
-      if (!bookedSet.has(d) && d >= today) previewRange.add(d)
-    })
+  const previewRange = useMemo(() => {
+    const s = new Set<string>()
+    if (pendingStart && hoveredDate && pendingStart !== hoveredDate) {
+      eachDayOfRange(pendingStart, hoveredDate).forEach((d) => {
+        if (!bookedSet.has(d) && d >= today) s.add(d)
+      })
+    }
+    return s
+  }, [pendingStart, hoveredDate, bookedSet, today])
+
+  const minYm = yearMonthKey(tStart.getFullYear(), tStart.getMonth())
+  function canPrev(): boolean {
+    return yearMonthKey(cursorY, cursorM) > minYm
   }
 
   function handleDayClick(date: string) {
@@ -130,99 +129,48 @@ export default function AvailabilityCalendar({
     setHoveredDate(null)
   }
 
-  function getDayStyle(date: string): { style: React.CSSProperties; showX: boolean } {
-    const isBooked = bookedSet.has(date)
-    const isPast = date < today
-    const isPendingStart = date === pendingStart
-    const isInPreview = previewRange.has(date)
-    const isBlocked = blockedDates.has(date)
+  const getDayOverride = useCallback(
+    (ymd: string): DayOverride | null => {
+      const hoverHandlers =
+        pendingStart && !bookedSet.has(ymd) && ymd >= today
+          ? {
+              onMouseEnter: () => setHoveredDate(ymd),
+              onMouseLeave: () => setHoveredDate(null),
+            }
+          : {}
 
-    if (isBooked) {
-      return {
-        style: { backgroundColor: "#4A9CC7", color: "white", cursor: "not-allowed", opacity: 0.9, borderRadius: "6px" },
-        showX: false,
+      if (bookedSet.has(ymd)) return { visual: "booked" }
+      if (ymd < today) return { visual: "past", disabled: true }
+      if (pendingStart === ymd) return { visual: "selected", disabled: false, ...hoverHandlers }
+      if (previewRange.has(ymd)) {
+        const willBlock = !blockedDates.has(pendingStart ?? "")
+        return {
+          visual: willBlock ? "previewBlock" : "previewFree",
+          disabled: false,
+          ...hoverHandlers,
+        }
       }
-    }
-    if (isPast) {
-      return { style: { color: "#d1d5db", cursor: "not-allowed" }, showX: false }
-    }
-    if (isPendingStart) {
-      return {
-        style: { backgroundColor: "#1a5f7a", color: "white", cursor: "pointer", borderRadius: "6px", fontWeight: 600 },
-        showX: false,
+      if (blockedDates.has(ymd)) {
+        return { visual: "blocked", disabled: false, showX: true, ...hoverHandlers }
       }
-    }
-    if (isInPreview) {
-      const willBlock = !blockedDates.has(pendingStart ?? "")
-      return {
-        style: {
-          backgroundColor: willBlock ? "#e5e7eb" : "#dcfce7",
-          color: willBlock ? "#6b7280" : "#166534",
-          cursor: "pointer",
-          borderRadius: "6px",
-        },
-        showX: false,
-      }
-    }
-    if (isBlocked) {
-      return {
-        style: { backgroundColor: "#f3f4f6", color: "#9ca3af", cursor: "pointer", borderRadius: "6px", position: "relative" },
-        showX: true,
-      }
-    }
-    return {
-      style: { backgroundColor: "#f0fdf4", color: "#166534", cursor: "pointer", borderRadius: "6px", border: "1px solid #bbf7d0" },
-      showX: false,
-    }
-  }
-
-  function renderMonth(monthDate: Date) {
-    const year = monthDate.getFullYear()
-    const month = monthDate.getMonth()
-    const days = buildMonthDays(year, month)
-
-    const DAY_LABELS = Array.from({ length: 7 }, (_, i) => t(`day_${i}` as Parameters<typeof t>[0]))
-    const monthName = t(`month_${month}` as Parameters<typeof t>[0])
-
-    return (
-      <div key={`${year}-${month}`} className="flex-1 min-w-0">
-        <p className="text-center text-sm font-semibold text-gray-700 mb-3">
-          {monthName} {year}
-        </p>
-        <div className="grid grid-cols-7 gap-0.5">
-          {DAY_LABELS.map((l) => (
-            <div key={l} className="text-center text-xs text-gray-400 font-medium py-1">
-              {l}
-            </div>
-          ))}
-          {days.map((date, i) =>
-            date === null ? (
-              <div key={`empty-${i}`} />
-            ) : (
-              <div
-                key={date}
-                className="relative text-center text-xs py-1.5 transition-colors"
-                style={getDayStyle(date).style}
-                onClick={() => handleDayClick(date)}
-                onMouseEnter={() => { if (pendingStart) setHoveredDate(date) }}
-                onMouseLeave={() => { if (pendingStart) setHoveredDate(null) }}
-              >
-                {parseInt(date.split("-")[2])}
-                {getDayStyle(date).showX && (
-                  <X className="absolute top-0 right-0 w-2.5 h-2.5 text-gray-400" strokeWidth={2.5} />
-                )}
-              </div>
-            ),
-          )}
-        </div>
-      </div>
-    )
-  }
+      return { visual: "available", disabled: false, ...hoverHandlers }
+    },
+    [
+      bookedSet,
+      today,
+      pendingStart,
+      previewRange,
+      blockedDates,
+    ],
+  )
 
   function handleSaveAvailability() {
     startTransition(async () => {
       const result = await saveAvailability(cabinId, [...blockedDates], false)
-      if ("error" in result) { toast.error(result.error); return }
+      if ("error" in result) {
+        toast.error(result.error)
+        return
+      }
       toast.success(t("availability_saved"))
     })
   }
@@ -230,7 +178,10 @@ export default function AvailabilityCalendar({
   function handleSaveSettings() {
     startTransition(async () => {
       const result = await saveCabinSettings(cabinId, minNights, preparationDays)
-      if ("error" in result) { toast.error(result.error); return }
+      if ("error" in result) {
+        toast.error(result.error)
+        return
+      }
       toast.success(t("settings_saved"))
     })
   }
@@ -238,23 +189,25 @@ export default function AvailabilityCalendar({
   function handleSaveAll(publish: boolean) {
     startTransition(async () => {
       const result = await saveAll(cabinId, [...blockedDates], minNights, preparationDays, publish)
-      if ("error" in result) { toast.error(result.error); return }
+      if ("error" in result) {
+        toast.error(result.error)
+        return
+      }
       toast.success(publish ? t("cabin_published") : t("draft_saved"))
       window.location.href = result.redirectTo
     })
   }
 
-  const secondMonth = addMonths(firstMonth, 1)
+  const tMonthNav = (key: string) =>
+    key === "prevMonth" ? t("prev_month") : t("next_month")
+
+  const next = addCalendarMonths(cursorY, cursorM, 1)
 
   return (
     <div className="space-y-6">
-
-      {/* ─── Bookingindstillinger ─── */}
       <div className="rounded-xl border border-border bg-gray-50/60 p-5">
         <h3 className="text-sm font-semibold text-foreground mb-4">{t("booking_settings")}</h3>
         <div className="flex flex-col gap-5">
-
-          {/* Minimum nætter */}
           <div className="space-y-1.5">
             <Label htmlFor="min-nights" className="text-sm font-medium text-foreground">
               {t("min_nights_label")}
@@ -272,11 +225,12 @@ export default function AvailabilityCalendar({
               className="rounded-xl h-11"
             />
             <p className="text-xs text-muted-foreground">
-              {t("min_nights_hint", { count: minNights })}
+              {minNights === 1
+                ? t("min_nights_hint_one", { count: minNights })
+                : t("min_nights_hint_other", { count: minNights })}
             </p>
           </div>
 
-          {/* Forberedelsestid */}
           <div className="space-y-1.5">
             <Label htmlFor="preparation-days" className="text-sm font-medium text-foreground">
               {t("preparation_days_label")}
@@ -299,10 +253,8 @@ export default function AvailabilityCalendar({
               {t("preparation_days_hint")}
             </p>
           </div>
-
         </div>
 
-        {/* Hurtig-gem indstillinger */}
         <div className="mt-4 flex justify-end">
           <Button
             type="button"
@@ -317,58 +269,119 @@ export default function AvailabilityCalendar({
         </div>
       </div>
 
-      {/* ─── Kalender-legende ─── */}
-      <div className="flex flex-col gap-1 text-sm text-gray-600">
-        <span>🟢 {t("legend_available")}</span>
-        <span>🔵 {t("legend_booked")}</span>
-        <span>⬜ {t("legend_blocked")}</span>
-      </div>
-
-      {/* ─── Månedsnavigation ─── */}
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => setFirstMonth((m) => addMonths(m, -1))}
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-          aria-label={t("prev_month")}
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </button>
-        <span className="text-xs text-gray-400 text-center">
-          {pendingStart
-            ? t("calendar_click_end")
-            : t("calendar_click_start")}
+      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 text-sm text-muted-foreground">
+        <span className="inline-flex items-center gap-2">
+          <span
+            className="h-3 w-3 shrink-0 rounded-full bg-emerald-500 ring-1 ring-emerald-600/40"
+            aria-hidden
+          />
+          {t("legend_available")}
         </span>
-        <button
-          type="button"
-          onClick={() => setFirstMonth((m) => addMonths(m, 1))}
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-          aria-label={t("next_month")}
-        >
-          <ChevronRight className="w-4 h-4" />
-        </button>
+        <span className="inline-flex items-center gap-2">
+          <span
+            className="h-3 w-3 shrink-0 rounded-full bg-gray-200 ring-1 ring-gray-400/60"
+            aria-hidden
+          />
+          {t("legend_booked")}
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <span
+            className="h-3 w-3 shrink-0 rounded-full bg-gray-400 ring-1 ring-gray-500/50"
+            aria-hidden
+          />
+          {t("legend_blocked")}
+        </span>
       </div>
 
-      {/* Periode-valg: vis banner mens startdato er valgt */}
       {pendingStart && (
-        <div className="flex items-center justify-between rounded-lg bg-[#1a5f7a]/8 border border-[#4A9CC7]/30 px-4 py-2 text-sm text-[#1a5f7a]">
-          <span>
-            {t("start_date_selected", { date: pendingStart })}
-          </span>
+        <div
+          className="flex items-center justify-between rounded-lg border px-4 py-2 text-sm"
+          style={{
+            backgroundColor: "rgba(17, 71, 136, 0.08)",
+            borderColor: "rgba(17, 71, 136, 0.35)",
+            color: "#114788",
+          }}
+        >
+          <span>{t("start_date_selected", { date: pendingStart })}</span>
           <button
             type="button"
             className="text-xs underline ml-4 shrink-0"
-            onClick={() => { setPendingStart(null); setHoveredDate(null) }}
+            onClick={() => {
+              setPendingStart(null)
+              setHoveredDate(null)
+            }}
           >
             {tCommon("cancel")}
           </button>
         </div>
       )}
 
-      {/* ─── To-måneds grid ─── */}
-      <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
-        {renderMonth(firstMonth)}
-        {renderMonth(secondMonth)}
+      <div
+        className={cn(
+          "rounded-2xl border border-gray-100 bg-white p-4 shadow-xl md:p-5",
+        )}
+      >
+        <p className="text-xs text-center text-gray-400 mb-3">
+          {pendingStart ? t("calendar_click_end") : t("calendar_click_start")}
+        </p>
+        <div className={cn("flex gap-4 md:gap-8", "flex-col md:flex-row")}>
+          <CalendarMonthPanel
+            year={cursorY}
+            monthIndex={cursorM}
+            floorYmd={today}
+            todayYmd={today}
+            weekShort={weekShort}
+            loc={loc}
+            mode="single"
+            checkIn=""
+            checkOut=""
+            singleDate=""
+            onDayPick={handleDayClick}
+            onPrev={() => {
+              if (!canPrev()) return
+              const p = addCalendarMonths(cursorY, cursorM, -1)
+              setCursorY(p.y)
+              setCursorM(p.m)
+            }}
+            onNext={() => {
+              const n = addCalendarMonths(cursorY, cursorM, 1)
+              setCursorY(n.y)
+              setCursorM(n.m)
+            }}
+            showNav="both"
+            canPrev={canPrev()}
+            showWeekdayRow
+            tMonth={tMonthNav}
+            getDayOverride={getDayOverride}
+          />
+          <div className="hidden w-px shrink-0 self-stretch bg-gray-200 md:block" aria-hidden />
+          <div className="hidden md:block">
+            <CalendarMonthPanel
+              year={next.y}
+              monthIndex={next.m}
+              floorYmd={today}
+              todayYmd={today}
+              weekShort={weekShort}
+              loc={loc}
+              mode="single"
+              checkIn=""
+              checkOut=""
+              singleDate=""
+              onDayPick={handleDayClick}
+              onPrev={() => {}}
+              onNext={() => {
+                const n = addCalendarMonths(cursorY, cursorM, 1)
+                setCursorY(n.y)
+                setCursorM(n.m)
+              }}
+              showNav="next"
+              canPrev={false}
+              showWeekdayRow={false}
+              tMonth={tMonthNav}
+              getDayOverride={getDayOverride}
+            />
+          </div>
+        </div>
       </div>
 
       <p className="text-xs text-gray-400">
@@ -377,7 +390,6 @@ export default function AvailabilityCalendar({
           : t("blocked_count", { count: blockedDates.size })}
       </p>
 
-      {/* ─── Gem-knapper ─── */}
       <div className="flex flex-col sm:flex-row gap-3 pt-2">
         <Button
           type="button"
@@ -393,8 +405,7 @@ export default function AvailabilityCalendar({
             type="button"
             onClick={() => handleSaveAll(true)}
             disabled={isPending}
-            className="flex-1 rounded-xl h-12 font-semibold"
-            style={{ backgroundColor: "#4A9CC7" }}
+            className="flex-1 rounded-xl h-12 font-semibold bg-[#114788] text-white hover:bg-[#114788]/90"
           >
             {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : t("save_and_publish")}
           </Button>
@@ -404,8 +415,7 @@ export default function AvailabilityCalendar({
             type="button"
             onClick={() => handleSaveAll(false)}
             disabled={isPending}
-            className="flex-1 rounded-xl h-12 font-semibold"
-            style={{ backgroundColor: "#4A9CC7" }}
+            className="flex-1 rounded-xl h-12 font-semibold bg-[#114788] text-white hover:bg-[#114788]/90"
           >
             {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : t("save_all")}
           </Button>

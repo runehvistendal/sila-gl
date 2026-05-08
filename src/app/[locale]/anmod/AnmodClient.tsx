@@ -9,13 +9,17 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
+import { getAllLocationsSorted } from "@/lib/greenlandLocations"
 import DatePickerButton from "@/components/shared/DatePickerButton"
+import { GroupedLocationSelect } from "@/components/shared/GroupedLocationSelect"
 import { guestStayRequestHref } from "@/lib/cabinPublicPaths"
 import { createCabinRequest } from "./actions"
 import { cn } from "@/lib/utils"
 
-const CITIES = [...new Set(GREENLAND_LOCATIONS.map((l) => l.name_dk))].sort()
+const LOCATIONS_FOR_REQUEST = getAllLocationsSorted().map((l) => ({
+  name: l.name_dk,
+  isHub: l.is_major_hub,
+}))
 
 export default function AnmodClient() {
   const t = useTranslations("request")
@@ -27,6 +31,7 @@ export default function AnmodClient() {
 
   const [checkIn, setCheckIn] = useState("")
   const [checkOut, setCheckOut] = useState("")
+  const [location, setLocation] = useState("")
   const [propertyType, setPropertyType] = useState<"cabin" | "residence">("cabin")
 
   useEffect(() => {
@@ -47,6 +52,10 @@ export default function AnmodClient() {
     e.preventDefault()
     if (!checkIn || !checkOut || checkOut <= checkIn) {
       setError(t("dates_invalid"))
+      return
+    }
+    if (!location) {
+      setError(t("pick_destination"))
       return
     }
     const data = new FormData(e.currentTarget)
@@ -84,7 +93,7 @@ export default function AnmodClient() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5 bg-white border border-border rounded-2xl p-6">
+        <form onSubmit={handleSubmit} className="space-y-5 bg-white border border-border rounded-2xl p-6 shadow-sm">
           <input type="hidden" name="desired_check_in" value={checkIn} readOnly />
           <input type="hidden" name="desired_check_out" value={checkOut} readOnly />
           <input type="hidden" name="desired_property_type" value={propertyType} readOnly />
@@ -124,22 +133,23 @@ export default function AnmodClient() {
             </div>
           </div>
 
+          <input type="hidden" name="location" value={location} readOnly />
+
           {/* Destination */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1.5">
+          <div className="space-y-2">
+            <Label htmlFor="stay-destination" className="text-sm font-medium text-foreground">
               <MapPin className="w-3.5 h-3.5 inline mr-1 text-muted-foreground" />
               {t("destination")} <span className="text-destructive">*</span>
-            </label>
-            <select
-              name="location"
-              required
-              className="w-full h-10 rounded-xl border border-input bg-transparent px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring text-foreground cursor-pointer"
-            >
-              <option value="">{t("select_city")}</option>
-              {CITIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
+            </Label>
+            <GroupedLocationSelect
+              id="stay-destination"
+              value={location}
+              onChange={setLocation}
+              locations={LOCATIONS_FOR_REQUEST}
+              placeholder={t("select_city")}
+              majorGroupLabel={t("location_group_major")}
+              otherGroupLabel={t("location_group_other")}
+            />
           </div>
 
           {/* Datoer — samme kalender som filtre/forside */}

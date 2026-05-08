@@ -9,7 +9,8 @@
     "listing_badge_residence": "Home"
   },
   "create": {
-    "add_new_residence": "+ Create new home listing"
+    "add_new_residence": "+ Create new home listing",
+    "blocked_count": "{count, plural, one {# date blocked by you.} other {# dates blocked by you.}}"
   },
   "hero": {
     "tab_stays": "Stays",

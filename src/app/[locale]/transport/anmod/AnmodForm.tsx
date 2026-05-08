@@ -1,57 +1,89 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useEffect, useState, useTransition } from "react"
 import { Anchor, ArrowRight } from "lucide-react"
+import { useTranslations } from "next-intl"
+import { useRouter } from "@/i18n/navigation"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { createTransportRequest, type TripType } from "./actions"
-
-interface LocationOption {
-  name: string
-  isHub: boolean
-}
+import { GroupedLocationSelect, type GroupedLocationOption } from "@/components/shared/GroupedLocationSelect"
+import DatePickerButton from "@/components/shared/DatePickerButton"
+import { guestStayRequestHref } from "@/lib/cabinPublicPaths"
+import { Link } from "@/i18n/navigation"
+import { cn } from "@/lib/utils"
 
 interface Props {
-  locations: LocationOption[]
+  locations: GroupedLocationOption[]
 }
 
-const TRIP_TYPES: { value: TripType; label: string }[] = [
-  { value: "one_way",    label: "Enkelttur" },
-  { value: "round_trip", label: "Tur-retur" },
-  { value: "return",     label: "Kun retur" },
+const TRIP_TYPES: { value: TripType; labelKey: string }[] = [
+  { value: "one_way", labelKey: "transport_trip_one_way" },
+  { value: "round_trip", labelKey: "transport_trip_round" },
 ]
 
-export default function AnmodForm({ locations }: Props) {
-  const [fromLoc,      setFromLoc]      = useState("")
-  const [toLoc,        setToLoc]        = useState("")
-  const [desiredDate,  setDesiredDate]  = useState("")
-  const [returnDate,   setReturnDate]   = useState("")
-  const [passengers,   setPassengers]   = useState(1)
-  const [tripType,     setTripType]     = useState<TripType>("one_way")
-  const [description,  setDescription]  = useState("")
-  const [error,        setError]        = useState<string | null>(null)
-  const [isPending,    startTransition] = useTransition()
+function ymdDayAfter(ymd: string): string {
+  const [y, m, d] = ymd.split("-").map(Number)
+  const dt = new Date(y, m - 1, d + 1)
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`
+}
 
-  const today = new Date().toISOString().slice(0, 10)
+export default function AnmodForm({ locations }: Props) {
+  const t = useTranslations("request")
+  const tCommon = useTranslations("common")
+  const router = useRouter()
+
+  const [fromLoc, setFromLoc] = useState("")
+  const [toLoc, setToLoc] = useState("")
+  const [desiredDate, setDesiredDate] = useState("")
+  const [returnDate, setReturnDate] = useState("")
+  const [passengers, setPassengers] = useState(1)
+  const [tripType, setTripType] = useState<TripType>("one_way")
+  const [description, setDescription] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
+
   const needsReturn = tripType === "round_trip"
+
+  useEffect(() => {
+    if (!needsReturn || !returnDate || !desiredDate) return
+    if (returnDate <= desiredDate) setReturnDate("")
+  }, [desiredDate, needsReturn, returnDate])
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
 
-    if (!fromLoc || !toLoc) { setError("Vælg Fra og Til"); return }
-    if (!desiredDate)        { setError("Vælg en dato");    return }
+    if (!fromLoc || !toLoc) {
+      setError(t("transport_error_from_to"))
+      return
+    }
+    if (!desiredDate) {
+      setError(t("transport_error_date"))
+      return
+    }
+    if (needsReturn) {
+      if (!returnDate) {
+        setError(t("transport_error_return"))
+        return
+      }
+      if (returnDate <= desiredDate) {
+        setError(t("transport_error_return_after"))
+        return
+      }
+    }
 
     startTransition(async () => {
       const result = await createTransportRequest({
-        from_location:  fromLoc,
-        to_location:    toLoc,
-        desired_date:   desiredDate,
+        from_location: fromLoc,
+        to_location: toLoc,
+        desired_date: desiredDate,
         num_passengers: passengers,
-        trip_type:      tripType,
-        return_date:    needsReturn ? returnDate : undefined,
-        description:    description || undefined,
+        trip_type: tripType,
+        return_date: needsReturn ? returnDate : undefined,
+        description: description || undefined,
       })
 
       if ("error" in result) {
@@ -60,136 +92,132 @@ export default function AnmodForm({ locations }: Props) {
     })
   }
 
+  const returnEarliest = desiredDate ? ymdDayAfter(desiredDate) : undefined
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Fra / Til */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label htmlFor="from">Fra</Label>
-          <select
-            id="from"
-            value={fromLoc}
-            onChange={(e) => { setFromLoc(e.target.value); if (e.target.value === toLoc) setToLoc("") }}
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-5 bg-white border border-border rounded-2xl p-6 shadow-sm"
+    >
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label htmlFor="transport-from" className="text-sm font-medium text-foreground">
+            {t("transport_from")} <span className="text-destructive">*</span>
+          </Label>
+          <GroupedLocationSelect
+            id="transport-from"
             required
-            className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="">Vælg sted…</option>
-            <optgroup label="Større byer">
-              {locations.filter((l) => l.isHub).map((l) => (
-                <option key={l.name} value={l.name}>{l.name}</option>
-              ))}
-            </optgroup>
-            <optgroup label="Bygder og øvrige">
-              {locations.filter((l) => !l.isHub).map((l) => (
-                <option key={l.name} value={l.name}>{l.name}</option>
-              ))}
-            </optgroup>
-          </select>
+            value={fromLoc}
+            onChange={(v) => {
+              setFromLoc(v)
+              if (v === toLoc) setToLoc("")
+            }}
+            locations={locations}
+            placeholder={t("transport_pick_place")}
+            majorGroupLabel={t("location_group_major")}
+            otherGroupLabel={t("location_group_other")}
+          />
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="to">Til</Label>
-          <select
-            id="to"
-            value={toLoc}
-            onChange={(e) => setToLoc(e.target.value)}
+        <div className="space-y-2">
+          <Label htmlFor="transport-to" className="text-sm font-medium text-foreground">
+            {t("transport_to")} <span className="text-destructive">*</span>
+          </Label>
+          <GroupedLocationSelect
+            id="transport-to"
             required
-            className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="">Vælg sted…</option>
-            <optgroup label="Større byer">
-              {locations.filter((l) => l.isHub && l.name !== fromLoc).map((l) => (
-                <option key={l.name} value={l.name}>{l.name}</option>
-              ))}
-            </optgroup>
-            <optgroup label="Bygder og øvrige">
-              {locations.filter((l) => !l.isHub && l.name !== fromLoc).map((l) => (
-                <option key={l.name} value={l.name}>{l.name}</option>
-              ))}
-            </optgroup>
-          </select>
+            value={toLoc}
+            onChange={setToLoc}
+            locations={locations}
+            excludeNames={[fromLoc]}
+            placeholder={t("transport_pick_place")}
+            majorGroupLabel={t("location_group_major")}
+            otherGroupLabel={t("location_group_other")}
+          />
         </div>
       </div>
 
-      {/* Tur-type */}
-      <div className="space-y-1.5">
-        <Label>Tur-type</Label>
-        <div className="flex gap-2 flex-wrap">
-          {TRIP_TYPES.map((t) => (
+      <div className="space-y-2">
+        <Label className="text-sm font-medium text-foreground">{t("transport_trip_type")}</Label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {TRIP_TYPES.map(({ value, labelKey }) => (
             <button
-              key={t.value}
+              key={value}
               type="button"
-              onClick={() => setTripType(t.value)}
-              className={`px-4 py-2 rounded-xl border text-sm font-medium transition-colors ${
-                tripType === t.value
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background border-border text-foreground hover:border-primary/50"
-              }`}
+              onClick={() => setTripType(value)}
+              className={cn(
+                "flex items-center gap-3 rounded-xl border p-4 text-left transition-colors",
+                tripType === value
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-primary/30",
+              )}
             >
-              {t.label}
+              <span className="text-sm font-medium text-foreground">{t(labelKey)}</span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Dato(er) */}
-      <div className={`grid gap-4 ${needsReturn ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}>
-        <div className="space-y-1.5">
-          <Label htmlFor="date">
-            {needsReturn ? "Udrejsedato" : "Ønsket dato"}
-          </Label>
-          <input
-            id="date"
-            type="date"
-            min={today}
-            value={desiredDate}
-            onChange={(e) => setDesiredDate(e.target.value)}
-            required
-            className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-        </div>
-
-        {needsReturn && (
-          <div className="space-y-1.5">
-            <Label htmlFor="return-date">Returdato</Label>
-            <input
-              id="return-date"
-              type="date"
-              min={desiredDate || today}
-              value={returnDate}
-              onChange={(e) => setReturnDate(e.target.value)}
-              required={needsReturn}
-              className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </div>
-        )}
+      <div className="space-y-2">
+        <span className="block text-sm font-medium text-foreground">
+          {needsReturn ? t("transport_date_out") : t("transport_date_single")}{" "}
+          <span className="text-destructive">*</span>
+        </span>
+        <DatePickerButton
+          mode="single"
+          date={desiredDate}
+          onDateChange={setDesiredDate}
+          placeholder={t("dates_placeholder")}
+          aria-label={needsReturn ? t("transport_date_out") : t("transport_date_single")}
+          className="w-full"
+        />
       </div>
 
-      {/* Antal passagerer */}
-      <div className="space-y-1.5">
-        <Label htmlFor="passengers">Antal passagerer</Label>
-        <input
-          id="passengers"
+      {needsReturn && (
+        <div className="space-y-2">
+          <span className="block text-sm font-medium text-foreground">
+            {t("transport_date_return")} <span className="text-destructive">*</span>
+          </span>
+          <DatePickerButton
+            mode="single"
+            date={returnDate}
+            onDateChange={setReturnDate}
+            placeholder={t("transport_date_return")}
+            aria-label={t("transport_date_return")}
+            earliestYmd={returnEarliest}
+            className="w-full"
+          />
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <Label htmlFor="transport-passengers" className="text-sm font-medium text-foreground">
+          {t("transport_passengers")} <span className="text-destructive">*</span>
+        </Label>
+        <Input
+          id="transport-passengers"
           type="number"
           min={1}
           max={20}
           value={passengers}
           onChange={(e) => setPassengers(Number(e.target.value))}
           required
-          className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          className="rounded-xl h-10 w-full sm:max-w-[12rem]"
         />
       </div>
 
-      {/* Besked */}
-      <div className="space-y-1.5">
-        <Label htmlFor="description">
-          Besked til sejlere <span className="text-muted-foreground font-normal">(valgfri)</span>
+      <div className="space-y-2">
+        <Label htmlFor="transport-description" className="text-sm font-medium text-foreground">
+          {t("transport_message")}{" "}
+          <span className="text-muted-foreground font-normal">
+            ({t("transport_message_optional")})
+          </span>
         </Label>
         <Textarea
-          id="description"
+          id="transport-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Beskriv evt. bagage, tidspræferencer eller andre ønsker…"
+          placeholder={t("transport_message_placeholder")}
           rows={3}
           className="rounded-xl resize-none"
           maxLength={500}
@@ -197,19 +225,31 @@ export default function AnmodForm({ locations }: Props) {
       </div>
 
       {error && (
-        <p className="text-sm text-destructive bg-destructive/10 rounded-xl px-4 py-3">{error}</p>
+        <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
       )}
 
-      <Button
-        type="submit"
-        disabled={isPending}
-        className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl gap-2 font-semibold"
-        size="lg"
-      >
-        <Anchor className="w-4 h-4" />
-        {isPending ? "Sender…" : "Send anmodning"}
-        {!isPending && <ArrowRight className="w-4 h-4" />}
-      </Button>
+      <div className="flex gap-3 pt-1">
+        <Button
+          type="submit"
+          disabled={isPending}
+          className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl font-semibold gap-2"
+        >
+          <Anchor className="w-4 h-4 shrink-0" />
+          {isPending ? tCommon("sending") : t("transport_submit")}
+          {!isPending && <ArrowRight className="w-4 h-4 shrink-0" />}
+        </Button>
+        <Button type="button" variant="outline" className="rounded-xl" onClick={() => router.back()}>
+          {tCommon("cancel")}
+        </Button>
+      </div>
+
+      <p className="text-xs text-muted-foreground text-center pt-1">
+        <Link href={guestStayRequestHref} className="text-primary hover:underline font-medium">
+          {t("link_stay_request")}
+        </Link>
+        {" — "}
+        <span>{t("stay_cta_hint")}</span>
+      </p>
     </form>
   )
 }

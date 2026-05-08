@@ -205,7 +205,7 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                       <DropdownMenuItem asChild>
                         <Link href={guestStayRequestHref} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer">
                           <Home size={15} className="text-muted-foreground" />
-                          <span>{t("requestCabin")}</span>
+                          <span>{t("requestStay")}</span>
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
@@ -393,7 +393,7 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                 <Link href="/profil" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors">{t("profile")}</Link>
                 {isTraveler && (
                   <>
-                    <Link href={guestStayRequestHref} onClick={() => setMobileOpen(false)} className="w-full text-center py-3 text-lg font-medium text-white/90 hover:text-primary transition-colors">{t("requestCabin")}</Link>
+                    <Link href={guestStayRequestHref} onClick={() => setMobileOpen(false)} className="w-full text-center py-3 text-lg font-medium text-white/90 hover:text-primary transition-colors">{t("requestStay")}</Link>
                     <Link href="/transport/anmod" onClick={() => setMobileOpen(false)} className="w-full text-center py-3 text-lg font-medium text-white/90 hover:text-primary transition-colors">{t("requestTransport")}</Link>
                   </>
                 )}
