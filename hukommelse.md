@@ -47,6 +47,21 @@ Grønlands marketplace for hytteudlejning og samsejlads. «Grønland på lokale 
 - **Søgning:** `?transport=true` på `/ophold/i-naturen` og `/ophold/i-byen` filtrerer via `transfer_routes` (ikke `offers_transport`)
 - **Detaljer:** se CLAUDE.md — **Bygget og komplet** · **Transfer-flow (8.5.2026)**
 
+### Nyt 8.5.2026 — stay offers (opholdsønsker + tilbud) ✅
+- **`stay_requests`** (rename fra `cabin_requests`) + `property_type` (`cabin` \| `residence` \| `any`) + `needs_transport` boolean
+- **`stay_offers`** med RLS (id, stay_request_id, provider_id, cabin_id, offered_price_ore, message, status, stripe_session_id, stripe_payment_intent_id)
+- **Udbyder:** `/dashboard/oensker/[id]` + `StayOfferForm`
+- **Gæst:** `/dashboard/mine-oensker/[id]` + `StayOffersClient` — badge «X tilbud», «Se tilbud»
+- **`acceptStayOffer`** → Stripe Checkout (15 % + 3 % servicegebyr); webhook `meta.type === "stay_offer"`; success `/booking/stay-offer-success`
+- **Notifikationer:** `notifyStayOfferBookingConfirmed` (Resend-email + push-placeholders)
+- **`formatStayRequestLocationDisplay()`** i `greenlandLocations.ts`
+- **Detaljer:** CLAUDE.md — **Stay offers flow (8.5.2026)** (stay_offers)
+
+### Nyt 8.5.2026 — Stripe onboarding ved publicering ✅
+- **`requireStripeForPublish()`** i `stripe.ts`; **`StripeOnboardingRequiredModal`** (Stripe i ny fane)
+- **Publicér-gates:** `publishCabin`, `saveAll` (tilgængelighed), `publishCabinListing`; klient: `checkStripeBeforePublish` + `STRIPE_PUBLISH_REQUIRED_ERROR` fra `stripePublishConstants` (kun klientfiler importerer konstanten)
+- **Detaljer:** CLAUDE.md — **Stripe onboarding obligatorisk ved publicering (8.5.2026)**
+
 ## Status (7.5.2026)
 
 ### Nyt 7.5.2026
@@ -128,21 +143,19 @@ Grønlands marketplace for hytteudlejning og samsejlads. «Grønland på lokale 
 
 ## Næste trin
 
-1. **Stripe live-test end-to-end** — kritisk; inkl. transfer-linje + 3 %-servicegebyr
+1. **Stripe live-test end-to-end** — inkl. **stay_offers**-flow, transfer-linjer og 3 %-servicegebyr
 
-2. **from_arrival_point → dropdown** — erstat fri tekst i TransferRouteEditor med `LocationAutocomplete` filtreret på `arrival_points` fra `greenlandLocations.ts`
+2. **Åbne opholdsønsker-sektion** på `/ophold/i-naturen` + `/ophold/i-byen` (kun synlig for udbydere og `both`)
 
-3. **offers_transport ryddes op** — fjern kolonne fra DB + formularer når legacy-data afklaret
+3. **Chat efter betaling**
 
-4. **Admin /admin/hytter** — bolig-rækker bruger forkert path
+4. **Kontaktinfo efter betaling** + automatisk sletning
 
-5. **ESLint** — `react-hooks/set-state-in-effect` i `BoligForm.tsx`, `CreateForm.tsx`, `BaadForm.tsx`
+5. **AI SEO-strategi**
 
-6. **AI SEO-strategi** — udestår inden lancering
+6. **MobilePay til Stripe**
 
-7. **MobilePay til Stripe** — fase 3
-
-8. **Lancering** — første 20 udbydere
+7. **Lancering** — første 20 udbydere
 
 ## Sanity CMS (5.5.2026 — reference)
 
@@ -157,6 +170,7 @@ Grønlands marketplace for hytteudlejning og samsejlads. «Grønland på lokale 
 
 ## Påmindelser inden lancering
 
+- **`RESEND_API_KEY`** + **`RESEND_FROM_EMAIL`** i Vercel environment variables (stay-offer bekræftelser m.m.)
 - Destinationssider poleres
 - Indholdsmæssig SEO
 - Lighthouse-test

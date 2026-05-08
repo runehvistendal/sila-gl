@@ -243,6 +243,7 @@ export default async function ResidenceDetailPage({
             min_nights: cabin.min_nights ?? 1,
             location_hub: cabin.location_hub,
             instant_book: cabin.instant_book,
+            property_type: "residence",
           }}
           transportCabin={{
             id: cabin.id,

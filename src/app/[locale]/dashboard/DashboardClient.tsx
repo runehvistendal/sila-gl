@@ -16,11 +16,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatKr } from "@/lib/money"
 import { publishedCabinDetailPath, guestStayRequestHref } from "@/lib/cabinPublicPaths"
-import { getLocationName } from "@/lib/greenlandLocations"
+import { getLocationName, formatStayRequestLocationDisplay } from "@/lib/greenlandLocations"
 import BookingRow, { STATUS_COLORS, STATUS_LABELS, type CabinBookingData } from "./components/BookingRow"
 import {
   acceptTransportRequest, declineTransportRequest,
   duplicateCabin, duplicateBoat, deleteCabin, deleteBoat,
+  checkStripeBeforePublish,
   publishCabin, unpublishCabin,
 } from "./actions"
 import {
@@ -39,6 +40,8 @@ import OpenRequestsList, { type TransportRequestData } from "./components/OpenRe
 import ProviderOverviewTab from "./components/ProviderOverviewTab"
 import { toast } from "sonner"
 import { captureEvent, PH_STORE } from "@/lib/analytics/posthog-events"
+import { StripeOnboardingRequiredModal } from "@/components/stripe/StripeOnboardingRequiredModal"
+import { STRIPE_PUBLISH_REQUIRED_ERROR } from "@/lib/stripePublishConstants"
 
 interface ReviewData {
   id: string
@@ -95,7 +98,10 @@ export interface CabinRequestData {
   description?: string | null
   status: string
   created_at: string
-  desired_property_type?: "cabin" | "residence"
+  property_type?: "cabin" | "residence" | "any"
+  /** Gæstens afventende tilbud (kun for egne stay_requests) */
+  pending_stay_offer_count?: number
+  needs_transport?: boolean
   // udbyder-visning
   guest_id?: string | null
   guest_name?: string | null
@@ -276,6 +282,7 @@ export default function DashboardClient({
   const [activeTab,     setActiveTab]     = useState(urlTab)
   const [bookingFilter, setBookingFilter] = useState<"active" | "history">("active")
   const [isDuplicating, startDuplicate]   = useTransition()
+  const [stripeGateCabinId, setStripeGateCabinId] = useState<string | null>(null)
 
   // Booking splits
   const activeMyBookings  = myBookings.filter((b) => ["pending", "confirmed"].includes(b.status))
@@ -674,7 +681,20 @@ export default function DashboardClient({
                                 variant="outline"
                                 disabled={isDuplicating}
                                 onClick={async () => {
+                                  const pre = await checkStripeBeforePublish(c.id)
+                                  if ("error" in pre) {
+                                    toast.error(pre.error)
+                                    return
+                                  }
+                                  if (!pre.stripeComplete) {
+                                    setStripeGateCabinId(c.id)
+                                    return
+                                  }
                                   const res = await publishCabin(c.id)
+                                  if (res.error === STRIPE_PUBLISH_REQUIRED_ERROR) {
+                                    setStripeGateCabinId(c.id)
+                                    return
+                                  }
                                   if (res.error) toast.error(res.error)
                                   else {
                                     captureEvent("cabin_published", {
@@ -888,6 +908,30 @@ export default function DashboardClient({
             />
           </TabsContent>
         </Tabs>
+        <StripeOnboardingRequiredModal
+          open={stripeGateCabinId !== null}
+          onOpenChange={(o) => {
+            if (!o) setStripeGateCabinId(null)
+          }}
+          cabinId={stripeGateCabinId}
+          onStripeReady={async (id) => {
+            const res = await publishCabin(id)
+            if (res.error === STRIPE_PUBLISH_REQUIRED_ERROR) {
+              setStripeGateCabinId(id)
+              return
+            }
+            if (res.error) {
+              toast.error(res.error)
+              return
+            }
+            const c = myCabins.find((x) => x.id === id)
+            if (c) {
+              captureEvent("cabin_published", { cabin_id: c.id, location: c.location_hub })
+            }
+            toast.success("Hytte publiceret")
+            router.refresh()
+          }}
+        />
       </div>
     </div>
   )
@@ -909,11 +953,12 @@ const CABIN_REQ_COLORS: Record<string, string> = {
 
 function CabinRequestRow({ r, isHost }: { r: CabinRequestData; isHost: boolean }) {
   const tReq = useTranslations("request")
+  const tDash = useTranslations("dashboard")
   const nights = r.desired_check_in && r.desired_check_out
     ? Math.round((new Date(r.desired_check_out).getTime() - new Date(r.desired_check_in).getTime()) / (1000 * 60 * 60 * 24))
     : null
 
-  const stayKind = r.desired_property_type === "residence" ? "residence" : "cabin"
+  const stayKind = r.property_type === "residence" ? "residence" : r.property_type === "any" ? "any" : "cabin"
 
   return (
     <div className="bg-white rounded-xl border border-border p-4 space-y-3">
@@ -943,13 +988,17 @@ function CabinRequestRow({ r, isHost }: { r: CabinRequestData; isHost: boolean }
             )}
             <p className="font-semibold text-sm text-foreground flex items-center gap-1">
               <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
-              {r.location}
+              {formatStayRequestLocationDisplay(r.location)}
             </p>
             <Badge
               variant="secondary"
               className="mt-1.5 border-0 bg-muted text-foreground text-[10px] font-semibold uppercase tracking-wide"
             >
-              {stayKind === "residence" ? tReq("badge_residence") : tReq("badge_cabin")}
+              {stayKind === "residence"
+                ? tReq("badge_residence")
+                : stayKind === "any"
+                  ? tReq("badge_any")
+                  : tReq("badge_cabin")}
             </Badge>
           </div>
         </div>
@@ -972,17 +1021,57 @@ function CabinRequestRow({ r, isHost }: { r: CabinRequestData; isHost: boolean }
         </span>
       </div>
 
+      {isHost && r.needs_transport && (
+        <p className="text-xs text-foreground flex items-center gap-1.5 font-medium">
+          <Anchor className="w-3.5 h-3.5 shrink-0 text-[#114788]" />
+          {tDash("stay_request_needs_transport_yes")}
+        </p>
+      )}
+
       {r.description && (
         <p className="text-xs text-muted-foreground italic bg-muted/50 rounded-lg px-3 py-2">
           &ldquo;{r.description}&rdquo;
         </p>
       )}
 
-      {isHost && r.guest_id && r.status === "open" && (
-        <div className="pt-2 border-t border-border">
-          <Button size="sm" asChild variant="outline" className="rounded-lg gap-1.5 text-primary border-primary/30 hover:bg-primary/5">
-            <Link href={`/profil/${r.guest_id}`}>
-              <ArrowRight className="w-3.5 h-3.5" /> Kontakt gæst
+      {!isHost && r.status === "open" && (
+        <div className="pt-2 border-t border-border flex flex-col sm:flex-row gap-2 sm:items-center sm:flex-wrap">
+          {(r.pending_stay_offer_count ?? 0) > 0 ? (
+            <>
+              <span
+                className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold text-white"
+                style={{ backgroundColor: "#114788" }}
+              >
+                {tDash("stay_requests_offer_badge", {
+                  count: r.pending_stay_offer_count ?? 0,
+                })}
+              </span>
+              <Button
+                size="sm"
+                asChild
+                className="rounded-lg gap-1.5 w-full sm:w-auto bg-[#114788] hover:bg-[#0d3a6b] text-white"
+              >
+                <Link href={`/dashboard/mine-oensker/${r.id}`}>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                  {tDash("stay_requests_se_offers")}
+                </Link>
+              </Button>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">{tDash("stay_requests_awaiting_offers")}</p>
+          )}
+        </div>
+      )}
+
+      {isHost && r.status === "open" && (
+        <div className="pt-2 border-t border-border flex flex-col sm:flex-row gap-2 sm:items-center">
+          <Button
+            size="sm"
+            asChild
+            className="rounded-lg gap-1.5 w-full sm:w-auto bg-[#114788] hover:bg-[#0d3a6b] text-white"
+          >
+            <Link href={`/dashboard/oensker/${r.id}`}>
+              <ArrowRight className="w-3.5 h-3.5" /> {tDash("stay_offer_send")}
             </Link>
           </Button>
         </div>

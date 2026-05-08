@@ -20,12 +20,15 @@ import {
 } from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
 import {
+  checkStripeBeforePublish,
   deleteCabin,
   deleteBoat,
   duplicateCabin,
   publishCabin,
   unpublishCabin,
 } from "@/app/[locale]/dashboard/actions"
+import { StripeOnboardingRequiredModal } from "@/components/stripe/StripeOnboardingRequiredModal"
+import { STRIPE_PUBLISH_REQUIRED_ERROR } from "@/lib/stripePublishConstants"
 import { publishedCabinDetailPath } from "@/lib/cabinPublicPaths"
 import { captureEvent } from "@/lib/analytics/posthog-events"
 import { getLocationName } from "@/lib/greenlandLocations"
@@ -59,6 +62,7 @@ export default function OpretPageClient({ cabins, boats }: Props) {
   const pathname = usePathname()
   const [isPending, startTransition] = useTransition()
   const [pendingId, setPendingId] = useState<string | null>(null)
+  const [stripeGateCabinId, setStripeGateCabinId] = useState<string | null>(null)
   const phBoat = useRef(false)
 
   useEffect(() => {
@@ -84,8 +88,23 @@ export default function OpretPageClient({ cabins, boats }: Props) {
   function handlePublish(cabinId: string) {
     setPendingId(cabinId)
     startTransition(async () => {
+      const pre = await checkStripeBeforePublish(cabinId)
+      if ("error" in pre) {
+        setPendingId(null)
+        toast.error(pre.error)
+        return
+      }
+      if (!pre.stripeComplete) {
+        setPendingId(null)
+        setStripeGateCabinId(cabinId)
+        return
+      }
       const res = await publishCabin(cabinId)
       setPendingId(null)
+      if (res.error === STRIPE_PUBLISH_REQUIRED_ERROR) {
+        setStripeGateCabinId(cabinId)
+        return
+      }
       if (res.error) toast.error(res.error)
       else {
         const c = cabins.find((x) => x.id === cabinId)
@@ -369,6 +388,30 @@ export default function OpretPageClient({ cabins, boats }: Props) {
           </div>
         </section>
       )}
+      <StripeOnboardingRequiredModal
+        open={stripeGateCabinId !== null}
+        onOpenChange={(o) => {
+          if (!o) setStripeGateCabinId(null)
+        }}
+        cabinId={stripeGateCabinId}
+        onStripeReady={async (id) => {
+          const res = await publishCabin(id)
+          if (res.error === STRIPE_PUBLISH_REQUIRED_ERROR) {
+            setStripeGateCabinId(id)
+            return
+          }
+          if (res.error) {
+            toast.error(res.error)
+            return
+          }
+          const c = cabins.find((x) => x.id === id)
+          if (c) {
+            captureEvent("cabin_published", { cabin_id: c.id, location: c.location_hub })
+          }
+          toast.success(t("cabin_published"))
+          router.refresh()
+        }}
+      />
     </div>
   )
 }

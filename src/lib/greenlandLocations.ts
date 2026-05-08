@@ -1074,6 +1074,25 @@ export function getLocationName(key: string): string {
   return key.charAt(0).toUpperCase() + key.slice(1)
 }
 
+/**
+ * Viser opholdsanmodningers `location` (DB-nøgle) pænt: region:* → region_label,
+ * ellers {@link getLocationName}. Ukendt nøgle uden region-prefix behandles som i getLocationName.
+ */
+export function formatStayRequestLocationDisplay(raw: string): string {
+  if (!raw) return raw
+  const s = raw.trim()
+  if (s.toLowerCase().startsWith(REGION_HUB_PREFIX.toLowerCase())) {
+    const rest = s.slice(REGION_HUB_PREFIX.length).trim()
+    if (!rest) return s
+    const canon = getAllRegionLabels().find((l) => l.toLowerCase() === rest.toLowerCase())
+    if (canon) return canon
+    return rest.charAt(0).toUpperCase() + rest.slice(1)
+  }
+  const named = getLocationName(s)
+  if (named !== s) return named
+  return s
+}
+
 export function getLocationsByType(locationType: LocationType): GreenlandLocation[] {
   return GREENLAND_LOCATIONS.filter((l) => l.location_type === locationType)
 }

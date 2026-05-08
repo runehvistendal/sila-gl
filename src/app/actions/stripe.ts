@@ -6,7 +6,80 @@ import { createClient } from "@/lib/supabase-server"
 import { createServiceClient } from "@/lib/supabase-service"
 import { stripe } from "@/lib/stripe"
 
+/** Samme værdi som STRIPE_PUBLISH_REQUIRED_ERROR i klient — må ikke importeres i "use server" fra shared lib */
+const STRIPE_REQUIRED = "stripe_required"
+
 export type ConnectResult = { url: string } | { error: string }
+
+export type StripeOnboardingCompleteCheck =
+  | { ok: true; complete: boolean }
+  | { ok: false; error: string }
+
+export async function checkStripeOnboardingComplete(): Promise<StripeOnboardingCompleteCheck> {
+  const supabase = await createClient()
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.user) {
+    return { ok: false, error: "Ikke logget ind" }
+  }
+
+  const { data: sensitiveRaw, error: sensErr } = await supabase.rpc("get_my_sensitive_profile")
+  if (sensErr) {
+    return { ok: false, error: "Kunne ikke hente profil" }
+  }
+
+  const sensitive = sensitiveRaw as { stripe_onboarding_complete?: boolean | null } | null
+  return { ok: true, complete: sensitive?.stripe_onboarding_complete === true }
+}
+
+export type RequireStripeForPublishResult =
+  | { ok: true }
+  | { ok: false; error: string }
+
+export async function requireStripeForPublish(): Promise<RequireStripeForPublishResult> {
+  const r = await checkStripeOnboardingComplete()
+  if (!r.ok) return { ok: false, error: r.error }
+  if (!r.complete) return { ok: false, error: STRIPE_REQUIRED }
+  return { ok: true }
+}
+
+export type GetStripeOnboardingUrlResult =
+  | { alreadyComplete: true }
+  | { url: string }
+  | { error: string }
+
+/**
+ * Bruges fra onboarding-modal: hop til Stripe Account Link, eller markér allerede færdig.
+ */
+export async function getStripeOnboardingUrl(): Promise<GetStripeOnboardingUrlResult> {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return { error: "Stripe er ikke konfigureret" }
+  }
+
+  const supabase = await createClient()
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.user) {
+    return { error: "Du skal være logget ind" }
+  }
+
+  const { data: sensitiveRaw, error: sensErr } = await supabase.rpc("get_my_sensitive_profile")
+  if (sensErr) {
+    return { error: "Kunne ikke hente profil" }
+  }
+  const sensitive = sensitiveRaw as { stripe_onboarding_complete?: boolean | null } | null
+  if (sensitive?.stripe_onboarding_complete === true) {
+    return { alreadyComplete: true }
+  }
+
+  const res = await connect()
+  if ("error" in res) {
+    return { error: res.error }
+  }
+  return { url: res.url }
+}
 
 export type OnboardingStatusResult =
   | { complete: boolean }

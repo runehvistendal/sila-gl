@@ -35,10 +35,10 @@ export default async function AdminAnmodningerPage() {
   }
 
   const { data: requests } = await svc
-    .from("cabin_requests")
+    .from("stay_requests")
     .select(`
       id, location, desired_check_in, desired_check_out, num_guests,
-      max_price_ore, status, created_at, desired_property_type,
+      max_price_ore, status, created_at, property_type,
       profiles!guest_id(full_name)
     `)
     .is("deleted_at", null)
@@ -54,7 +54,7 @@ export default async function AdminAnmodningerPage() {
     max_price_ore: number | null
     status: string
     created_at: string
-    desired_property_type?: string | null
+    property_type?: string | null
     profiles: { full_name: string | null } | null
   }
 
@@ -95,7 +95,11 @@ export default async function AdminAnmodningerPage() {
                     {r.location || "—"}
                   </TableCell>
                   <TableCell className="text-gray-700 text-sm">
-                    {r.desired_property_type === "residence" ? tReq("badge_residence") : tReq("badge_cabin")}
+                    {r.property_type === "residence"
+                      ? tReq("badge_residence")
+                      : r.property_type === "any"
+                        ? tReq("badge_any")
+                        : tReq("badge_cabin")}
                   </TableCell>
                   <TableCell className="text-gray-700 text-sm">
                     {new Date(r.desired_check_in).toLocaleDateString("da-DK")}

@@ -1,6 +1,8 @@
 "use client"
 
 import { useCallback, useMemo, useState, useTransition } from "react"
+import { StripeOnboardingRequiredModal } from "@/components/stripe/StripeOnboardingRequiredModal"
+import { STRIPE_PUBLISH_REQUIRED_ERROR } from "@/lib/stripePublishConstants"
 import { Loader2 } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
@@ -82,6 +84,7 @@ export default function AvailabilityCalendar({
   const [hoveredDate, setHoveredDate] = useState<string | null>(null)
 
   const [isPending, startTransition] = useTransition()
+  const [stripeGateOpen, setStripeGateOpen] = useState(false)
 
   const previewRange = useMemo(() => {
     const s = new Set<string>()
@@ -190,6 +193,10 @@ export default function AvailabilityCalendar({
     startTransition(async () => {
       const result = await saveAll(cabinId, [...blockedDates], minNights, preparationDays, publish)
       if ("error" in result) {
+        if (result.error === STRIPE_PUBLISH_REQUIRED_ERROR && publish) {
+          setStripeGateOpen(true)
+          return
+        }
         toast.error(result.error)
         return
       }
@@ -421,6 +428,25 @@ export default function AvailabilityCalendar({
           </Button>
         )}
       </div>
+
+      <StripeOnboardingRequiredModal
+        open={stripeGateOpen}
+        onOpenChange={setStripeGateOpen}
+        cabinId={cabinId}
+        onStripeReady={async (id) => {
+          const result = await saveAll(id, [...blockedDates], minNights, preparationDays, true)
+          if ("error" in result) {
+            if (result.error === STRIPE_PUBLISH_REQUIRED_ERROR) {
+              setStripeGateOpen(true)
+              return
+            }
+            toast.error(result.error)
+            return
+          }
+          toast.success(t("cabin_published"))
+          window.location.href = result.redirectTo
+        }}
+      />
     </div>
   )
 }

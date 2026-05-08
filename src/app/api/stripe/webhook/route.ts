@@ -3,7 +3,12 @@ import { headers } from "next/headers"
 import { createServiceClient } from "@/lib/supabase-service"
 import { stripe } from "@/lib/stripe"
 import { revalidatePath } from "next/cache"
-import { notifyTransportBookingConfirmed, notifyRideShareBookingConfirmed } from "@/lib/notifications"
+import {
+  notifyTransportBookingConfirmed,
+  notifyRideShareBookingConfirmed,
+  notifyStayOfferBookingConfirmed,
+} from "@/lib/notifications"
+import { calcServiceFee } from "@/lib/money"
 
 export const dynamic = "force-dynamic"
 
@@ -147,6 +152,242 @@ export async function POST(request: Request) {
       revalidatePath("/transport")
       revalidatePath(`/transport/${rideShareId}`)
       revalidatePath("/dashboard")
+      return new Response("ok", { status: 200 })
+    }
+
+    // ── Stay offer → cabin booking (gæst accepterer tilbud) ───────────────
+    if (meta.type === "stay_offer") {
+      const stayOfferId   = meta.stay_offer_id
+      const stayRequestId = meta.stay_request_id
+      const cabinIdMeta   = meta.cabin_id
+      const guestIdMeta   = meta.guest_id
+
+      if (!stayOfferId || !stayRequestId || !cabinIdMeta || !guestIdMeta) {
+        return new Response("ok", { status: 200 })
+      }
+
+      const { data: existingBySession } = await service
+        .from("cabin_bookings")
+        .select("id")
+        .eq("stripe_session_id", sessionId)
+        .maybeSingle()
+
+      if (existingBySession) {
+        return new Response("ok", { status: 200 })
+      }
+
+      const piSo = session.payment_intent
+      const paymentIntentIdSo =
+        typeof piSo === "string"
+          ? piSo
+          : piSo && "id" in piSo
+            ? (piSo as { id: string }).id
+            : null
+
+      if (!paymentIntentIdSo) {
+        if (isDev) console.error("[stripe webhook] stay_offer mangler payment_intent", sessionId)
+        return new Response("ok", { status: 200 })
+      }
+
+      const { data: offerRow, error: offerErr } = await service
+        .from("stay_offers")
+        .select(`
+          id,
+          status,
+          offered_price_ore,
+          cabin_id,
+          stay_request_id,
+          provider_id,
+          cabins ( title ),
+          stay_requests (
+            guest_id,
+            status,
+            desired_check_in,
+            desired_check_out,
+            num_guests
+          )
+        `)
+        .eq("id", stayOfferId)
+        .maybeSingle()
+
+      if (offerErr || !offerRow) {
+        if (isDev) console.error("[stripe webhook] stay_offer find", offerErr)
+        return new Response("DB-fejl", { status: 500 })
+      }
+
+      const offerRaw = offerRow as {
+        id: string
+        status: string
+        offered_price_ore: number
+        cabin_id: string
+        stay_request_id: string
+        provider_id: string
+        cabins: { title: string | null } | { title: string | null }[] | null
+        stay_requests:
+          | {
+              guest_id: string
+              status: string
+              desired_check_in: string
+              desired_check_out: string
+              num_guests: number
+            }
+          | {
+              guest_id: string
+              status: string
+              desired_check_in: string
+              desired_check_out: string
+              num_guests: number
+            }[]
+          | null
+      }
+
+      const srRawNest = offerRaw.stay_requests
+      const sr = (Array.isArray(srRawNest) ? srRawNest[0] : srRawNest) as
+        | {
+            guest_id: string
+            status: string
+            desired_check_in: string
+            desired_check_out: string
+            num_guests: number
+          }
+        | null
+        | undefined
+
+      const cabinsNest = offerRaw.cabins
+      const cabinRow   = (Array.isArray(cabinsNest) ? cabinsNest[0] : cabinsNest) as
+        | { title: string | null }
+        | null
+        | undefined
+      const cabinTitle = cabinRow?.title?.trim() || "Ophold"
+
+      const offer = {
+        id:                 offerRaw.id,
+        status:             offerRaw.status,
+        offered_price_ore:  offerRaw.offered_price_ore,
+        cabin_id:           offerRaw.cabin_id,
+        stay_request_id:    offerRaw.stay_request_id,
+        provider_id:        offerRaw.provider_id,
+      }
+
+      if (!sr || sr.guest_id !== guestIdMeta || offer.cabin_id !== cabinIdMeta) {
+        return new Response("ok", { status: 200 })
+      }
+
+      if (String(stayRequestId) !== String(offer.stay_request_id)) {
+        return new Response("ok", { status: 200 })
+      }
+
+      if (offer.status === "accepted") {
+        return new Response("ok", { status: 200 })
+      }
+
+      if (offer.status !== "pending") {
+        return new Response("ok", { status: 200 })
+      }
+
+      if (sr.status !== "open") {
+        return new Response("ok", { status: 200 })
+      }
+
+      const offeredOre = offer.offered_price_ore
+      const platformFeeOre = Math.round(offeredOre * 0.15)
+      const serviceFeeOre  = calcServiceFee(offeredOre)
+
+      const { data: inserted, error: bookErr } = await service
+        .from("cabin_bookings")
+        .insert({
+          cabin_id:                 offer.cabin_id,
+          guest_id:                 sr.guest_id,
+          check_in:                 sr.desired_check_in,
+          check_out:                sr.desired_check_out,
+          num_guests:               sr.num_guests,
+          total_price_ore:          offeredOre,
+          platform_fee_ore:         platformFeeOre,
+          service_fee_ore:          serviceFeeOre,
+          status:                   "confirmed",
+          stripe_session_id:        sessionId,
+          stripe_payment_intent_id: paymentIntentIdSo,
+          includes_transport:       false,
+          transport_total_ore:      0,
+        })
+        .select("id")
+        .maybeSingle()
+
+      if (bookErr || !inserted) {
+        if (isDev) console.error("[stripe webhook] stay_offer cabin_bookings insert", bookErr)
+        return new Response("Booking fejlede", { status: 500 })
+      }
+
+      const { error: upOfferErr } = await service
+        .from("stay_offers")
+        .update({
+          status:                   "accepted",
+          stripe_session_id:        sessionId,
+          stripe_payment_intent_id: paymentIntentIdSo,
+          updated_at:               new Date().toISOString(),
+        })
+        .eq("id", stayOfferId)
+        .eq("status", "pending")
+
+      if (upOfferErr) {
+        if (isDev) console.error("[stripe webhook] stay_offer accept update", upOfferErr)
+        return new Response("Opdatering fejlede", { status: 500 })
+      }
+
+      const { error: reqErr } = await service
+        .from("stay_requests")
+        .update({
+          status:     "matched",
+          cabin_id:   offer.cabin_id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", offer.stay_request_id)
+        .eq("status", "open")
+
+      if (reqErr) {
+        if (isDev) console.error("[stripe webhook] stay_request matched", reqErr)
+        return new Response("Anmodning fejlede", { status: 500 })
+      }
+
+      await service
+        .from("stay_offers")
+        .update({ status: "rejected", updated_at: new Date().toISOString() })
+        .eq("stay_request_id", offer.stay_request_id)
+        .neq("id", stayOfferId)
+        .eq("status", "pending")
+
+      const { data: profRows } = await service
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", [sr.guest_id, offer.provider_id])
+
+      const nameMap = new Map(
+        (profRows ?? []).map((p: { id: string; full_name: string | null }) => [
+          p.id,
+          typeof p.full_name === "string" ? p.full_name.trim() : "",
+        ]),
+      )
+      const guestName    = nameMap.get(sr.guest_id) || "Gæst"
+      const providerName = nameMap.get(offer.provider_id) || "Udbyder"
+
+      try {
+        await notifyStayOfferBookingConfirmed({
+          stayOfferId:   stayOfferId,
+          cabinTitle,
+          checkIn:       sr.desired_check_in,
+          checkOut:      sr.desired_check_out,
+          guestId:       sr.guest_id,
+          providerId:    offer.provider_id,
+          guestName,
+          providerName,
+        })
+      } catch (e) {
+        if (isDev) console.error("[stripe webhook] notify stay_offer", e)
+      }
+
+      revalidatePath("/")
+      revalidatePath("/dashboard")
+      revalidatePath(`/dashboard/mine-oensker/${offer.stay_request_id}`)
       return new Response("ok", { status: 200 })
     }
 

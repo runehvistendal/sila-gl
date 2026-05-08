@@ -257,8 +257,10 @@ export default async function DashboardPage() {
 
     // My cabin requests (as guest)
     supabase
-      .from("cabin_requests")
-      .select("id, location, desired_check_in, desired_check_out, num_guests, max_price_ore, description, status, created_at, desired_property_type")
+      .from("stay_requests")
+      .select(
+        "id, location, desired_check_in, desired_check_out, num_guests, max_price_ore, description, status, created_at, property_type, needs_transport, stay_offers ( id, status )",
+      )
       .eq("guest_id", user.id)
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
@@ -267,8 +269,8 @@ export default async function DashboardPage() {
     // Cabin requests to my cabins (as provider)
     cabinIds.length > 0
       ? supabase
-          .from("cabin_requests")
-          .select("id, cabin_id, location, desired_check_in, desired_check_out, num_guests, max_price_ore, description, status, created_at, desired_property_type, profiles!guest_id(id, full_name, avatar_url)")
+          .from("stay_requests")
+          .select("id, cabin_id, location, desired_check_in, desired_check_out, num_guests, max_price_ore, description, status, created_at, property_type, needs_transport, profiles!guest_id(id, full_name, avatar_url)")
           .or(`cabin_id.in.(${cabinIds.join(",")}),cabin_id.is.null`)
           .eq("status", "open")
           .is("deleted_at", null)
@@ -380,18 +382,25 @@ export default async function DashboardPage() {
   /* ── Shape cabin requests ── */
   type CabinReqGuestProfile = { id?: string; full_name?: string; avatar_url?: string | null } | null
 
-  const myCabinRequests = (myCabinReqRaw ?? []).map((r: Record<string, unknown>) => ({
-    id:               r.id as string,
-    location:         r.location as string,
-    desired_check_in: r.desired_check_in as string,
-    desired_check_out: r.desired_check_out as string,
-    num_guests:       r.num_guests as number,
-    max_price_ore:    (r.max_price_ore as number | null) ?? null,
-    description:      (r.description as string | null) ?? null,
-    status:           r.status as string,
-    created_at:       r.created_at as string,
-    desired_property_type: (r.desired_property_type as "cabin" | "residence" | null) ?? "cabin",
-  }))
+  const myCabinRequests = (myCabinReqRaw ?? []).map((r: Record<string, unknown>) => {
+    const offersRaw = r.stay_offers as Array<{ id: string; status: string }> | null | undefined
+    const offers = offersRaw ?? []
+    const pending_stay_offer_count = offers.filter((o) => o.status === "pending").length
+    return {
+      id:               r.id as string,
+      location:         r.location as string,
+      desired_check_in: r.desired_check_in as string,
+      desired_check_out: r.desired_check_out as string,
+      num_guests:       r.num_guests as number,
+      max_price_ore:    (r.max_price_ore as number | null) ?? null,
+      description:      (r.description as string | null) ?? null,
+      status:           r.status as string,
+      created_at:       r.created_at as string,
+      property_type: (r.property_type as "cabin" | "residence" | "any" | null) ?? "cabin",
+      pending_stay_offer_count,
+      needs_transport: Boolean(r.needs_transport),
+    }
+  })
 
   const guestCabinRequests = (guestCabinReqRaw ?? []).map((r: Record<string, unknown>) => {
     const pr = r.profiles as CabinReqGuestProfile
@@ -406,10 +415,11 @@ export default async function DashboardPage() {
       description:      (r.description as string | null) ?? null,
       status:           r.status as string,
       created_at:       r.created_at as string,
-      desired_property_type: (r.desired_property_type as "cabin" | "residence" | null) ?? "cabin",
+      property_type: (r.property_type as "cabin" | "residence" | "any" | null) ?? "cabin",
       guest_id:         pr?.id ?? null,
       guest_name:       pr?.full_name ?? null,
       guest_avatar_url: pr?.avatar_url ?? null,
+      needs_transport:  Boolean(r.needs_transport),
     }
   })
 

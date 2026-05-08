@@ -1,6 +1,14 @@
 import type { Metadata } from "next"
 import Image from "next/image"
-import { Search, Anchor, Users, Home as HomeIcon, ArrowRight } from "lucide-react"
+import {
+  Search,
+  Anchor,
+  Users,
+  Home as HomeIcon,
+  ArrowRight,
+  Building2,
+  Trees,
+} from "lucide-react"
 import { getTranslations, setRequestLocale } from "next-intl/server"
 import { Link } from "@/i18n/navigation"
 import Navbar from "@/components/layout/Navbar"
@@ -24,7 +32,7 @@ const FALLBACK_HERO_SRC =
 const FALLBACK_OG_IMAGE =
   "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=1200&h=630&fit=crop&q=85"
 
-const STEP_ICONS = [Search, Anchor, HomeIcon] as const
+const LOOKING_FOR_ICONS = [Building2, Trees, Anchor] as const
 const STAT_ICONS = [HomeIcon, Anchor, Users, Search] as const
 
 type Props = {
@@ -150,10 +158,18 @@ export default async function Home({ params }: Props) {
 
   const sailRideShares = (mapRidesResult.data ?? []) as HomeRideShareMapRow[]
 
-  const steps = ([0, 1, 2] as const).map((i) => ({
-    title: t(`howItWorks.steps.${i}.title`),
-    desc: t(`howItWorks.steps.${i}.desc`),
+  const lookingForItems = ([
+    { key: "city" as const, href: "/ophold/i-byen" },
+    { key: "nature" as const, href: "/ophold/i-naturen" },
+    { key: "sail" as const, href: "/transport" },
+  ] as const).map((item, i) => ({
+    ...item,
+    title: t(`lookingFor.${item.key}.title`),
+    desc: t(`lookingFor.${item.key}.desc`),
+    cta: t(`lookingFor.${item.key}.cta`),
+    Icon: LOOKING_FOR_ICONS[i],
   }))
+
   const stats = ([0, 1, 2, 3] as const).map((i) => ({
     value: t(`cta.stats.${i}.value`),
     sub: t(`cta.stats.${i}.sub`),
@@ -206,26 +222,38 @@ export default async function Home({ params }: Props) {
       </section>
 
       <section className="relative z-0 bg-card py-20">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">{t("howItWorks.title")}</h2>
-            <p className="text-muted-foreground text-lg max-w-md mx-auto">{t("howItWorks.subtitle")}</p>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-12 sm:mb-14">
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">{t("lookingFor.title")}</h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto leading-relaxed">
+              {t("lookingFor.subtitle")}
+            </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-10">
-            {steps.map((step, i) => {
-              const Icon = STEP_ICONS[i]
-              const num = String(i + 1).padStart(2, "0")
+          <div className="grid gap-5 sm:gap-6 md:grid-cols-3">
+            {lookingForItems.map((item) => {
+              const Icon = item.Icon
               return (
-                <div key={num} className="text-center">
-                  <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-5">
-                    <Icon size={22} className="text-primary" />
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  className="group flex flex-col rounded-2xl border border-border bg-background p-6 sm:p-7 text-left shadow-sm transition-colors hover:border-primary/30 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="shrink-0 w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Icon className="w-6 h-6 text-primary" aria-hidden />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-lg font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
+                        {item.title}
+                      </h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed mb-5">{item.desc}</p>
+                      <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary">
+                        {item.cta}
+                        <ArrowRight size={15} className="group-hover:translate-x-0.5 transition-transform" />
+                      </span>
+                    </div>
                   </div>
-                  <p className="text-xs font-bold text-primary/70 tracking-widest uppercase mb-1">
-                    {t("howItWorks.step")} {num}
-                  </p>
-                  <h3 className="text-lg font-bold text-foreground mb-2">{step.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
-                </div>
+                </Link>
               )
             })}
           </div>

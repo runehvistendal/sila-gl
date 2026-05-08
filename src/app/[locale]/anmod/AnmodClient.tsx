@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import DatePickerButton from "@/components/shared/DatePickerButton"
 import { HierarchicalLocationSelect } from "@/components/shared/HierarchicalLocationSelect"
 import { guestStayRequestHref } from "@/lib/cabinPublicPaths"
@@ -27,6 +28,7 @@ export default function AnmodClient() {
   const [checkOut, setCheckOut] = useState("")
   const [location, setLocation] = useState("")
   const [propertyType, setPropertyType] = useState<"cabin" | "residence">("cabin")
+  const [needsTransport, setNeedsTransport] = useState(false)
 
   useEffect(() => {
     const type = searchParams.get("type")
@@ -55,7 +57,7 @@ export default function AnmodClient() {
     const data = new FormData(e.currentTarget)
     data.set("desired_check_in", checkIn)
     data.set("desired_check_out", checkOut)
-    data.set("desired_property_type", propertyType)
+    data.set("property_type", propertyType)
     setError(null)
     startTransition(async () => {
       const res = await createCabinRequest(data)
@@ -90,7 +92,8 @@ export default function AnmodClient() {
         <form onSubmit={handleSubmit} className="space-y-5 bg-white border border-border rounded-2xl p-6 shadow-sm">
           <input type="hidden" name="desired_check_in" value={checkIn} readOnly />
           <input type="hidden" name="desired_check_out" value={checkOut} readOnly />
-          <input type="hidden" name="desired_property_type" value={propertyType} readOnly />
+          <input type="hidden" name="property_type" value={propertyType} readOnly />
+          <input type="hidden" name="needs_transport" value={needsTransport ? "1" : "0"} readOnly />
 
           {/* Opholdstype */}
           <div className="space-y-2">
@@ -165,6 +168,21 @@ export default function AnmodClient() {
             <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
               <span>{t("check_in_hint")}: {checkIn ? checkIn : "—"}</span>
               <span>{t("check_out_hint")}: {checkOut ? checkOut : "—"}</span>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/20 p-4">
+            <Checkbox
+              id="needs-transport"
+              checked={needsTransport}
+              onCheckedChange={(v) => setNeedsTransport(v === true)}
+              className="mt-0.5"
+            />
+            <div className="space-y-1 min-w-0">
+              <Label htmlFor="needs-transport" className="text-sm font-medium text-foreground cursor-pointer">
+                {t("needs_transport_label")}
+              </Label>
+              <p className="text-xs text-muted-foreground leading-relaxed">{t("needs_transport_hint")}</p>
             </div>
           </div>
 

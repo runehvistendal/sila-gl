@@ -43,6 +43,8 @@ type CabinProps = {
   min_nights?: number
   location_hub: string
   instant_book: boolean
+  /** `residence` = i-byen (fx «Book bolig»); default hytte-kopi */
+  property_type?: "cabin" | "residence" | null
 }
 
 type Props = {
@@ -336,7 +338,7 @@ export default function CabinBookingWidget({
       style={{ fontFamily: "var(--font-jakarta, system-ui)" }}
     >
       <h2 className="text-lg sm:text-xl font-bold text-foreground mb-1">
-        {t("booking_title")}
+        {cabin.property_type === "residence" ? t("booking_title_residence") : t("booking_title")}
       </h2>
       <p className="text-sm text-muted-foreground mb-4">
         {t("booking_subtitle")}

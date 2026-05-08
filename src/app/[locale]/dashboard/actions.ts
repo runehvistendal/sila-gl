@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase-server"
 import { requireSession } from "@/lib/requireSession"
 import { revalidatePublishedCabinPaths } from "@/lib/revalidateCabinPublic"
+import { checkStripeOnboardingComplete, requireStripeForPublish } from "@/app/actions/stripe"
+
+/** Matcher STRIPE_PUBLISH_REQUIRED_ERROR på klienten */
+const STRIPE_REQUIRED = "stripe_required"
 
 export async function confirmBooking(bookingId: string) {
   const supabase = await createClient()
@@ -124,8 +128,23 @@ export async function duplicateCabin(cabinId: string): Promise<{ error?: string 
   return {}
 }
 
+export async function checkStripeBeforePublish(
+  _cabinId: string,
+): Promise<{ stripeComplete: boolean } | { error: string }> {
+  const r = await checkStripeOnboardingComplete()
+  if (!r.ok) return { error: r.error }
+  return { stripeComplete: r.complete }
+}
+
 export async function publishCabin(cabinId: string): Promise<{ error?: string }> {
   const { supabase, user } = await requireSession()
+
+  const gate = await requireStripeForPublish()
+  if (!gate.ok) {
+    if (gate.error === STRIPE_REQUIRED) return { error: STRIPE_REQUIRED }
+    return { error: gate.error }
+  }
+
   const { data: row, error: rowErr } = await supabase
     .from("cabins")
     .select("property_type")

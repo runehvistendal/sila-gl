@@ -15,6 +15,7 @@ interface CabinBookingProps {
   min_nights?: number
   location_hub: string
   instant_book: boolean
+  property_type?: "cabin" | "residence" | null
 }
 
 interface CabinTransportProps {

@@ -3,7 +3,11 @@
 import { redirect } from "next/navigation"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase-server"
+import { requireStripeForPublish } from "@/app/actions/stripe"
 import type { AddOnService } from "@/components/shared/AddOnServicesEditor"
+
+/** Matcher STRIPE_PUBLISH_REQUIRED_ERROR på klienten */
+const STRIPE_REQUIRED = "stripe_required"
 
 const schema = z
   .object({
@@ -20,6 +24,7 @@ const schema = z
 export type PublishCabinState = {
   errors?: Record<string, string[]>
   message?: string
+  error?: string
 } | null
 
 export async function publishCabinListing(
@@ -55,6 +60,12 @@ export async function publishCabinListing(
 
   if (!cabin || cabin.owner_id !== user.id) {
     return { message: "Du har ikke adgang til denne hytte" }
+  }
+
+  const gate = await requireStripeForPublish()
+  if (!gate.ok) {
+    if (gate.error === STRIPE_REQUIRED) return { error: STRIPE_REQUIRED }
+    return { message: gate.error }
   }
 
   let addonServices: AddOnService[] = []

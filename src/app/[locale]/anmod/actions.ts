@@ -23,7 +23,7 @@ export async function createCabinRequest(formData: FormData) {
   const checkOut      = formData.get("desired_check_out") as string
   const numGuests     = Number(formData.get("num_guests"))
   const maxPriceKr    = formData.get("max_price_kr") ? Number(formData.get("max_price_kr")) : null
-  const propertyType = (formData.get("desired_property_type") as string) || "cabin"
+  const propertyType = (formData.get("property_type") as string) || "cabin"
   const prefSleeping = (formData.get("pref_sleeping") as string | null)?.trim() || ""
   const prefMustHave = (formData.get("pref_must_have") as string | null)?.trim() || ""
 
@@ -38,6 +38,11 @@ export async function createCabinRequest(formData: FormData) {
   if (freeDesc) descParts.push(freeDesc)
   const description = descParts.length > 0 ? descParts.join("\n\n") : null
 
+  const needsTransport =
+    formData.get("needs_transport") === "1" ||
+    formData.get("needs_transport") === "true" ||
+    formData.get("needs_transport") === "on"
+
   if (!location || !checkIn || !checkOut || !numGuests) {
     return { error: "Udfyld venligst alle påkrævede felter." }
   }
@@ -45,15 +50,16 @@ export async function createCabinRequest(formData: FormData) {
     return { error: "Check-ud skal være efter check-ind." }
   }
 
-  const { error } = await supabase.from("cabin_requests").insert({
-    guest_id:               user.id,
+  const { error } = await supabase.from("stay_requests").insert({
+    guest_id:          user.id,
     location,
-    desired_check_in:       checkIn,
-    desired_check_out:      checkOut,
-    num_guests:             numGuests,
-    max_price_ore:          maxPriceKr ? Math.round(maxPriceKr * 100) : null,
+    desired_check_in:  checkIn,
+    desired_check_out: checkOut,
+    num_guests:        numGuests,
+    max_price_ore:       maxPriceKr ? Math.round(maxPriceKr * 100) : null,
     description,
-    desired_property_type:  propertyType as "cabin" | "residence",
+    property_type:     propertyType as "cabin" | "residence",
+    needs_transport:   needsTransport,
   })
 
   if (error) return { error: "Noget gik galt. Prøv igen." }

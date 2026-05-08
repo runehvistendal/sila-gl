@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase-server"
 import { requireCabinOwner } from "@/lib/requireCabinOwner"
 import { revalidatePublishedCabinPaths } from "@/lib/revalidateCabinPublic"
+import { requireStripeForPublish } from "@/app/actions/stripe"
+
+/** Matcher STRIPE_PUBLISH_REQUIRED_ERROR på klienten — ikke importer lib-konstant i "use server". */
+const STRIPE_REQUIRED = "stripe_required"
 
 async function revalidateAfterCabinCalendarSave(supabase: Awaited<ReturnType<typeof createClient>>, cabinId: string) {
   const { data: cab } = await supabase
@@ -50,6 +54,11 @@ export async function saveAvailability(
   }
 
   if (publish) {
+    const gate = await requireStripeForPublish()
+    if (!gate.ok) {
+      if (gate.error === STRIPE_REQUIRED) return { error: STRIPE_REQUIRED }
+      return { error: gate.error }
+    }
     const { error } = await supabase
       .from("cabins")
       .update({ published: true })
@@ -149,6 +158,11 @@ export async function saveAll(
 
   // 3. Publicér hvis ønsket
   if (publish) {
+    const gate = await requireStripeForPublish()
+    if (!gate.ok) {
+      if (gate.error === STRIPE_REQUIRED) return { error: STRIPE_REQUIRED }
+      return { error: gate.error }
+    }
     const { error } = await supabase
       .from("cabins")
       .update({ published: true })

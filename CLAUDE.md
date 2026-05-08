@@ -186,7 +186,23 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
   - CabinBookingWidget: transfervalg (radio + enkelttur/tur-retur-toggle), prisberegning inkl. servicegebyr
   - `createCabinBooking`: Stripe-linjer (ophold + transfer + servicegebyr), `application_fee_amount` = 15 % af (ophold+transfer) + servicegebyr, DB-snapshot
   - Søgefilter `?transport=true`: bruger nu EXISTS på `transfer_routes` (ikke `offers_transport`) — `src/app/[locale]/ophold/i-naturen/page.tsx` + `i-byen/page.tsx`
-- **Opholdsanmodning udvidet (9.5.2026)** ✅ — `desired_property_type` (`cabin` \| `residence`) på `cabin_requests` · kalender interval-mode · opholdstype-valg · hurtige felter · `guestStayRequestHref` i `cabinPublicPaths.ts` · `/anmod?type=stay` kanonisk · `/anmod?type=transport` → redirect `/transport/anmod`
+- **Stay offers flow (8.5.2026)** ✅
+  - `stay_requests` (tidligere `cabin_requests`): `property_type` (`'cabin' \| 'residence' \| 'any'`) + `needs_transport` boolean
+  - `stay_offers` tabel med RLS (id, stay_request_id, provider_id, cabin_id, offered_price_ore, message, status, stripe_session_id, stripe_payment_intent_id)
+  - Udbyder-flow: `/dashboard/oensker/[id]` + `StayOfferForm`
+  - Gæst-flow: `/dashboard/mine-oensker/[id]` + `StayOffersClient`
+  - `acceptStayOffer` → Stripe Checkout med 15 % kommission + 3 % servicegebyr
+  - Webhook: `meta.type === "stay_offer"` gren i `/api/stripe/webhook`
+  - Success-side: `/booking/stay-offer-success`
+  - Notifikationer: `notifyStayOfferBookingConfirmed` (email via Resend + push-placeholders)
+  - Dashboard: badge «X tilbud» + «Se tilbud» på Mine ønsker
+  - `formatStayRequestLocationDisplay()` i `greenlandLocations.ts`
+- **Stripe onboarding obligatorisk ved publicering (8.5.2026)** ✅
+  - `requireStripeForPublish()` i `stripe.ts` (`RequireStripeForPublishResult` — `'use server'`-filer bruger lokal streng `stripe_required`, ikke import af shared konstant)
+  - `StripeOnboardingRequiredModal` (primær CTA åbner Stripe Account Link i **ny fane**: `window.open(…, '_blank', 'noopener,noreferrer')`)
+  - Alle tre publicér-stier tjekker Stripe før publicering: `publishCabin` (dashboard), `saveAll` (tilgængelighed), `publishCabinListing` (opret/opslag)
+  - Klient: `STRIPE_PUBLISH_REQUIRED_ERROR` i `@/lib/stripePublishConstants` — kun importeret i klientkomponenter (fx `DashboardClient`, `OpretPageClient`, `AvailabilityCalendar`, `HytteOpslagForm`); `checkStripeBeforePublish` før Publicér i UI hvor relevant
+- **Opholdsanmodning udvidet (9.5.2026)** ✅ — `desired_property_type` (`cabin` \| `residence`) på `stay_requests` (tidligere `cabin_requests`) · kalender interval-mode · opholdstype-valg · hurtige felter · `guestStayRequestHref` i `cabinPublicPaths.ts` · `/anmod?type=stay` kanonisk · `/anmod?type=transport` → redirect `/transport/anmod` — se også **Stay offers flow (8.5.2026)** for tilbuds- og betalingsflow
 
 ## Nye filer (6.5.2026)
 

@@ -1,12 +1,14 @@
 "use client"
 
-import { useActionState, useState } from "react"
+import { useActionState, useEffect, useRef, useState, useTransition } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import AddOnServicesEditor, {
   type AddOnService,
 } from "@/components/shared/AddOnServicesEditor"
+import { StripeOnboardingRequiredModal } from "@/components/stripe/StripeOnboardingRequiredModal"
 import { oreToKr } from "@/lib/money"
+import { STRIPE_PUBLISH_REQUIRED_ERROR } from "@/lib/stripePublishConstants"
 import { publishCabinListing, type PublishCabinState } from "./actions"
 
 interface Props {
@@ -20,18 +22,28 @@ interface Props {
 }
 
 export default function HytteOpslagForm({ cabin }: Props) {
-  const [state, action, isPending] = useActionState<PublishCabinState, FormData>(
+  const formRef = useRef<HTMLFormElement>(null)
+  const [state, formAction, isPending] = useActionState<PublishCabinState, FormData>(
     publishCabinListing,
     null
   )
+  const [, startRetry] = useTransition()
+  const [stripeGateOpen, setStripeGateOpen] = useState(false)
 
   const today = new Date().toISOString().split("T")[0]
   const [checkIn, setCheckIn] = useState("")
   const [checkOut, setCheckOut] = useState("")
   const [services, setServices] = useState<AddOnService[]>([])
 
+  useEffect(() => {
+    if (state?.error === STRIPE_PUBLISH_REQUIRED_ERROR) {
+      setStripeGateOpen(true)
+    }
+  }, [state])
+
   return (
-    <form action={action} className="space-y-6">
+    <>
+      <form ref={formRef} action={formAction} className="space-y-6">
       <input type="hidden" name="cabin_id" value={cabin.id} />
       <input
         type="hidden"
@@ -144,5 +156,16 @@ export default function HytteOpslagForm({ cabin }: Props) {
         {isPending ? "Publicerer…" : "Publicer hytte"}
       </Button>
     </form>
+    <StripeOnboardingRequiredModal
+      open={stripeGateOpen}
+      onOpenChange={setStripeGateOpen}
+      cabinId={cabin.id}
+      onStripeReady={() => {
+        startRetry(() => {
+          formRef.current?.requestSubmit()
+        })
+      }}
+    />
+    </>
   )
 }
