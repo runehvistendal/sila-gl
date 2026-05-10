@@ -16,7 +16,7 @@ import {
 } from "@/app/actions/bookings"
 import { cn } from "@/lib/utils"
 import { captureEvent, PH_STORE } from "@/lib/analytics/posthog-events"
-import { calcServiceFee, oreToKr } from "@/lib/money"
+import { calcServiceFee, oreToKr, calcDisplayPrice } from "@/lib/money"
 import type { TransferRoute } from "@/types/transfer"
 import ServiceFeeHelpIcon from "@/components/shared/ServiceFeeHelpIcon"
 import { CalendarDropdown } from "@/components/shared/CalendarDropdown"
@@ -528,7 +528,7 @@ export default function CabinBookingWidget({
                 ))}
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                {t("booking_transport_hint", { price: formatPrice(perPerson) })}
+                {t("booking_transport_hint", { price: formatPrice(calcDisplayPrice(perPerson)) })}
               </p>
             </div>
           )}
@@ -562,7 +562,7 @@ export default function CabinBookingWidget({
             {serviceFeeOre > 0 && (
               <div className="flex justify-between text-muted-foreground items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 min-w-0">
-                  Servicegebyr (3%)
+                  {t("booking_service_fee_3")}
                   <ServiceFeeHelpIcon
                     tooltipText={t("booking_service_fee_hint")}
                     ariaLabel={t("booking_service_fee_aria")}
@@ -573,10 +573,20 @@ export default function CabinBookingWidget({
                 </span>
               </div>
             )}
+            {serviceFeeOre > 0 && subtotalOre > 0 && (
+              <p className="text-xs text-muted-foreground pt-1 leading-relaxed">
+                {t("booking_price_equation", {
+                  subtotal: fmtOreKrLine(subtotalOre),
+                  fee: fmtOreKrLine(serviceFeeOre),
+                  total: fmtOreKrLine(guestTotalOre),
+                })}
+              </p>
+            )}
             <div className="flex justify-between font-bold text-foreground pt-1.5 border-t border-border">
-              <span>I alt</span>
+              <span>{t("booking_grand_total")}</span>
               <span className="tabular-nums">{fmtOreKrLine(guestTotalOre)}</span>
             </div>
+            <p className="text-[11px] text-muted-foreground">{t("price_includes_service_fee")}</p>
             <p className="text-xs text-muted-foreground pt-1">
               {t("booking_platform_fee_note")}
             </p>

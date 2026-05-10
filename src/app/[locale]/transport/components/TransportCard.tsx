@@ -4,7 +4,7 @@ import { Link } from "@/i18n/navigation"
 import { ArrowRight, ArrowLeft, Calendar, Users, Anchor, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { formatNuukDate, formatNuukDateShort } from "@/lib/nuukTime"
-import { formatKr, oreToKr } from "@/lib/money"
+import { oreToKr, formatKr, calcDisplayPrice } from "@/lib/money"
 import { getLocationName } from "@/lib/greenlandLocations"
 import { captureEvent } from "@/lib/analytics/posthog-events"
 
@@ -94,19 +94,22 @@ export default function TransportCard({
           {returnTrip ? (
             <>
               <p className="font-bold text-foreground text-sm">
-                fra {oreToKr(rideShare.price_per_seat_ore).toLocaleString("da-DK")} kr.
+                fra {oreToKr(calcDisplayPrice(rideShare.price_per_seat_ore)).toLocaleString("da-DK")} kr.
               </p>
               <p className="text-xs text-green-700 font-medium">
-                / {oreToKr(rideShare.price_per_seat_ore + returnTrip.price_per_seat_ore).toLocaleString("da-DK")} kr. t/r
+                /{" "}
+                {oreToKr(
+                  calcDisplayPrice(rideShare.price_per_seat_ore + returnTrip.price_per_seat_ore),
+                ).toLocaleString("da-DK")}{" "}
+                kr. t/r
               </p>
             </>
           ) : (
             <>
-              <p className="font-bold text-foreground text-sm">{formatKr(rideShare.price_per_seat_ore)}</p>
+              <p className="font-bold text-foreground text-sm">{formatKr(calcDisplayPrice(rideShare.price_per_seat_ore))}</p>
               <p className="text-xs text-muted-foreground">pr. person</p>
             </>
           )}
-
         </div>
       </div>
 

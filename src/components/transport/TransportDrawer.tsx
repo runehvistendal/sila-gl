@@ -254,6 +254,7 @@ export default function TransportDrawer({ id, seats, onClose }: Props) {
                   <span>{tCommon("total")}</span>
                   <span className="tabular-nums">{formatPrice(guestTotalOre)}</span>
                 </div>
+                <p className="text-[10px] text-muted-foreground text-right">{t("price_includes_service_fee")}</p>
               </div>
             </>
           )}

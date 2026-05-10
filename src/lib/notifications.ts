@@ -1,8 +1,10 @@
 /**
- * Notifikationsmodul — push placeholders + valgfri transactional email (Resend via fetch).
+ * In-app notifikationer (DB) + valgfri transactional email (Resend).
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js"
 import { createServiceClient } from "@/lib/supabase-service"
+import type { NotificationType } from "@/types/notifications"
 
 export type StayOfferConfirmedEmailContext = {
   stayOfferId: string
@@ -15,11 +17,100 @@ export type StayOfferConfirmedEmailContext = {
   providerName: string
 }
 
+const NOTIFICATION_TYPES = new Set<string>([
+  "stay_offer_received",
+  "stay_offer_accepted",
+  "stay_offer_declined",
+  "booking_confirmed",
+  "message_received",
+  "transport_offer_received",
+  "transport_offer_accepted",
+])
+
+export async function createNotification(
+  userId: string,
+  type: NotificationType,
+  referenceId?: string | null,
+): Promise<void> {
+  if (!userId?.trim() || !NOTIFICATION_TYPES.has(type)) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[createNotification] invalid", { userId, type })
+    }
+    return
+  }
+  const service = createServiceClient()
+  const { error } = await service.from("notifications").insert({
+    user_id:      userId,
+    type,
+    reference_id: referenceId ?? null,
+  })
+  if (error) {
+    console.error("[createNotification]", error.message)
+  }
+}
+
+export async function getUnreadCount(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .is("read_at", null)
+
+  if (error) {
+    console.error("[getUnreadCount]", error.message)
+    return 0
+  }
+  return count ?? 0
+}
+
+/** Ulæste stay-tilbud til gæst (dashboard-badge). */
+export async function getUnreadStayOfferReceivedCount(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("type", "stay_offer_received")
+    .is("read_at", null)
+
+  if (error) {
+    console.error("[getUnreadStayOfferReceivedCount]", error.message)
+    return 0
+  }
+  return count ?? 0
+}
+
+/** Sætter read_at for alle ulæste rækker af de angivne typer (auth-bruger). */
+export async function markNotificationsReadByTypes(
+  supabase: SupabaseClient,
+  userId: string,
+  types: NotificationType[],
+): Promise<void> {
+  const valid = types.filter((t) => NOTIFICATION_TYPES.has(t))
+  if (valid.length === 0) return
+  const now = new Date().toISOString()
+  const { error } = await supabase
+    .from("notifications")
+    .update({ read_at: now })
+    .eq("user_id", userId)
+    .is("read_at", null)
+    .in("type", valid)
+
+  if (error) {
+    console.error("[markNotificationsReadByTypes]", error.message)
+  }
+}
+
 function formatStayDatesDa(isoFrom: string, isoTo: string): string {
   const fmt = new Intl.DateTimeFormat("da-DK", {
-    day:    "numeric",
-    month:  "short",
-    year:   "numeric",
+    day:   "numeric",
+    month: "short",
+    year:  "numeric",
     timeZone: "UTC",
   })
   return `${fmt.format(new Date(isoFrom + "T12:00:00.000Z"))} – ${fmt.format(
@@ -44,7 +135,7 @@ async function sendTransactionalEmailResend(to: string, subject: string, text: s
     },
     body: JSON.stringify({
       from,
-      to:  [to],
+      to: [to],
       subject,
       text,
     }),
@@ -75,19 +166,14 @@ export async function notifyRideShareBookingConfirmed(bookingId: string): Promis
   console.log("[NOTIFY] Samsejlads booking bekræftet:", bookingId)
 }
 
-/** Push / in-app placeholder — gæst. */
 export async function notifyStayOfferConfirmedGuestPush(stayOfferId: string): Promise<void> {
   console.log("[NOTIFY/PUSH] Stay offer bekræftet (gæst):", stayOfferId)
 }
 
-/** Push / in-app placeholder — udbyder. */
 export async function notifyStayOfferConfirmedProviderPush(stayOfferId: string): Promise<void> {
   console.log("[NOTIFY/PUSH] Stay offer booking (udbyder):", stayOfferId)
 }
 
-/**
- * Emails + push efter betalt stay-tilbud (Stripe webhook).
- */
 export async function notifyStayOfferBookingConfirmed(ctx: StayOfferConfirmedEmailContext): Promise<void> {
   await notifyStayOfferConfirmedGuestPush(ctx.stayOfferId)
   await notifyStayOfferConfirmedProviderPush(ctx.stayOfferId)

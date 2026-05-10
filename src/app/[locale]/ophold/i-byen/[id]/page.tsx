@@ -11,7 +11,7 @@ import { nightsFromBookings } from "@/lib/cabinBookingDates"
 import Navbar from "@/components/layout/Navbar"
 import { buildMetadata } from "@/lib/metadata"
 import { JsonLd } from "@/components/seo/JsonLd"
-import { oreToKr } from "@/lib/money"
+import { oreToKr, formatKr, calcDisplayPrice } from "@/lib/money"
 import ListingImageGallery from "@/components/cabins/ListingImageGallery"
 import CabinReviews from "@/components/cabins/CabinReviews"
 import CabinDetailLayout from "@/components/cabins/CabinDetailLayout"
@@ -172,7 +172,7 @@ export default async function ResidenceDetailPage({
       addressLocality: getLocationName(cabin.location_hub),
       addressCountry: "GL",
     },
-    priceRange: `${oreToKr(cabin.price_per_night_ore)} DKK / nat`,
+    priceRange: `${oreToKr(calcDisplayPrice(cabin.price_per_night_ore))} DKK / nat (inkl. servicegebyr)`,
   }
 
   const tDetail = await getTranslations("residence.detail")
@@ -228,6 +228,13 @@ export default async function ResidenceDetailPage({
                 Instant Book
               </span>
             )}
+          </div>
+          <div className="mt-3">
+            <p className="text-lg font-bold text-foreground">
+              {formatKr(calcDisplayPrice(cabin.price_per_night_ore))}
+              <span className="text-sm font-normal text-muted-foreground">{tDetail("per_night")}</span>
+            </p>
+            <p className="text-xs text-muted-foreground">{tDetail("price_includes_service_fee")}</p>
           </div>
         </div>
 

@@ -18,7 +18,7 @@ import { nightsFromBookings } from "@/lib/cabinBookingDates"
 import Navbar from "@/components/layout/Navbar"
 import { buildMetadata } from "@/lib/metadata"
 import { JsonLd } from "@/components/seo/JsonLd"
-import { oreToKr } from "@/lib/money"
+import { oreToKr, formatKr, calcDisplayPrice } from "@/lib/money"
 import ListingImageGallery from "@/components/cabins/ListingImageGallery"
 import CabinReviews from "@/components/cabins/CabinReviews"
 import CabinDetailLayout from "@/components/cabins/CabinDetailLayout"
@@ -190,7 +190,7 @@ export default async function OpholdNatureDetailPage({
       addressLocality: getLocationName(cabin.location_hub),
       addressCountry: "GL",
     },
-    priceRange: `${oreToKr(cabin.price_per_night_ore)} DKK / nat`,
+    priceRange: `${oreToKr(calcDisplayPrice(cabin.price_per_night_ore))} DKK / nat (inkl. servicegebyr)`,
   }
 
   return (
@@ -238,6 +238,13 @@ export default async function OpholdNatureDetailPage({
                 {tSection("instant_book_badge")}
               </span>
             )}
+          </div>
+          <div className="mt-3">
+            <p className="text-lg font-bold text-foreground">
+              {formatKr(calcDisplayPrice(cabin.price_per_night_ore))}
+              <span className="text-sm font-normal text-muted-foreground">{tSection("perNight")}</span>
+            </p>
+            <p className="text-xs text-muted-foreground">{tSection("price_includes_service_fee")}</p>
           </div>
         </div>
 

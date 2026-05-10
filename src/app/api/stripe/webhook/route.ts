@@ -4,11 +4,12 @@ import { createServiceClient } from "@/lib/supabase-service"
 import { stripe } from "@/lib/stripe"
 import { revalidatePath } from "next/cache"
 import {
+  createNotification,
   notifyTransportBookingConfirmed,
   notifyRideShareBookingConfirmed,
   notifyStayOfferBookingConfirmed,
 } from "@/lib/notifications"
-import { calcServiceFee } from "@/lib/money"
+import { calcServiceFee, calcPlatformFee } from "@/lib/money"
 
 export const dynamic = "force-dynamic"
 
@@ -195,6 +196,7 @@ export async function POST(request: Request) {
           id,
           status,
           offered_price_ore,
+          transport_price_ore,
           cabin_id,
           stay_request_id,
           provider_id,
@@ -219,6 +221,7 @@ export async function POST(request: Request) {
         id: string
         status: string
         offered_price_ore: number
+        transport_price_ore: number
         cabin_id: string
         stay_request_id: string
         provider_id: string
@@ -264,6 +267,7 @@ export async function POST(request: Request) {
         id:                 offerRaw.id,
         status:             offerRaw.status,
         offered_price_ore:  offerRaw.offered_price_ore,
+        transport_price_ore: Math.max(0, Number(offerRaw.transport_price_ore) || 0),
         cabin_id:           offerRaw.cabin_id,
         stay_request_id:    offerRaw.stay_request_id,
         provider_id:        offerRaw.provider_id,
@@ -289,9 +293,12 @@ export async function POST(request: Request) {
         return new Response("ok", { status: 200 })
       }
 
-      const offeredOre = offer.offered_price_ore
-      const platformFeeOre = Math.round(offeredOre * 0.15)
-      const serviceFeeOre  = calcServiceFee(offeredOre)
+      const stayOre = offer.offered_price_ore
+      const transportOre = offer.transport_price_ore
+      const subtotalOre = stayOre + transportOre
+
+      const platformFeeOre = calcPlatformFee(subtotalOre)
+      const serviceFeeOre  = calcServiceFee(subtotalOre)
 
       const { data: inserted, error: bookErr } = await service
         .from("cabin_bookings")
@@ -301,14 +308,14 @@ export async function POST(request: Request) {
           check_in:                 sr.desired_check_in,
           check_out:                sr.desired_check_out,
           num_guests:               sr.num_guests,
-          total_price_ore:          offeredOre,
+          total_price_ore:          subtotalOre,
           platform_fee_ore:         platformFeeOre,
           service_fee_ore:          serviceFeeOre,
           status:                   "confirmed",
           stripe_session_id:        sessionId,
           stripe_payment_intent_id: paymentIntentIdSo,
-          includes_transport:       false,
-          transport_total_ore:      0,
+          includes_transport:       transportOre > 0,
+          transport_total_ore:      transportOre,
         })
         .select("id")
         .maybeSingle()
@@ -317,6 +324,9 @@ export async function POST(request: Request) {
         if (isDev) console.error("[stripe webhook] stay_offer cabin_bookings insert", bookErr)
         return new Response("Booking fejlede", { status: 500 })
       }
+
+      const bookingIdNew = (inserted as { id: string }).id
+      await createNotification(offer.provider_id, "booking_confirmed", bookingIdNew)
 
       const { error: upOfferErr } = await service
         .from("stay_offers")
@@ -434,6 +444,25 @@ export async function POST(request: Request) {
     if (upErr) {
       if (isDev) console.error("[stripe webhook] update", upErr)
       return new Response("Opdatering fejlede", { status: 500 })
+    }
+
+    const { data: cabinBookingHost } = await service
+      .from("cabin_bookings")
+      .select("id, cabin_id, cabins!inner(owner_id)")
+      .eq("id", b.id)
+      .maybeSingle()
+    const ownerRow = cabinBookingHost as
+      | { id: string; cabin_id: string; cabins: { owner_id: string } | { owner_id: string }[] }
+      | null
+    const ownerNest = ownerRow?.cabins
+    const ownerId =
+      ownerNest && !Array.isArray(ownerNest)
+        ? ownerNest.owner_id
+        : Array.isArray(ownerNest)
+          ? ownerNest[0]?.owner_id
+          : null
+    if (ownerId) {
+      await createNotification(ownerId, "booking_confirmed", b.id)
     }
 
     revalidatePath("/")

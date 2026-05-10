@@ -42,6 +42,8 @@ import { toast } from "sonner"
 import { captureEvent, PH_STORE } from "@/lib/analytics/posthog-events"
 import { StripeOnboardingRequiredModal } from "@/components/stripe/StripeOnboardingRequiredModal"
 import { STRIPE_PUBLISH_REQUIRED_ERROR } from "@/lib/stripePublishConstants"
+import { markNotificationsByType } from "@/app/actions/notifications"
+import type { NotificationType } from "@/types/notifications"
 
 interface ReviewData {
   id: string
@@ -106,6 +108,8 @@ export interface CabinRequestData {
   guest_id?: string | null
   guest_name?: string | null
   guest_avatar_url?: string | null
+  /** Udbyderens eget tilbud på denne anmodning (server-side), til badge på Gæsteønsker. */
+  provider_offer_status?: "pending" | "accepted" | "declined" | "rejected" | "expired" | null
 }
 
 interface Props {
@@ -126,6 +130,8 @@ interface Props {
   guestCabinRequests?: CabinRequestData[]
   reviews: ReviewData[]
   unreadMessages: number
+  /** Ulæste in-app notifikationer: nye tilbud på ophold (Mine ønsker-badge). */
+  unreadStayOfferNotifications: number
 }
 
 
@@ -147,6 +153,7 @@ export default function DashboardClient({
   guestCabinRequests = [],
   reviews,
   unreadMessages,
+  unreadStayOfferNotifications,
 }: Props) {
   const tDash = useTranslations("dashboard")
   const tNav = useTranslations("nav")
@@ -284,6 +291,20 @@ export default function DashboardClient({
   const [isDuplicating, startDuplicate]   = useTransition()
   const [stripeGateCabinId, setStripeGateCabinId] = useState<string | null>(null)
 
+  useEffect(() => {
+    const tabTypes: Partial<Record<string, NotificationType[]>> = {
+      "open-requests": ["stay_offer_received", "transport_offer_received"],
+      requests: ["stay_offer_accepted", "stay_offer_declined", "transport_offer_accepted"],
+      bookings: ["booking_confirmed"],
+      inbox: ["message_received"],
+    }
+    const types = tabTypes[activeTab]
+    if (!types?.length) return
+    void markNotificationsByType(types).then(() => {
+      router.refresh()
+    })
+  }, [activeTab, router])
+
   // Booking splits
   const activeMyBookings  = myBookings.filter((b) => ["pending", "confirmed"].includes(b.status))
   const historyMyBookings = myBookings.filter((b) => ["completed", "cancelled"].includes(b.status))
@@ -363,6 +384,11 @@ export default function DashboardClient({
                 <TabsTrigger value="requests" className="rounded-lg px-4 py-2 text-sm gap-2">
                   <Clock className="w-4 h-4" />
                   Mine ønsker
+                  {unreadStayOfferNotifications > 0 && (
+                    <span className="bg-amber-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {unreadStayOfferNotifications > 99 ? "99+" : unreadStayOfferNotifications}
+                    </span>
+                  )}
                 </TabsTrigger>
               )}
 
@@ -960,21 +986,21 @@ function CabinRequestRow({ r, isHost }: { r: CabinRequestData; isHost: boolean }
 
   const stayKind = r.property_type === "residence" ? "residence" : r.property_type === "any" ? "any" : "cabin"
 
-  return (
-    <div className="bg-white rounded-xl border border-border p-4 space-y-3">
+  const cardBody = (
+    <>
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
           {isHost && r.guest_id ? (
-            <Link href={`/profil/${r.guest_id}`} className="shrink-0">
+            <div className="shrink-0">
               <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
                 {r.guest_avatar_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={r.guest_avatar_url} alt={r.guest_name ?? "Gæst"} className="w-full h-full object-cover" />
+                  <img src={r.guest_avatar_url} alt="" className="w-full h-full object-cover" />
                 ) : (
                   <User className="w-4 h-4 text-primary" />
                 )}
               </div>
-            </Link>
+            </div>
           ) : (
             <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
               <Home className="w-4 h-4 text-primary" />
@@ -982,9 +1008,9 @@ function CabinRequestRow({ r, isHost }: { r: CabinRequestData; isHost: boolean }
           )}
           <div>
             {isHost && r.guest_id && (
-              <Link href={`/profil/${r.guest_id}`} className="text-xs text-primary hover:underline font-medium block">
+              <span className="text-xs text-muted-foreground font-medium block">
                 {r.guest_name ?? "Gæst"}
-              </Link>
+              </span>
             )}
             <p className="font-semibold text-sm text-foreground flex items-center gap-1">
               <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
@@ -1034,6 +1060,36 @@ function CabinRequestRow({ r, isHost }: { r: CabinRequestData; isHost: boolean }
         </p>
       )}
 
+      {isHost && r.provider_offer_status ? (
+        <div className="pt-2 mt-1 border-t border-border">
+          {r.provider_offer_status === "pending" && (
+            <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold bg-amber-100 text-amber-900 border border-amber-200/80">
+              {tDash("guest_stay_offer_badge_pending")}
+            </span>
+          )}
+          {r.provider_offer_status === "accepted" && (
+            <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-900 border border-emerald-200/80">
+              {tDash("guest_stay_offer_badge_accepted")}
+            </span>
+          )}
+          {r.provider_offer_status === "declined" && (
+            <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold bg-muted text-muted-foreground border border-border">
+              {tDash("guest_stay_offer_badge_declined")}
+            </span>
+          )}
+          {r.provider_offer_status === "rejected" && (
+            <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold bg-muted text-muted-foreground border border-border">
+              {tDash("guest_stay_offer_badge_rejected")}
+            </span>
+          )}
+          {r.provider_offer_status === "expired" && (
+            <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold bg-muted text-muted-foreground border border-border">
+              {tDash("guest_stay_offer_badge_expired")}
+            </span>
+          )}
+        </div>
+      ) : null}
+
       {!isHost && r.status === "open" && (
         <div className="pt-2 border-t border-border flex flex-col sm:flex-row gap-2 sm:items-center sm:flex-wrap">
           {(r.pending_stay_offer_count ?? 0) > 0 ? (
@@ -1063,21 +1119,23 @@ function CabinRequestRow({ r, isHost }: { r: CabinRequestData; isHost: boolean }
         </div>
       )}
 
-      {isHost && r.status === "open" && (
-        <div className="pt-2 border-t border-border flex flex-col sm:flex-row gap-2 sm:items-center">
-          <Button
-            size="sm"
-            asChild
-            className="rounded-lg gap-1.5 w-full sm:w-auto bg-[#114788] hover:bg-[#0d3a6b] text-white"
-          >
-            <Link href={`/dashboard/oensker/${r.id}`}>
-              <ArrowRight className="w-3.5 h-3.5" /> {tDash("stay_offer_send")}
-            </Link>
-          </Button>
-        </div>
-      )}
-    </div>
+    </>
   )
+
+  const cardClass = "bg-white rounded-xl border border-border p-4 space-y-3"
+
+  if (isHost) {
+    return (
+      <Link
+        href={`/dashboard/oensker/${r.id}`}
+        className={`block ${cardClass} transition-colors hover:border-primary/35 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+      >
+        {cardBody}
+      </Link>
+    )
+  }
+
+  return <div className={cardClass}>{cardBody}</div>
 }
 
 /* ── Transport request row with offer count and chat link ── */

@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { setRequestLocale } from "next-intl/server"
+import { getTranslations, setRequestLocale } from "next-intl/server"
 import {
   ArrowRight,
   ClipboardCheck,
@@ -50,6 +50,7 @@ const heroFlow: {
 export default async function UdbyderGuidePage({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
+  const tGuide = await getTranslations("udbyderguide")
 
   const supabase = await createClient()
   const {
@@ -163,19 +164,19 @@ export default async function UdbyderGuidePage({ params }: Props) {
             <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-start sm:gap-4 border-b border-border py-3 px-4 sm:px-6 text-sm">
               <span className="text-foreground font-medium shrink-0 sm:max-w-[60%]">Gæst betaler ved checkout</span>
               <span className="text-foreground tabular-nums sm:text-right shrink-0">
-                Din aftalte pris + 3 % servicegebyr
+                {tGuide("economics_guest_checkout_price")}
               </span>
             </div>
             <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-start sm:gap-4 border-b border-border py-3 px-4 sm:px-6 text-sm">
               <span className="text-muted-foreground font-medium shrink-0 sm:max-w-[60%]">Silas kommission</span>
               <span className="text-muted-foreground tabular-nums sm:text-right shrink-0">
-                15 % af din pris
+                5 % af din pris
               </span>
             </div>
             <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-start sm:gap-4 py-3 px-4 sm:px-6 text-sm">
               <span className="text-foreground font-medium shrink-0 sm:max-w-[60%]">Du modtager</span>
               <span className="font-bold text-primary tabular-nums sm:text-right shrink-0">
-                85 % af din pris
+                95 % af din pris
               </span>
             </div>
           </div>
@@ -194,12 +195,12 @@ export default async function UdbyderGuidePage({ params }: Props) {
                 <span className="tabular-nums font-medium text-foreground sm:text-right">7.500 kr.</span>
               </li>
               <li className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:justify-between sm:items-baseline sm:gap-x-4">
-                <span>Gæstens checkout (din pris + 3 % til platform)</span>
-                <span className="tabular-nums font-medium text-foreground sm:text-right">7.725 kr.</span>
+                <span>Gæstens betaling (din pris inkl. 12 % servicegebyr til platformen)</span>
+                <span className="tabular-nums font-medium text-foreground sm:text-right">8.400 kr.</span>
               </li>
               <li className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:justify-between sm:items-baseline sm:gap-x-4 text-foreground pt-2 border-t border-primary/10">
                 <span className="font-semibold">Tilbage til dig</span>
-                <span className="tabular-nums font-bold text-primary sm:text-right">6.375 kr.</span>
+                <span className="tabular-nums font-bold text-primary sm:text-right">7.125 kr.</span>
               </li>
             </ul>
           </div>

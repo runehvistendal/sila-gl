@@ -203,7 +203,7 @@ export default function BookingRow({ booking, isHost, alreadyReviewed = false }:
             )}
             {booking.platform_fee_ore != null && booking.platform_fee_ore > 0 && (
               <div className="flex justify-between">
-                <span>Platformsgebyr (15 %)</span>
+                <span>Platformsgebyr (5 %)</span>
                 <span>{formatKr(booking.platform_fee_ore)}</span>
               </div>
             )}

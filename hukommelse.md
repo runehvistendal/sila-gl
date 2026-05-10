@@ -18,7 +18,25 @@ Grønlands marketplace for hytteudlejning og samsejlads. «Grønland på lokale 
 ### Påmindelser inden lancering (fra produktstrategi)
 - AI SEO-strategi skal udarbejdes
 - PostHog verificeres sat op korrekt
-- Stripe live-test end-to-end inkl. transfer-linjer og 3 %-servicegebyr
+- Stripe live-test end-to-end inkl. transfer-linjer og **ny gebyrmodel (5 % vært / 12 % gæst)**
+
+## Status (10.5.2026)
+
+### Nyt 10.5.2026 — åbne ønsker (dashboard), tilbud, notifikationer, gebyr, transport uden chat
+- **Åbne opholdsanmodninger:** sektion fjernet fra `/ophold/i-naturen`, `/ophold/i-byen` og `/transport` — kun **dashboard** (udbyder synlighed)
+- **`stay_offers.transport_price_ore`** — migration `20260510000000` (kun når anmodning har `needs_transport`)
+- **Send tilbud:** transport-sektion + fuld anmodningsinfo øverst (beskrivelse, budget, badge)
+- **Gæst** — `/dashboard/mine-oensker/[id]:` read-only anmodning øverst + opdelt pris pr. tilbud
+- **Afslå tilbud:** `declineStayOffer`, valgfri kommentar, Dialog, status `declined` — migration `20260510020000`
+- **`notifications`** + RLS — migration `20260510010000`: `createNotification`, `getUnreadCount`, `markNotificationsByType` / `markNotificationsReadByTypes`
+- **Navbar:** rød prik på avatar ved ulæst; dashboard-faner: markér læst ved tab + `router.refresh()`
+- **Transport-notifikationer** (`transport_offer_received` / `transport_offer_accepted`) koblet til korrekte faner
+- **Chat fjernet** fra `/transport/anmodninger/[id]` — kommer efter betaling
+- **Gebyrmodel** — migration `20260510030000`: 5 % platform (`platform_fee_ore`) + 12 % service (`service_fee_ore`); `money.ts`: `calcServiceFee`, `calcPlatformFee`, `calcDisplayPrice` (×1.12 på lister)
+- **Kort:** gæsten ser pris inkl. 12 %; ingen ekstra «Inkl. 12 % …»-linje under pris på **CabinCard** / **TransportCard**
+- **Udbyderguide økonomi:** 5 % / 95 % til vært; 12 % fra gæst via i18n (`udbyderguide.economics_guest_checkout_price`)
+- **Teknisk gæld:** i18n-nøgle `booking_service_fee_3` bør omdøbes til `booking_service_fee_12` (se CLAUDE.md)
+- **Fuld teknisk liste:** [CLAUDE.md](CLAUDE.md) — **Bygget og komplet** · **10.5.2026**
 
 ## Status (9.5.2026)
 
@@ -143,18 +161,12 @@ Grønlands marketplace for hytteudlejning og samsejlads. «Grønland på lokale 
 
 ## Næste trin
 
-1. **Stripe live-test end-to-end** — inkl. **stay_offers**-flow, transfer-linjer og 3 %-servicegebyr
-
-2. **Åbne opholdsønsker-sektion** på `/ophold/i-naturen` + `/ophold/i-byen` (kun synlig for udbydere og `both`)
-
-3. **Chat efter betaling**
-
-4. **Kontaktinfo efter betaling** + automatisk sletning
-
+1. **Stripe live-test end-to-end** — inkl. **5 % / 12 %-model**, **stay_offers**, transfer-linjer
+2. **Chat efter betaling** — `messages` kobles til booking
+3. **Kontaktinfo efter betaling** + automatisk sletning (fx pg_cron)
+4. **Åbne opholdsønsker på dashboard for udbydere** — allerede bygget; verificér/udbyg
 5. **AI SEO-strategi**
-
 6. **MobilePay til Stripe**
-
 7. **Lancering** — første 20 udbydere
 
 ## Sanity CMS (5.5.2026 — reference)
@@ -176,7 +188,7 @@ Grønlands marketplace for hytteudlejning og samsejlads. «Grønland på lokale 
 - Lighthouse-test
 - MobilePay til Stripe
 - Udbyderguide — indhold/UX opdateret 6.5; eventuel Sanity-overlay senere · se Status 6.5
-- Stripe live-test end-to-end (**3 %-servicegebyr + transfer-linjer**)
+- Stripe live-test end-to-end (**5 % / 12 %-gebyrmodel + stay_offers + transfer-linjer**)
 - AI SEO-strategi skal udarbejdes
 - PostHog verificeres sat op korrekt
 
@@ -206,5 +218,5 @@ Grønlands marketplace for hytteudlejning og samsejlads. «Grønland på lokale 
 - **Sanity-projekt:** `lu0y9jmk` + `production`; seed: `npm run seed:sanity` · Editor-token
 - **SEO-filer:** `src/lib/metadata.ts`, `src/app/sitemap.ts`, `src/app/robots.ts`, `src/components/seo/JsonLd.tsx`.
 - **Transport-stednavne:** `getLocationName()` + **`searchLocations()`** (`locationSearch.ts`, fuse) + **`LocationAutocomplete`**
-- **Servicegebyr gæst (3 %):** `calcServiceFee` i `src/lib/money.ts` · kolonner + migration **`20260506000000_service_fee.sql`**
+- **Historisk (6.5):** `service_fee_ore` + `calcServiceFee` introduceret som 3 % — **pr. 10.5.2026:** **12 %** service + **5 %** platform (`money.ts`, migration `20260510030000`; se Status 10.5)
 - **PostHog:** se **Bygget og komplet**

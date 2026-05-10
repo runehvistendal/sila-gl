@@ -5,9 +5,8 @@ import { format } from "date-fns"
 import { da } from "date-fns/locale"
 import { createClient } from "@/lib/supabase-server"
 import { getNavUserForPage } from "@/lib/getNavUser"
-import { oreToKr, formatKr } from "@/lib/money"
 import Navbar from "@/components/layout/Navbar"
-import TransportRequestChat from "@/components/transport/TransportRequestChat"
+import TransportRequestOffers from "@/components/transport/TransportRequestOffers"
 import { getLocationName } from "@/lib/greenlandLocations"
 
 const TRIP_TYPE_LABELS: Record<string, string> = {
@@ -98,31 +97,6 @@ export default async function TransportRequestDetailPage({
     profiles: { full_name: string | null } | null
   }>
 
-  const myOffer = offers.find((o) => o.skipper_id === user.id)
-  const canChat = isRequester || !!myOffer
-
-  // Fetch messages for this request (updated RLS covers participants)
-  const { data: messagesRaw } = canChat
-    ? await supabase
-        .from("messages")
-        .select(`
-          id, sender_id, content, created_at,
-          profiles!sender_id ( full_name )
-        `)
-        .eq("transport_request_id", id)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: true })
-        .limit(200)
-    : { data: [] }
-
-  const messages = (messagesRaw ?? []) as unknown as Array<{
-    id: string
-    sender_id: string
-    content: string
-    created_at: string
-    profiles: { full_name: string | null } | null
-  }>
-
   const requesterName = req.profiles?.full_name ?? "Rejsende"
 
   return (
@@ -203,15 +177,13 @@ export default async function TransportRequestDetailPage({
           </div>
         )}
 
-        {/* ── Chat + offers ── */}
-        <TransportRequestChat
+        {/* ── Tilbud (chat først efter betaling) ── */}
+        <TransportRequestOffers
           requestId={id}
           requestStatus={req.status}
           isRequester={isRequester}
           currentUserId={user.id}
-          initialMessages={messages}
           initialOffers={offers}
-          canChat={canChat}
         />
       </div>
     </main>

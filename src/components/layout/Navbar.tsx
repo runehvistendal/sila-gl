@@ -67,6 +67,34 @@ function NavAvatarCircle({
   )
 }
 
+function NavAvatarWithUnreadDot({
+  user,
+  solid,
+  avatarAltFallback,
+  className = "w-8 h-8",
+  showUnreadDot,
+}: {
+  user: NavUser
+  solid: boolean
+  avatarAltFallback: string
+  className?: string
+  showUnreadDot: boolean
+}) {
+  return (
+    <span className="relative inline-flex shrink-0">
+      <NavAvatarCircle user={user} solid={solid} avatarAltFallback={avatarAltFallback} className={className} />
+      {showUnreadDot ? (
+        <span
+          className={`absolute top-0 right-0 w-2 h-2 rounded-full bg-red-500 pointer-events-none ${
+            solid ? "ring-2 ring-white" : "ring-2 ring-white/90"
+          }`}
+          aria-hidden
+        />
+      ) : null}
+    </span>
+  )
+}
+
 export default function Navbar({ user }: { user?: NavUser | null }) {
   const t = useTranslations("nav")
   const locale = useLocale()
@@ -122,6 +150,12 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
+
+  const unreadNotifDot = (user?.unreadCount ?? 0) > 0
+
+  function toggleUserMenu() {
+    setUserMenuOpen((open) => !open)
+  }
 
   async function handleSignOut() {
     const supabase = createClient()
@@ -269,10 +303,16 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
             {user ? (
               <div className="relative" ref={userMenuRef}>
                 <button
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  type="button"
+                  onClick={() => { void toggleUserMenu() }}
                   className={`flex items-center gap-2 transition-colors ${solid ? "hover:text-foreground" : "hover:text-white"}`}
                 >
-                  <NavAvatarCircle user={user} solid={solid} avatarAltFallback={t("profileAvatarAlt")} />
+                  <NavAvatarWithUnreadDot
+                    user={user}
+                    solid={solid}
+                    avatarAltFallback={t("profileAvatarAlt")}
+                    showUnreadDot={unreadNotifDot}
+                  />
                   <span className={`max-w-[120px] truncate text-sm ${solid ? "text-foreground" : "text-white/90"}`}>
                     {displayName}
                   </span>
@@ -369,7 +409,12 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
 
           {user && (
             <div className="flex items-center justify-center gap-3 px-4 py-3 border-b border-white/10 shrink-0">
-              <NavAvatarCircle user={user} solid={false} avatarAltFallback={t("profileAvatarAlt")} />
+              <NavAvatarWithUnreadDot
+                user={user}
+                solid={false}
+                avatarAltFallback={t("profileAvatarAlt")}
+                showUnreadDot={unreadNotifDot}
+              />
               {displayName ? (
                 <span className="text-sm font-medium text-white/90 truncate max-w-[200px]">
                   {displayName}

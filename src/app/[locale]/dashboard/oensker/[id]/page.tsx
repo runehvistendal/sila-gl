@@ -99,6 +99,8 @@ export default async function StayOfferPage({ params }: PageProps) {
             checkOut={stay.desired_check_out}
             numGuests={stay.num_guests}
             maxPriceOre={stay.max_price_ore}
+            description={stay.description}
+            propertyType={String(stay.property_type ?? "any")}
             nights={nights}
             cabins={cabins}
             needsTransport={Boolean(stay.needs_transport)}

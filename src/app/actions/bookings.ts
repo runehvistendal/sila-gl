@@ -5,7 +5,7 @@ import { createServiceClient } from "@/lib/supabase-service"
 import { enumerateNights } from "@/lib/cabinBookingDates"
 import { getAppBaseUrl } from "@/lib/appUrl"
 import { stripe } from "@/lib/stripe"
-import { calcServiceFee } from "@/lib/money"
+import { calcServiceFee, calcPlatformFee } from "@/lib/money"
 
 export type TransportTrip = "none" | "round_trip" | "outbound" | "return"
 
@@ -244,7 +244,7 @@ export async function createCabinBooking(
   }
 
   const totalPriceOre = cabinStayOre + transportTotalOre
-  const platformFeeOre = Math.round(totalPriceOre * 0.15)
+  const platformFeeOre = calcPlatformFee(totalPriceOre)
   const serviceFeeOre = calcServiceFee(totalPriceOre)
 
   const requestedNights = enumerateNights(cIn.d, cOut.d)
@@ -416,13 +416,12 @@ export async function createCabinBooking(
       price_data: {
         currency: "dkk",
         unit_amount: serviceFeeOre,
-        product_data: { name: "Servicegebyr (3%)" },
+        product_data: { name: "Servicegebyr (12%)" },
       },
     })
   }
 
-  const applicationFeeAmount =
-    Math.round((opholdOre + transferPriceOreForFee) * 0.15) + serviceFeeOre
+  const applicationFeeAmount = platformFeeOre + serviceFeeOre
 
   try {
     const sessionCheckout = await stripe.checkout.sessions.create(

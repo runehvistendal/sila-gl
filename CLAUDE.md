@@ -2,6 +2,13 @@
 
 > **Claude Code & udviklerkontekst** — dette dokument er autoritativt for agent og mennesker. Kort agent-hukommelse: se `hukommelse.md` i roden.
 
+## Status (10.5.2026)
+
+- **Gebyrmodel:** 5 % platform (vært) + 12 % service (gæst) — se **Pengebeløb** og **Bygget og komplet** (10.5.2026).
+- **Notifikationer + dashboard:** ulæst-dot i navbar, `markNotificationsByType` pr. fane (+ `router.refresh()`), transport-typer koblet til faner.
+- **Transportanmodning:** chat på `/transport/anmodninger/[id]` fjernet (først efter betaling).
+- **Lister:** åbne opholdsanmodninger kun i dashboard, ikke på `/ophold/*` eller `/transport`.
+
 ## Status (7.5.2026)
 
 - **Dato-bevidst søgning ✅** — Server-side filtrering på check-in/check-out (`/hytter`) og afrejsedato (`/transport`).
@@ -120,21 +127,21 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - src/lib/cabinFacilities.ts (CABIN_FACILITIES)
 - src/lib/amenityMeta.ts (AMENITY_META + AMENITY_FILTER_KEYS — 18 DB-nøgler)
 - src/components/shared/AddOnServicesEditor.tsx (DEL G)
-- **Stripe Connect** onboarding (15 % kommission på udbyderpris — gæsten betaler tillige **3 % servicegebyr** oven i den aftalte pris; platformens **`application_fee_amount`** = kommission **+** servicegebyr) ✅
-- **Hyttebooking** med Stripe Checkout + webhook (status: confirmed verificeret) — `total_price_ore` er udbyders subtotal til Connect; **`service_fee_ore`** på `cabin_bookings`; sekundær Checkout-linje «Servicegebyr (3%)» hvor afrunding > 0 ✅
+- **Stripe Connect** onboarding (**5 %** platformgebyr fra vært + **12 %** servicegebyr fra gæst; **`application_fee_amount`** = `platform_fee_ore` + `service_fee_ore`) ✅ — pr. **10.5.2026**; ældre tekst i denne liste kan referere til tidligere satser
+- **Hyttebooking** med Stripe Checkout + webhook — `total_price_ore` er udbyders subtotal; **`service_fee_ore`** (12 %) på `cabin_bookings`; Checkout-linje «Servicegebyr (12%)» hvor afrunding > 0 ✅
 - **Sikkerhedsaudit** gennemført — kritiske RLS-fejl rettet, kolonneniveau-sikkerhed på profiles ✅
 - **Kalender UX:** grå strikethrough på optagede datoer (Airbnb-stil) ✅
 - **Cancel-flow:** pending booking annulleres + Stripe session expires ved tilbagetryk ✅
 - **pg_cron cleanup:** pending bookinger udløber automatisk efter 15 min ✅
 - **Rate limiting:** `rate_limits`-tabel + `consume_rate_limit` RPC (5 forsøg / 10 min) ✅
-- **Transportanmodninger:** /transport/anmod (tur-type, returdato, passagerer), /transport/anmodninger/[id] (Realtime chat, tilbudskort, accept → Stripe Checkout med servicegebyr-linje + `transport_offers.service_fee_ore`, webhook) ✅
+- **Transportanmodninger:** /transport/anmod (tur-type, returdato, passagerer), /transport/anmodninger/[id] (tilbudskort, accept → Stripe Checkout med servicegebyr-linje + `transport_offers.service_fee_ore`, webhook; **ingen chat før betaling**) ✅
 - **Anmeldelsessystem:** dobbelt-blind (trigger), 30-dages vindue (pg_cron), alle 3 booking-typer, ReviewForm + ReviewDialog, dashboard review-knap, /profil/[id] offentlig ✅
-- **Samsejlads bookingflow:** fusioneret ind i /transport (`/api/transport/checkout`) — **`ride_share_bookings.service_fee_ore`**; samme 3 %-logik — /samsejlads eksisterer ikke længere ✅
+- **Samsejlads bookingflow:** fusioneret ind i /transport (`/api/transport/checkout`) — **`ride_share_bookings.service_fee_ore`**; **12 %-** servicegebyr — /samsejlads eksisterer ikke længere ✅
 - **Mapbox kortvisning:** `TransportMap.tsx` (streets-v12; **detail** `/transport/[id]`: buet linje + HTML-markører ⚓/🏁 med blå toner; **overview** (forside, /transport, /hytter-kort): destinations-prik, ikke rute-midtpunkt; capitalize i popups; blå prik + lys hvid stroke; `isolation:isolate` på kort-wrapper) ✅
 - **Returture:** `return_ride_share_id` på ride_shares, badge på listekort, alternative ture fra andre sejlere på /transport/[id] ✅
 - **Timezone:** `src/lib/nuukTime.ts` — America/Godthab (UTC-3), alle departure_at vises i Nuuk-tid ✅
 - **Testdata:** 4 profiler (Malik, Sara, Hans, Aviaja), 3 hytter, 8 transportture ✅
-- **src/lib/notifications.ts** — placeholder funktioner (notify*) ✅
+- **src/lib/notifications.ts** — `createNotification`, `getUnreadCount`, `getUnreadStayOfferReceivedCount`, `markNotificationsReadByTypes`; transactional e-mails hvor relevant ✅
 - **/profil/[id]** — offentlig profilside med anmeldelser og gennemsnitsscore ✅
 - **DB: cabin_requests tabel** — guest_id, cabin_id (nullable), location, desired_check_in, desired_check_out, num_guests, max_price_ore, description, status (open|matched|cancelled|expired), RLS ✅
 - **Footer** — `src/components/layout/Footer.tsx`, root layout, vises på alle sider ✅
@@ -184,14 +191,14 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
   - Rediger-sider: henter og viser eksisterende `transfer_routes`
   - `src/components/cabins/TransferRoutesDisplay.tsx`: server component, vises i «Kom dertil»
   - CabinBookingWidget: transfervalg (radio + enkelttur/tur-retur-toggle), prisberegning inkl. servicegebyr
-  - `createCabinBooking`: Stripe-linjer (ophold + transfer + servicegebyr), `application_fee_amount` = 15 % af (ophold+transfer) + servicegebyr, DB-snapshot
+  - `createCabinBooking`: Stripe-linjer (ophold + transfer + servicegebyr), `application_fee_amount` = **5 %** af subtotal + **12 %** servicegebyr, DB-snapshot
   - Søgefilter `?transport=true`: bruger nu EXISTS på `transfer_routes` (ikke `offers_transport`) — `src/app/[locale]/ophold/i-naturen/page.tsx` + `i-byen/page.tsx`
 - **Stay offers flow (8.5.2026)** ✅
   - `stay_requests` (tidligere `cabin_requests`): `property_type` (`'cabin' \| 'residence' \| 'any'`) + `needs_transport` boolean
   - `stay_offers` tabel med RLS (id, stay_request_id, provider_id, cabin_id, offered_price_ore, message, status, stripe_session_id, stripe_payment_intent_id)
   - Udbyder-flow: `/dashboard/oensker/[id]` + `StayOfferForm`
   - Gæst-flow: `/dashboard/mine-oensker/[id]` + `StayOffersClient`
-  - `acceptStayOffer` → Stripe Checkout med 15 % kommission + 3 % servicegebyr
+  - `acceptStayOffer` → Stripe Checkout med **5 %** platformgebyr + **12 %** servicegebyr (`platform_fee_ore` på `stay_offers` ved session)
   - Webhook: `meta.type === "stay_offer"` gren i `/api/stripe/webhook`
   - Success-side: `/booking/stay-offer-success`
   - Notifikationer: `notifyStayOfferBookingConfirmed` (email via Resend + push-placeholders)
@@ -203,6 +210,22 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
   - Alle tre publicér-stier tjekker Stripe før publicering: `publishCabin` (dashboard), `saveAll` (tilgængelighed), `publishCabinListing` (opret/opslag)
   - Klient: `STRIPE_PUBLISH_REQUIRED_ERROR` i `@/lib/stripePublishConstants` — kun importeret i klientkomponenter (fx `DashboardClient`, `OpretPageClient`, `AvailabilityCalendar`, `HytteOpslagForm`); `checkStripeBeforePublish` før Publicér i UI hvor relevant
 - **Opholdsanmodning udvidet (9.5.2026)** ✅ — `desired_property_type` (`cabin` \| `residence`) på `stay_requests` (tidligere `cabin_requests`) · kalender interval-mode · opholdstype-valg · hurtige felter · `guestStayRequestHref` i `cabinPublicPaths.ts` · `/anmod?type=stay` kanonisk · `/anmod?type=transport` → redirect `/transport/anmod` — se også **Stay offers flow (8.5.2026)** for tilbuds- og betalingsflow
+- **10.5.2026 — dashboard-fokus for åbne ønsker, tilbud, notifikationer, ny gebyrmodel, transport-UX** ✅
+  - **Åbne opholdsanmodninger:** sektion fjernet fra `/ophold/i-naturen`, `/ophold/i-byen` og `/transport` — kun i **dashboard** (udbyder/`both`)
+  - **`stay_offers.transport_price_ore`** — migration `20260510000000` (valgfrit transporttilæg på tilbud når `needs_transport`)
+  - **Send tilbud på ophold:** transport-felt (kun hvis `needs_transport`), fuld anmodningsinfo øverst (beskrivelse, budget, badge)
+  - **Gæst — `/dashboard/mine-oensker/[id]`:** read-only anmodningsdetaljer øverst + opdelt prisspecifikation pr. tilbud (`StayOffersClient`)
+  - **Afslå tilbud:** `declineStayOffer` med valgfri kommentar, Dialog-UI, status **`declined`** — migration `20260510020000`
+  - **`notifications`**-tabel + RLS — migration `20260510010000`: `createNotification`, `getUnreadCount`, `markNotificationsByType` (server action), `markNotificationsReadByTypes` i lib
+  - **Navbar:** rød prik på brugeravatar ved ulæste notifikationer (ingen mark-all ved menu-åbning)
+  - **Dashboard:** fane-badges markeres læst ved fane-skift + `router.refresh()` for server-tællere
+  - **Transport-notifikationer:** `transport_offer_received` / `transport_offer_accepted` koblet til **Gæsteønsker** / **Mine ønsker** (sammen med stay-typer)
+  - **Chat fjernet** fra `/transport/anmodninger/[id]` — beskedkanal først **efter** betaling (planlagt)
+  - **Gebyrmodel** — migration `20260510030000`: `platform_fee_ore` 5 %, `service_fee_ore` 12 %; `platform_fee_ore` på `transport_offers` og `stay_offers`; pending-rækker re-snapshot
+  - **`money.ts`:** `calcServiceFee` (12 %), `calcPlatformFee` (5 %), `calcDisplayPrice` (gæstevisning ×1.12)
+  - **Prisvisning — kort:** gæstens pris inkl. 12 % via `calcDisplayPrice`; **ingen** «Inkl. 12 % …»-linje under pris på **listingkort** (kun tal — detaljer/widget beholdes)
+  - **Udbyderguide — økonomi:** 5 % / 95 % til vært, 12 % fra gæst; `udbyderguide.economics_guest_checkout_price` (ingen hardkodet engelsk på DA-side)
+  - **Teknisk gæld:** i18n-nøgle `booking_service_fee_3` har stadig navnet `_3` men viser 12 % — bør omdøbes til `booking_service_fee_12` (se **Kendte huller**)
 
 ## Nye filer (6.5.2026)
 
@@ -247,15 +270,13 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - **OBS:** "Udlej nu/denne" findes ikke længere — publicering sker via Publicér-knappen direkte
 
 ## Næste trin i prioriteret rækkefølge
-1. **Stripe live-test end-to-end** — kritisk; inkl. transfer-linje + 3 %-servicegebyr
-2. **from_arrival_point → dropdown** — `LocationAutocomplete` + `arrival_points`
-3. **offers_transport ryddes op** — DB + formularer
-4. **Admin /admin/hytter path-fix**
-5. **ESLint-fixes** — `BoligForm.tsx`, `CreateForm.tsx`, `BaadForm.tsx`
-6. **Sanity `request.title` → «Anmod om ophold»**
-7. **AI SEO-strategi** — udestår; påmind Rune inden lancering
-8. **MobilePay til Stripe** — fase 3
-9. **Lancering** — første 20 udbydere
+1. **Stripe live-test end-to-end** — kritisk; inkl. **ny gebyrmodel (5 % / 12 %)**, `stay_offers`-flow og transfer-linjer
+2. **Chat efter betaling** — `messages`-tabel kobles til booking (ikke før betaling på transportanmodning)
+3. **Kontaktinfo efter betaling** + automatisk sletning (fx **pg_cron**)
+4. **Åbne opholdsønsker synlige for udbydere på dashboard** (allerede bygget — verificér/udbyg efter behov)
+5. **AI SEO-strategi** — udestår; påmind Rune inden lancering
+6. **MobilePay til Stripe** — fase 3
+7. **Lancering** — første 20 udbydere
 
 ## Sanity CMS (5.5.2026)
 - Sanity Studio kører på `/studio` — beskyttet af `is_admin` (`proxy.ts`: studio **før** next-intl, ellers `/da/studio`-404)
@@ -308,11 +329,12 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - **Next.js dokumentation:** Læs `node_modules/next/dist/docs/` før antagelser om API (se `AGENTS.md`).
 
 ## Kendte huller / teknisk gæld
+- **i18n-nøgle `booking_service_fee_3`** — viser 12 % servicegebyr men navnet er misvisende; **bør omdøbes** til `booking_service_fee_12` (bundlet + alle `useTranslations`-referencer)
 - **Sanity `request.title`** — hvis «Anmod om hytte» stadig vises i overskriften, skal feltet opdateres i Studio til «Anmod om ophold» eller overlay fjernes for den nøgle
 - **Placeholder-migrationer** — `20260507124840` og `20260507130619` eksisterer kun som no-op placeholders lokalt (remote kørte dem på en anden maskine). Erstat med de rigtige scripts før nye miljøer sættes op.
 - **cookies-side:** Footer linker ikke længere til `/cookies`; hvis politikken skal frem — tilføj side (evt. Sanity `page` slug `cookies`) eller link fra footer.
 - **offers_transport forældet (delvist)** — kolonnen eksisterer stadig i DB, HytteForm + BoligForm. Legacy Stripe-gren (`transportTotalOre`) bevaret for gamle hytter. Kan droppes når `offers_transport`-data er migreret til `transfer_routes`.
-- **from_arrival_point er fri tekst** — i næste sprint erstattes med dropdown fra `arrival_points` i `greenlandLocations.ts` (`LocationAutocomplete` med ankomstpunkter).
+- **`from_arrival_point` i `TransferRouteEditor` er fri tekst** — skal være `LocationAutocomplete` med `arrival_points` fra `greenlandLocations.ts` (parkeret; tidligere notat gjaldt også /opret/bolig)
 - **Ankomstpunkt-valg i /opret/bolig** — udbyderen kan kun skrive fri tekst; skal guides til `arrival_points` fra `greenlandLocations.ts`.
 - **Admin `/admin/hytter`** — bolig-rækker bruger stadig `/hytter/{id}` — skal bruge `publishedCabinDetailPath`
 - **ESLint `react-hooks/set-state-in-effect`** i `BoligForm.tsx`, `CreateForm.tsx`, `BaadForm.tsx` — rettes inden CI skal være grøn
@@ -323,7 +345,7 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - Lighthouse-test
 - MobilePay til Stripe
 - ~~Udbyderguide~~ → opdateret 6.5 (evt. Sanity-overlay / flersprog senere)
-- Stripe live-test end-to-end (**3 %-servicegebyr + transfer-linjer**)
+- Stripe live-test end-to-end (**5 % / 12 %-gebyrmodel + transfer-linjer + stay_offers**)
 - AI SEO-strategi skal udarbejdes
 - PostHog verificeres sat op korrekt
 - Aktiver: cabins (hytte) + boats (båd) — gemmes med `published=false` indtil opslag
@@ -387,10 +409,10 @@ Rolle-**UPDATE** (reconcile, server): `src/lib/supabase-service.ts` med **`SUPAB
 
 ## Pengebeløb — KRITISK
 - ALLE beløb i databasen = **øre** (integer), **aldrig** float/decimal til penge
-- Konvertering og **gæste-servicegebyr (3 % af udbyder-subtotal i øre)** **KUN** i `src/lib/money.ts`: `oreToKr()`, `krToOre()`, **`calcServiceFee(total_price_ore)`** → `Math.round(total_price_ore * 0.03)` (server-side sandhed i checkout; UI må vise samme formlen som estimat)
+- Konvertering og gebyrer **KUN** i `src/lib/money.ts`: `oreToKr()`, `krToOre()`, **`calcServiceFee(subtotal_ore)`** → gæste-servicegebyr **12 %** (`Math.round(subtotal_ore * 0.12)`), **`calcPlatformFee(subtotal_ore)`** → **5 %** fra vært (`Math.round(subtotal_ore * 0.05)`), **`calcDisplayPrice(price_ore)`** → gæsteprisskilt på lister (`Math.round(price_ore * 1.12)` — afstem med checkout)
 - Aldrig rå øre vilkårligt i UI — kør gennem `money.ts` / `useFormatPrice`
 - **Stripe:** forventer typisk heltals-øre i flows — hold server-side, send direkte i øre hvor det er defineret sådan
-- **Betaling gæst:** Checkout-summen = `total_price_ore` (til connected account som subtotal fratrukket 15 % platform) + **service_fee_ore**; `application_fee_amount` = **15 %-andel + service_fee_ore** (platform beholder begge)
+- **Betaling gæst:** Checkout = udbyder-**subtotal** (`total_price_ore` / tilsv.) **+** `service_fee_ore` (12 % af subtotal); **`application_fee_amount`** = **`platform_fee_ore` (5 %) + `service_fee_ore`** (platform beholder begge; connected account modtager subtotal minus platformandelen)
 
 ## ride_shares — korrekte kolonner
 | Kolonne | Type | Bemærkning |

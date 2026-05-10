@@ -6,7 +6,6 @@ import Navbar from "@/components/layout/Navbar"
 import { buildMetadata } from "@/lib/metadata"
 import TransportClient from "./TransportClient"
 import type { RideShareCardData } from "./components/TransportCard"
-import type { OpenTransportRequest } from "./TransportClient"
 
 export const dynamic = "force-dynamic"
 
@@ -80,27 +79,15 @@ export default async function TransportPage({ params, searchParams }: Props) {
 
   rideShareQuery = rideShareQuery.order("departure_at", { ascending: true })
 
-  const [{ data: rideShareData }, { data: requestData }] = await Promise.all([
-    rideShareQuery,
-
-    supabase
-      .from("transport_requests")
-      .select("id, from_location, to_location, desired_date, num_passengers, trip_type, status")
-      .eq("status", "open")
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .limit(20),
-  ])
+  const { data: rideShareData } = await rideShareQuery
 
   const rideShares = (rideShareData ?? []) as unknown as RideShareCardData[]
-  const openRequests = (requestData ?? []) as OpenTransportRequest[]
 
   return (
     <main>
       <Navbar user={navUser} />
       <TransportClient
         rideShares={rideShares}
-        openRequests={openRequests}
         initialDate={dateParam}
         initialHub={hubParam}
         initialGuests={guestsParam}

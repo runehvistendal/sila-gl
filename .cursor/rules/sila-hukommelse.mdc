@@ -14,7 +14,17 @@ Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort 
 - **Transport-tilvalg:** **Transfer** (ankomst-ruter, AddOn-lignende; planlagt `from_location_id` på `transport_offers`) vs **Samsejlads** (hytte eller fri; samme tabel/flow).
 - **SEO:** påmind Rune — AI SEO parallelt med Google; metadata: hytte, cabin, sommerhus, bygd, bolig, Grønland.
 - **Ikke:** helikoptertransfer, langvarig bolig (Boligportal), oplevelses-MVP.
-- **Lancering:** AI SEO · PostHog · Transfer e2e · Stripe m. transfer-linjer.
+- **Lancering:** AI SEO · PostHog · Stripe e2e (**5 % / 12 % + transfer + stay_offers**) · chat/kontakt efter betaling.
+
+## Status (10.5.2026)
+
+- **Gebyrmodel:** 5 % platform (vært) + 12 % service (gæst) — `money.ts`, migration `20260510030000`; `calcDisplayPrice` på kort.
+- **`stay_offers`:** `transport_price_ore` (`20260510000000`), afvis med kommentar (`declined`, `20260510020000`); gæst-UI med prisopdeling.
+- **`notifications`** + RLS (`20260510010000`); navbar prik; `markNotificationsByType` + `router.refresh()` på dashboard-faner.
+- **Åbne opholdsønsker** kun i dashboard — ikke på `/ophold/*` eller `/transport`.
+- **Transportanmodning:** ingen chat på `/transport/anmodninger/[id]` før betaling.
+- **Udbyderguide økonomi:** i18n (5 %/95 %, gæst 12 %); teknisk gæld: nøgle `booking_service_fee_3` → bør hedde `_12`.
+- **Fuld liste:** [hukommelse.md](../../hukommelse.md) · [CLAUDE.md](../../CLAUDE.md)
 
 ## Status (7.5.2026)
 
@@ -30,7 +40,7 @@ Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort 
 
 ## Status (6.5.2026)
 
-- **3 % servicegebyr (gæst):** `service_fee_ore` på `cabin_bookings`, `ride_share_bookings`, `transport_offers` · migration **`20260506000000_service_fee.sql`** · `calcServiceFee()` i `money.ts` · checkout: `createCabinBooking`, `/api/transport/checkout`, `acceptTransportOffer`; `application_fee_amount` = kommission **+** servicegebyr · UI: CabinBookingWidget, TransportDetailClient, Drawer; bundlet `cabins.*` / `transport.*` for servicetekst · **immutable** `service_fee_ore` på cabin_bookings via trigger
+- **Servicegebyr (gæst) — historisk 6.5:** oprindeligt **3 %** (`20260506000000_service_fee.sql`) · **pr. 10.5.2026:** **12 %** service + **5 %** platform — se Status 10.5 og `money.ts`.
 - **`/udbyderguide`:** lokalt på `src/app/[locale]/udbyderguide/page.tsx` — hero-flow (Megaphone / Users / Banknote), CTA+nederst i økonomi, **mobile-first** hele siden · betaling-afsnit fjernet tidligere
 - **Lokation + kort (sen 6.5):** Udvidet **`greenlandLocations`** + **`fuse.js`** / **`locationSearch.ts`** · **`LocationAutocomplete`** (hero + filtre) · **HeroContent** (HeroSearch væk) · **region-chips /hytter** · **SailSection** på forsiden (toggle + live Supabase til kort) · **`cabinMapRoutes`** · **/hytter** liste/kort (Grid/Map som transport; klik → hytte) · **TransportMap** (destinations-prik overview, blå markører, navbar **z-40**, **`isolation:isolate`**) · **MapWrapper fjernet**. Detaljer: **CLAUDE.md**
 - Øvrigt uændret ift. huske-liste nedenfor (5.5-basis)
@@ -76,7 +86,7 @@ Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort 
 
 ## Næste fokus
 
-1. **Transfer-flow** (display i-byen, LocationAutocomplete/arrival_points på /opret/bolig, `from_location_id`) — se **`hukommelse.md` § Næste trin** · 2. Stripe live e2e · 3. Admin `publishedCabinDetailPath` · 4. ESLint hooks i Bolig/Create/Baad forms · 5. i18n-oprydning · 6. Lighthouse · 7. AI SEO · 8. MobilePay → Stripe · 9. Lancering
+1. **Stripe live e2e** (5 % / 12 %, stay_offers, transfer) · 2. **Chat efter betaling** · 3. **Kontaktinfo efter betaling** + cleanup (pg_cron) · 4. Dashboard **åbne ønsker** (allerede bygget) · 5. AI SEO · 6. MobilePay → Stripe · 7. Lancering — se **`hukommelse.md` § Næste trin** for detaljer.
 
 ## Vigtige beslutninger (gældende)
 

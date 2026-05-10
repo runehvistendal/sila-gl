@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase-server"
 import { createServiceClient } from "@/lib/supabase-service"
 import { stripe } from "@/lib/stripe"
 import { getAppBaseUrl } from "@/lib/appUrl"
-import { calcServiceFee } from "@/lib/money"
+import { calcServiceFee, calcPlatformFee } from "@/lib/money"
 import { getLocationName } from "@/lib/greenlandLocations"
 
 export const dynamic = "force-dynamic"
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
 
   // Calculate price server-side — NEVER trust frontend price
   const totalPriceOre = numSeats * rs.price_per_seat_ore
-  const platformFeeOre = Math.round(totalPriceOre * 0.15)
+  const platformFeeOre = calcPlatformFee(totalPriceOre)
   const serviceFeeOre = calcServiceFee(totalPriceOre)
 
   if (totalPriceOre < 1) {
@@ -140,7 +140,7 @@ export async function POST(request: Request) {
       price_data: {
         currency: "dkk",
         unit_amount: serviceFeeOre,
-        product_data: { name: "Servicegebyr (3%)" },
+        product_data: { name: "Servicegebyr (12%)" },
       },
     })
   }

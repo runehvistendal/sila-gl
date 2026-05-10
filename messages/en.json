@@ -6,7 +6,17 @@
   },
   "dashboard": {
     "listing_badge_cabin": "Cabin",
-    "listing_badge_residence": "Home"
+    "listing_badge_residence": "Home",
+    "stay_offers_status_declined": "Declined",
+    "stay_offers_decline": "Decline",
+    "stay_offers_decline_dialog_title": "Decline offer",
+    "stay_offers_decline_comment_label": "Comment for the provider (optional)",
+    "stay_offers_decline_comment_placeholder": "Optional short message…",
+    "stay_offers_decline_cancel": "Cancel",
+    "stay_offers_decline_confirm": "Decline offer",
+    "stay_offers_decline_submitting": "Declining…",
+    "stay_offers_decline_toast_success": "Offer declined",
+    "stay_offers_decline_your_comment": "Your comment:"
   },
   "create": {
     "add_new_residence": "+ Create new home listing",

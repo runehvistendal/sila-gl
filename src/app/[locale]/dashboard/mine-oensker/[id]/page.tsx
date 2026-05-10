@@ -50,7 +50,7 @@ export default async function MineOenskerDetailPage({ params }: PageProps) {
   const { data: stay, error: stayErr } = await supabase
     .from("stay_requests")
     .select(
-      "id, location, desired_check_in, desired_check_out, num_guests, max_price_ore, status, guest_id",
+      "id, location, desired_check_in, desired_check_out, num_guests, max_price_ore, description, property_type, needs_transport, status, guest_id",
     )
     .eq("id", id)
     .maybeSingle()
@@ -65,9 +65,11 @@ export default async function MineOenskerDetailPage({ params }: PageProps) {
       `
       id,
       offered_price_ore,
+      transport_price_ore,
       message,
       status,
       created_at,
+      decline_reason,
       cabins ( id, title, images, price_per_night_ore, location_hub, property_type ),
       profiles!provider_id ( id, full_name, avatar_url )
     `,
@@ -83,11 +85,13 @@ export default async function MineOenskerDetailPage({ params }: PageProps) {
     const cabinsRaw = raw.cabins
     const profilesRaw = raw.profiles
     return {
-      id:                raw.id as string,
-      offered_price_ore: raw.offered_price_ore as number,
-      message:           (raw.message as string | null) ?? null,
-      status:            raw.status as string,
-      created_at:        raw.created_at as string,
+      id:                  raw.id as string,
+      offered_price_ore:   raw.offered_price_ore as number,
+      transport_price_ore: Math.max(0, Number(raw.transport_price_ore) || 0),
+      message:             (raw.message as string | null) ?? null,
+      status:              raw.status as string,
+      created_at:          raw.created_at as string,
+      decline_reason:      (raw.decline_reason as string | null) ?? null,
       cabins:            unwrapNested(cabinsRaw) as StayOfferRow["cabins"],
       profiles:          unwrapNested(profilesRaw) as StayOfferRow["profiles"],
     }
@@ -115,6 +119,9 @@ export default async function MineOenskerDetailPage({ params }: PageProps) {
               desired_check_out: stay.desired_check_out,
               num_guests:       stay.num_guests,
               max_price_ore:    stay.max_price_ore,
+              description:      stay.description,
+              property_type:    String(stay.property_type ?? "any"),
+              needs_transport:  Boolean(stay.needs_transport),
               status:           stay.status,
             }}
             offers={offers}

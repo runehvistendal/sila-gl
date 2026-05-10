@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase-server"
 import { createServiceClient } from "@/lib/supabase-service"
 import { getAppBaseUrl } from "@/lib/appUrl"
 import { stripe } from "@/lib/stripe"
-import { calcServiceFee } from "@/lib/money"
+import { calcServiceFee, calcPlatformFee } from "@/lib/money"
+import { createNotification } from "@/lib/notifications"
 
 function cabinMatchesStayProperty(
   stayProperty: string,
@@ -59,7 +60,9 @@ export async function acceptStayOffer(stayOfferId: string): Promise<AcceptStayOf
     .select(`
       id,
       status,
+      provider_id,
       offered_price_ore,
+      transport_price_ore,
       cabin_id,
       stay_request_id,
       stripe_session_id,
@@ -87,7 +90,9 @@ export async function acceptStayOffer(stayOfferId: string): Promise<AcceptStayOf
   const offer = row as {
     id: string
     status: string
+    provider_id: string
     offered_price_ore: number
+    transport_price_ore: number
     cabin_id: string
     stay_request_id: string
     stripe_session_id: string | null
@@ -137,7 +142,9 @@ export async function acceptStayOffer(stayOfferId: string): Promise<AcceptStayOf
   }
 
   const offered = offer.offered_price_ore
-  if (offered < 1) {
+  const transportOre = Math.max(0, Number(offer.transport_price_ore) || 0)
+  const subtotalOre = offered + transportOre
+  if (offered < 1 || subtotalOre < 1) {
     return { error: "Ugyldigt tilbudsbeløb." }
   }
 
@@ -178,8 +185,9 @@ export async function acceptStayOffer(stayOfferId: string): Promise<AcceptStayOf
     }
   }
 
-  const serviceFeeOre = calcServiceFee(offered)
-  const applicationFeeAmount = Math.round(offered * 0.15) + serviceFeeOre
+  const serviceFeeOre = calcServiceFee(subtotalOre)
+  const platformFeeOre = calcPlatformFee(subtotalOre)
+  const applicationFeeAmount = platformFeeOre + serviceFeeOre
   const nights = Math.max(1, nightCountStay(sr.desired_check_in, sr.desired_check_out))
   const nightsLabel = `${nights} ${nights === 1 ? "nat" : "nætter"}`
 
@@ -197,11 +205,22 @@ export async function acceptStayOffer(stayOfferId: string): Promise<AcceptStayOf
         currency: "dkk",
         unit_amount: offered,
         product_data: {
-          name: `Ophold (${nightsLabel}) — tilbud`,
+          name: `Ophold (${nightsLabel})`,
         },
       },
     },
   ]
+
+  if (transportOre > 0) {
+    lineItems.push({
+      quantity: 1,
+      price_data: {
+        currency: "dkk",
+        unit_amount: transportOre,
+        product_data: { name: "Transport" },
+      },
+    })
+  }
 
   if (serviceFeeOre > 0) {
     lineItems.push({
@@ -209,7 +228,7 @@ export async function acceptStayOffer(stayOfferId: string): Promise<AcceptStayOf
       price_data: {
         currency: "dkk",
         unit_amount: serviceFeeOre,
-        product_data: { name: "Servicegebyr (3%)" },
+        product_data: { name: "Servicegebyr (12%)" },
       },
     })
   }
@@ -267,6 +286,7 @@ export async function acceptStayOffer(stayOfferId: string): Promise<AcceptStayOf
     .from("stay_offers")
     .update({
       stripe_session_id: sessionCheckout.id,
+      platform_fee_ore: platformFeeOre,
       updated_at:        new Date().toISOString(),
     })
     .eq("id", offer.id)
@@ -283,6 +303,8 @@ export async function acceptStayOffer(stayOfferId: string): Promise<AcceptStayOf
     return { error: "Tilbuddet er allerede i betaling. Opdater siden." }
   }
 
+  await createNotification(offer.provider_id, "stay_offer_accepted", offer.id)
+
   revalidatePath("/dashboard")
   revalidatePath(`/dashboard/mine-oensker/${offer.stay_request_id}`)
   return { checkoutUrl: sessionCheckout.url }
@@ -296,6 +318,7 @@ export async function sendStayOffer(
   cabinId: string,
   offeredPriceOre: number,
   message?: string | null,
+  transportPriceOre: number = 0,
 ): Promise<{ success: true } | { error: string }> {
   const supabase = await createClient()
   const {
@@ -327,9 +350,18 @@ export async function sendStayOffer(
     return { error: "Angiv en gyldig pris i hele kroner." }
   }
 
+  if (
+    typeof transportPriceOre !== "number" ||
+    !Number.isFinite(transportPriceOre) ||
+    !Number.isInteger(transportPriceOre) ||
+    transportPriceOre < 0
+  ) {
+    return { error: "Ugyldig transportpris." }
+  }
+
   const { data: stay, error: stayErr } = await supabase
     .from("stay_requests")
-    .select("id, status, guest_id, property_type")
+    .select("id, status, guest_id, property_type, needs_transport")
     .eq("id", stayRequestId)
     .maybeSingle()
 
@@ -341,6 +373,16 @@ export async function sendStayOffer(
   }
   if (stay.guest_id === user.id) {
     return { error: "Du kan ikke byde på din egen anmodning." }
+  }
+
+  if (!stay.needs_transport && transportPriceOre > 0) {
+    return { error: "Transport kan ikke tilbydes på denne anmodning." }
+  }
+
+  const effectiveTransportOre = stay.needs_transport ? transportPriceOre : 0
+
+  if (stay.needs_transport && effectiveTransportOre > 0 && effectiveTransportOre < 100) {
+    return { error: "Angiv transportpris i hele kroner (minimum 1)." }
   }
 
   const { data: cabin, error: cabErr } = await supabase
@@ -373,20 +415,121 @@ export async function sendStayOffer(
   }
 
   const trimmed = message?.trim()
-  const { error: insErr } = await supabase.from("stay_offers").insert({
-    stay_request_id:   stayRequestId,
-    provider_id:       user.id,
-    cabin_id:          cabinId,
-    offered_price_ore: offeredPriceOre,
-    message:           trimmed && trimmed.length > 0 ? trimmed : null,
-  })
+  const { data: insertedOffer, error: insErr } = await supabase
+    .from("stay_offers")
+    .insert({
+      stay_request_id:     stayRequestId,
+      provider_id:         user.id,
+      cabin_id:            cabinId,
+      offered_price_ore:   offeredPriceOre,
+      transport_price_ore: effectiveTransportOre,
+      message:             trimmed && trimmed.length > 0 ? trimmed : null,
+    })
+    .select("id")
+    .maybeSingle()
 
-  if (insErr) {
+  if (insErr || !insertedOffer) {
     return { error: "Kunne ikke gemme tilbuddet. Prøv igen." }
   }
+
+  await createNotification(stay.guest_id, "stay_offer_received", insertedOffer.id)
 
   revalidatePath("/dashboard")
   revalidatePath(`/dashboard/oensker/${stayRequestId}`)
   revalidatePath(`/dashboard/mine-oensker/${stayRequestId}`)
+  return { success: true }
+}
+
+/**
+ * Gæst afslår et afventende tilbud på egen stay_request.
+ */
+export async function declineStayOffer(
+  offerId: string,
+  reason?: string | null,
+): Promise<{ success: true } | { error: string }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    return { error: "Du skal være logget ind." }
+  }
+
+  const { error: rlErr } = await supabase.rpc("consume_rate_limit", {
+    p_user_id:        user.id,
+    p_action:         "decline_stay_offer",
+    p_max_attempts:   30,
+    p_window_seconds: 600,
+  })
+  if (rlErr) {
+    return { error: "For mange forsøg. Prøv igen om lidt." }
+  }
+
+  if (!offerId?.trim()) {
+    return { error: "Ugyldigt tilbud." }
+  }
+
+  let declineReason: string | null = null
+  if (reason != null && String(reason).trim()) {
+    const s = String(reason).trim().slice(0, 300)
+    declineReason = s.length > 0 ? s : null
+  }
+
+  const { data: row, error: fetchErr } = await supabase
+    .from("stay_offers")
+    .select(`
+      id,
+      status,
+      provider_id,
+      stay_request_id,
+      stay_requests!inner ( guest_id )
+    `)
+    .eq("id", offerId)
+    .maybeSingle()
+
+  if (fetchErr || !row) {
+    return { error: "Tilbuddet findes ikke." }
+  }
+
+  const r = row as {
+    id: string
+    status: string
+    provider_id: string
+    stay_request_id: string
+    stay_requests:
+      | { guest_id: string }
+      | { guest_id: string }[]
+  }
+  const srRaw = r.stay_requests
+  const sr = Array.isArray(srRaw) ? srRaw[0] : srRaw
+  if (!sr || sr.guest_id !== user.id) {
+    return { error: "Du kan kun afslå tilbud på dine egne anmodninger." }
+  }
+  if (r.status !== "pending") {
+    return { error: "Tilbuddet kan ikke længere afslås." }
+  }
+
+  const now = new Date().toISOString()
+  const { error: upErr } = await supabase
+    .from("stay_offers")
+    .update({
+      status:          "declined",
+      declined_at:     now,
+      decline_reason:  declineReason,
+      updated_at:      now,
+    })
+    .eq("id", offerId)
+    .eq("status", "pending")
+
+  if (upErr) {
+    console.error("[declineStayOffer]", upErr.message)
+    return { error: "Kunne ikke afslå tilbuddet. Prøv igen." }
+  }
+
+  await createNotification(r.provider_id, "stay_offer_declined", offerId)
+
+  revalidatePath("/dashboard")
+  revalidatePath(`/dashboard/mine-oensker/${r.stay_request_id}`)
+  revalidatePath(`/dashboard/oensker/${r.stay_request_id}`)
   return { success: true }
 }

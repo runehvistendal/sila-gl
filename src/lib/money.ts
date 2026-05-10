@@ -22,7 +22,17 @@ export function formatKr(ore: number): string {
   })
 }
 
-/** Guest service fee: 3 % of subtotal (øre). Server-side source of truth for checkout. */
+/** Guest service fee: 12 % of provider subtotal (øre). Server-side source of truth for checkout. */
 export function calcServiceFee(total_price_ore: number): number {
-  return Math.round(total_price_ore * 0.03)
+  return Math.round(total_price_ore * 0.12)
+}
+
+/** Platform commission charged from host: 5 % of provider subtotal (øre). */
+export function calcPlatformFee(price_ore: number): number {
+  return Math.round(price_ore * 0.05)
+}
+
+/** Guest-facing price in øre from a provider-listed amount (e.g. per nat / per plads), incl. 12 % servicegebyr. */
+export function calcDisplayPrice(price_ore: number): number {
+  return Math.round(price_ore * 1.12)
 }

@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { formatKr, oreToKr, calcServiceFee } from "@/lib/money"
+import { formatKr, oreToKr, calcServiceFee, calcDisplayPrice } from "@/lib/money"
 import { createTransportRequest } from "./actions"
 import TransportDrawer from "@/components/transport/TransportDrawer"
 import ServiceFeeHelpIcon from "@/components/shared/ServiceFeeHelpIcon"
@@ -328,8 +328,10 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
               {getLocationName(rideShare.from_location)} → {getLocationName(rideShare.to_location)} · {formatNuukDate(rideShare.departure_at)}
             </p>
             <p className="text-sm font-semibold text-primary ml-6 mt-1">
-              {oreToKr(priceOre).toLocaleString("da-DK")} kr./plads
+              {formatKr(calcDisplayPrice(priceOre))}
+              <span className="text-muted-foreground font-normal text-xs"> / plads</span>
             </p>
+            <p className="text-xs text-muted-foreground ml-6 mt-0.5">{tTransport("price_includes_service_fee")}</p>
           </div>
 
           {/* Seats */}
@@ -432,8 +434,9 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
                                 </div>
                                 <div className="text-right shrink-0">
                                   <p className="text-sm font-bold text-primary">
-                                    {formatKr(rtPriceOre)}/plads
+                                    {formatKr(calcDisplayPrice(rtPriceOre))}/plads
                                   </p>
+                                  <p className="text-[10px] text-muted-foreground">{tTransport("price_includes_service_fee")}</p>
                                   {isSelected && (
                                     <Badge className="bg-accent/20 text-accent border-0 text-xs mt-1">
                                       Valgt
@@ -549,8 +552,11 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
                                       </p>
                                     </div>
                                     <div className="text-right shrink-0">
-                                      <p className="text-sm font-bold text-primary">{formatKr(alt.price_per_seat_ore)}</p>
+                                      <p className="text-sm font-bold text-primary">
+                                        {formatKr(calcDisplayPrice(alt.price_per_seat_ore))}
+                                      </p>
                                       <p className="text-xs text-muted-foreground">pr. plads</p>
+                                      <p className="text-[10px] text-muted-foreground">{tTransport("price_includes_service_fee")}</p>
                                     </div>
                                   </div>
                                   <button

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase-server"
 import { createServiceClient } from "@/lib/supabase-service"
 import { resolveDisplayName, type NavUser } from "@/lib/getNavUser"
+import { getUnreadCount, getUnreadStayOfferReceivedCount } from "@/lib/notifications"
 import Navbar from "@/components/layout/Navbar"
 import DashboardClient from "./DashboardClient"
 import type { CabinBookingData } from "./components/BookingRow"
@@ -163,13 +164,8 @@ export default async function DashboardPage() {
   } | null
   const av = pr?.avatar_url
   const rawNavLang = pr?.language
-  const navUser: NavUser = {
-    id: user.id,
-    fullName: displayNameResolved,
-    avatarUrl: av && String(av).trim() ? String(av).trim() : null,
-    language:
-      rawNavLang === "en" || rawNavLang === "kl" ? rawNavLang : "da",
-  }
+  const navLanguage: "da" | "en" | "kl" =
+    rawNavLang === "en" || rawNavLang === "kl" ? rawNavLang : "da"
 
   const isProvider = roleType === "provider" || roleType === "both"
   const isTraveler = roleType === "traveler" || roleType === "both"
@@ -197,6 +193,8 @@ export default async function DashboardPage() {
     { data: reviewsRaw },
     { data: myReviewedRaw },
     { count: unreadCount },
+    navUnreadTotal,
+    unreadStayOfferNotifCount,
   ] = await Promise.all([
     // My bookings as guest — include cabin owner info + price for details
     supabase
@@ -270,7 +268,9 @@ export default async function DashboardPage() {
     cabinIds.length > 0
       ? supabase
           .from("stay_requests")
-          .select("id, cabin_id, location, desired_check_in, desired_check_out, num_guests, max_price_ore, description, status, created_at, property_type, needs_transport, profiles!guest_id(id, full_name, avatar_url)")
+          .select(
+            "id, cabin_id, location, desired_check_in, desired_check_out, num_guests, max_price_ore, description, status, created_at, property_type, needs_transport, profiles!guest_id(id, full_name, avatar_url), stay_offers ( id, status, provider_id )",
+          )
           .or(`cabin_id.in.(${cabinIds.join(",")}),cabin_id.is.null`)
           .eq("status", "open")
           .is("deleted_at", null)
@@ -300,7 +300,18 @@ export default async function DashboardPage() {
       .select("id", { count: "exact", head: true })
       .eq("recipient_id", user.id)
       .is("read_at", null),
+
+    getUnreadCount(supabase, user.id),
+    getUnreadStayOfferReceivedCount(supabase, user.id),
   ])
+
+  const navUser: NavUser = {
+    id: user.id,
+    fullName: displayNameResolved,
+    avatarUrl: av && String(av).trim() ? String(av).trim() : null,
+    language: navLanguage,
+    unreadCount: navUnreadTotal,
+  }
 
   /* ── Already-reviewed booking IDs ── */
   const myReviewedCabinBookingIds = new Set(
@@ -379,6 +390,43 @@ export default async function DashboardPage() {
 
   const homeCity = (profileRow?.location as string | null | undefined) ?? null
 
+  /** Prioritér bedste status når udbyder har flere tilbud på samme anmodning. */
+  function pickProviderOfferStatus(
+    offers: Array<{ status: string; provider_id: string }> | null | undefined,
+    providerId: string,
+  ): "accepted" | "pending" | "declined" | "rejected" | "expired" | null {
+    const mine = (offers ?? []).filter((o) => o.provider_id === providerId)
+    if (mine.length === 0) return null
+    const rank = (s: string): number => {
+      switch (s) {
+        case "accepted":
+          return 0
+        case "pending":
+          return 1
+        case "declined":
+          return 2
+        case "rejected":
+          return 3
+        case "expired":
+          return 4
+        default:
+          return 99
+      }
+    }
+    let best = mine[0].status
+    let bestR = rank(best)
+    for (let i = 1; i < mine.length; i++) {
+      const s = mine[i].status
+      const r = rank(s)
+      if (r < bestR) {
+        bestR = r
+        best = s
+      }
+    }
+    if (bestR === 99) return null
+    return best as "accepted" | "pending" | "declined" | "rejected" | "expired"
+  }
+
   /* ── Shape cabin requests ── */
   type CabinReqGuestProfile = { id?: string; full_name?: string; avatar_url?: string | null } | null
 
@@ -404,6 +452,11 @@ export default async function DashboardPage() {
 
   const guestCabinRequests = (guestCabinReqRaw ?? []).map((r: Record<string, unknown>) => {
     const pr = r.profiles as CabinReqGuestProfile
+    const offersRaw = r.stay_offers as
+      | Array<{ id: string; status: string; provider_id: string }>
+      | null
+      | undefined
+    const providerOfferStatus = pickProviderOfferStatus(offersRaw, user.id)
     return {
       id:               r.id as string,
       cabin_id:         (r.cabin_id as string | null) ?? null,
@@ -420,6 +473,7 @@ export default async function DashboardPage() {
       guest_name:       pr?.full_name ?? null,
       guest_avatar_url: pr?.avatar_url ?? null,
       needs_transport:  Boolean(r.needs_transport),
+      provider_offer_status: providerOfferStatus,
     }
   })
 
@@ -458,6 +512,7 @@ export default async function DashboardPage() {
           profiles:   r.profiles as { full_name: string | null } | null,
         }))}
         unreadMessages={unreadCount ?? 0}
+        unreadStayOfferNotifications={unreadStayOfferNotifCount}
       />
     </main>
   )

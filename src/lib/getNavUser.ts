@@ -1,11 +1,14 @@
 import type { User } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase-server"
+import { getUnreadCount } from "@/lib/notifications"
 
 export type NavUser = {
   id: string
   fullName: string | null
   avatarUrl: string | null
   language: "da" | "en" | "kl"
+  /** Ulæste in-app notifikationer (navbar prik). */
+  unreadCount?: number
 }
 
 function metadataFullName(user: User): string | null {
@@ -47,6 +50,8 @@ export async function getNavUserForPage(
   const language: "da" | "en" | "kl" =
     rawLang === "en" || rawLang === "kl" ? rawLang : "da"
 
+  const unreadCount = await getUnreadCount(supabase, user.id)
+
   if (process.env.NODE_ENV === "development") {
     // eslint-disable-next-line no-console
     console.log("[getNavUserForPage]", {
@@ -54,6 +59,7 @@ export async function getNavUserForPage(
       fullName: fullName ?? null,
       avatarUrl: avatarUrl ?? null,
       language,
+      unreadCount,
       profileError: error?.message ?? null,
       hadProfileRow: profile != null,
     })
@@ -64,5 +70,6 @@ export async function getNavUserForPage(
     fullName,
     avatarUrl,
     language,
+    unreadCount,
   }
 }

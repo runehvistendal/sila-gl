@@ -4,62 +4,13 @@ import { revalidatePath } from "next/cache"
 import { requireSession } from "@/lib/requireSession"
 import { getAppBaseUrl } from "@/lib/appUrl"
 import { stripe } from "@/lib/stripe"
-import { krToOre, calcServiceFee } from "@/lib/money"
+import { krToOre, calcServiceFee, calcPlatformFee } from "@/lib/money"
 import {
+  createNotification,
   notifyNewTransportOffer,
   notifyTransportOfferAccepted,
 } from "@/lib/notifications"
 import { getLocationName } from "@/lib/greenlandLocations"
-
-// ── Send chat message ────────────────────────────────────────────────────────
-
-export type SendMessageResult = { error: string } | { ok: true }
-
-export async function sendTransportMessage(
-  requestId: string,
-  content: string,
-): Promise<SendMessageResult> {
-  if (!content.trim()) return { error: "Tom besked" }
-
-  const { supabase, user } = await requireSession()
-
-  // Verify request exists and is open/matched
-  const { data: req } = await supabase
-    .from("transport_requests")
-    .select("id, guest_id, status")
-    .eq("id", requestId)
-    .in("status", ["open", "matched"])
-    .is("deleted_at", null)
-    .maybeSingle()
-
-  if (!req) return { error: "Anmodning ikke fundet eller lukket" }
-
-  const reqData = req as { id: string; guest_id: string; status: string }
-
-  // Must be requester OR have an existing offer
-  const isRequester = reqData.guest_id === user.id
-  if (!isRequester) {
-    const { data: myOffer } = await supabase
-      .from("transport_offers")
-      .select("id")
-      .eq("request_id", requestId)
-      .eq("skipper_id", user.id)
-      .is("deleted_at", null)
-      .maybeSingle()
-    if (!myOffer) return { error: "Du skal have afgivet et tilbud for at sende beskeder" }
-  }
-
-  const { error } = await supabase.from("messages").insert({
-    sender_id:           user.id,
-    recipient_id:        reqData.guest_id,
-    transport_request_id: requestId,
-    content:             content.trim(),
-  })
-
-  if (error) return { error: error.message }
-  revalidatePath(`/transport/anmodninger/${requestId}`)
-  return { ok: true }
-}
 
 // ── Submit transport offer ──────────────────────────────────────────────────
 
@@ -143,13 +94,7 @@ export async function submitTransportOffer(
     if (error || !inserted) return { error: error?.message ?? "Fejl" }
     offerId = (inserted as { id: string }).id
 
-    // Auto-insert welcome message in chat when first offer
-    await supabase.from("messages").insert({
-      sender_id:            user.id,
-      recipient_id:         reqData.guest_id,
-      transport_request_id: input.requestId,
-      content:              "Hej! Jeg har afgivet et tilbud på din transportanmodning.",
-    })
+    await createNotification(reqData.guest_id, "transport_offer_received", offerId)
   }
 
   await notifyNewTransportOffer(offerId)
@@ -226,7 +171,7 @@ export async function acceptTransportOffer(offerId: string): Promise<AcceptOffer
     return { error: "Sejleren modtager endnu ikke betalinger — prøv igen senere" }
   }
 
-  const platformFee = Math.round(offer.price_ore * 0.15)
+  const platformFeeOre = calcPlatformFee(offer.price_ore)
   const serviceFeeOre = calcServiceFee(offer.price_ore)
   const base        = getAppBaseUrl()
   const requestId   = offer.request_id
@@ -258,7 +203,7 @@ export async function acceptTransportOffer(offerId: string): Promise<AcceptOffer
         price_data: {
           currency: "dkk",
           unit_amount: serviceFeeOre,
-          product_data: { name: "Servicegebyr (3%)" },
+          product_data: { name: "Servicegebyr (12%)" },
         },
       })
     }
@@ -268,7 +213,7 @@ export async function acceptTransportOffer(offerId: string): Promise<AcceptOffer
       payment_method_types: ["card"],
       line_items: lineItems,
       payment_intent_data: {
-        application_fee_amount: platformFee + serviceFeeOre,
+        application_fee_amount: platformFeeOre + serviceFeeOre,
         transfer_data:          { destination: s.stripe_account_id },
         metadata: {
           transport_offer_id:   offerId,
@@ -292,12 +237,14 @@ export async function acceptTransportOffer(offerId: string): Promise<AcceptOffer
       .from("transport_offers")
       .update({
         stripe_session_id: session.id,
+        platform_fee_ore: platformFeeOre,
         service_fee_ore: serviceFeeOre,
         updated_at: new Date().toISOString(),
       })
       .eq("id", offerId)
       .eq("skipper_id", offer.skipper_id)
 
+    await createNotification(offer.skipper_id, "transport_offer_accepted", offerId)
     await notifyTransportOfferAccepted(offerId)
     return { url: session.url }
   } catch (e) {

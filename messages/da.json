@@ -6,7 +6,17 @@
   },
   "dashboard": {
     "listing_badge_cabin": "Hytte",
-    "listing_badge_residence": "Bolig"
+    "listing_badge_residence": "Bolig",
+    "stay_offers_status_declined": "Afslået",
+    "stay_offers_decline": "Afslå",
+    "stay_offers_decline_dialog_title": "Afslå tilbud",
+    "stay_offers_decline_comment_label": "Kommentar til udbyderen (valgfrit)",
+    "stay_offers_decline_comment_placeholder": "Valgfri korte linjer…",
+    "stay_offers_decline_cancel": "Annuller",
+    "stay_offers_decline_confirm": "Afslå tilbud",
+    "stay_offers_decline_submitting": "Afslår…",
+    "stay_offers_decline_toast_success": "Tilbud afslået",
+    "stay_offers_decline_your_comment": "Din kommentar:"
   },
   "create": {
     "add_new_residence": "+ Opret ny bolig",

@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Link } from "@/i18n/navigation"
 import { useTranslations } from "next-intl"
 import { MapPin, Anchor, ChevronLeft, ChevronRight, Zap, Users, MountainSnow } from "lucide-react"
-import { formatKr } from "@/lib/money"
+import { formatKr, calcDisplayPrice } from "@/lib/money"
 
 import { captureEvent } from "@/lib/analytics/posthog-events"
 import { getLocationName } from "@/lib/greenlandLocations"
@@ -144,7 +144,7 @@ export default function CabinCard({
             {cabin.title}
           </h3>
           <span className="text-sm font-semibold text-foreground whitespace-nowrap shrink-0">
-            {formatKr(cabin.price_per_night_ore)}
+            {formatKr(calcDisplayPrice(cabin.price_per_night_ore))}
             <span className="font-normal text-muted-foreground text-xs">{tDetail("perNight")}</span>
           </span>
         </div>

@@ -3,8 +3,8 @@
 import { useState, useMemo, useEffect, useRef } from "react"
 import dynamic from "next/dynamic"
 import { useSearchParams } from "next/navigation"
-import { Anchor, Grid, Map, ArrowRight, MessageSquare } from "lucide-react"
-import { useFormatter, useTranslations } from "next-intl"
+import { Anchor, Grid, Map, ArrowRight } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { Link, useRouter } from "@/i18n/navigation"
 import { Button } from "@/components/ui/button"
 import TransportCard, { type RideShareCardData } from "./components/TransportCard"
@@ -30,16 +30,6 @@ const TransportMap = dynamic(() => import("@/components/map/TransportMap"), {
   loading: () => <MapLoading />,
 })
 
-export interface OpenTransportRequest {
-  id: string
-  from_location: string
-  to_location: string
-  desired_date: string
-  num_passengers: number
-  trip_type: string
-  status: string
-}
-
 const DEFAULT_FILTERS: TransportFilterValues = {
   search:        "",
   fromLoc:       "all",
@@ -52,11 +42,8 @@ const DEFAULT_FILTERS: TransportFilterValues = {
   showPanel:     false,
 }
 
-// Trip type labels come from translations (see tripTypes in messages)
-
 interface Props {
   rideShares:   RideShareCardData[]
-  openRequests: OpenTransportRequest[]
   initialDate?: string
   initialHub?: string
   /** Min. ledige pladser (fra ?guests=); 0 = ingen filtrering */
@@ -65,13 +52,11 @@ interface Props {
 
 export default function TransportClient({
   rideShares,
-  openRequests,
   initialDate = "",
   initialHub = "",
   initialGuests = 0,
 }: Props) {
   const t = useTranslations("transport")
-  const fmt = useFormatter()
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -321,58 +306,6 @@ export default function TransportClient({
           </>
         )}
       </div>
-
-      {/* ── Åbne transportanmodninger ── */}
-      {openRequests.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 border-t border-border">
-          <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-            <div>
-              <h2 className="text-xl font-bold text-foreground">{t("openRequestsTitle")}</h2>
-              <p className="text-sm text-muted-foreground">{t("openRequestsSubtitle")}</p>
-            </div>
-            <Link
-              href="/transport/anmod"
-              className="text-sm text-primary font-semibold hover:text-primary/80 flex items-center gap-1"
-            >
-              {t("createNew")} <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {openRequests.map((r) => (
-              <Link
-                key={r.id}
-                href={`/transport/anmodninger/${r.id}`}
-                className="block bg-white rounded-2xl border border-border p-4 hover:shadow-card-hover hover:border-primary/20 transition-all"
-              >
-                <div className="flex items-start justify-between gap-2 mb-3">
-                  <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
-                    <Anchor className="w-4 h-4 text-primary" />
-                  </div>
-                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                    {t("statusOpen")}
-                  </span>
-                </div>
-                <p className="font-semibold text-sm text-foreground">
-                  {getLocationName(r.from_location)} → {getLocationName(r.to_location)}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {fmt.dateTime(new Date(r.desired_date), { day: "numeric", month: "short", year: "numeric" })}
-                  {" · "}{t(r.num_passengers === 1 ? "passenger_one" : "passenger_other", { count: r.num_passengers })}
-                  {" · "}
-                  {t(
-                    `tripTypes.${(r.trip_type === "return" ? "round_trip" : r.trip_type) as "one_way" | "round_trip"}`,
-                  )}
-                </p>
-                <div className="flex items-center gap-1 mt-3 text-primary text-xs font-semibold">
-                  <MessageSquare className="w-3 h-3" />
-                  {t("seeRequest")}
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* ── CTA ── */}
       <section className="py-16 bg-primary/5 border-t border-border">
