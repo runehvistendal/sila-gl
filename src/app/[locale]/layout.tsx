@@ -7,6 +7,7 @@ import { draftMode } from "next/headers"
 import { VisualEditing } from "next-sanity/visual-editing"
 import { PostHogProvider } from "@/components/analytics/PostHogProvider"
 import Footer from "@/components/layout/Footer"
+import { ChatBubble } from "@/components/chat/ChatBubble"
 import { routing } from "@/i18n/routing"
 
 export const metadata: Metadata = {
@@ -40,6 +41,7 @@ export default async function LocaleLayout({ children, params }: Props) {
       <PostHogProvider>
         {children}
         <Footer locale={locale} />
+        <ChatBubble />
         <Toaster position="top-center" richColors />
         {draft.isEnabled ? <VisualEditing /> : null}
       </PostHogProvider>

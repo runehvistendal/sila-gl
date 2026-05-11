@@ -4,6 +4,7 @@ import { Link } from "@/i18n/navigation"
 import { CheckCircle2 } from "lucide-react"
 import { buildMetadata } from "@/lib/metadata"
 import { createClient } from "@/lib/supabase-server"
+import ContactInfoCard from "@/components/bookings/ContactInfoCard"
 
 type PageProps = {
   params: Promise<{ locale: string }>
@@ -48,19 +49,27 @@ export default async function StayOfferBookingSuccessPage({ params, searchParams
   const sessionId = rawSid?.trim() ?? ""
   let stayTitle: string | null  = null
   let dateRange: string | null  = null
+  let cabinBookingId: string | null = null
 
   if (sessionId.length > 0) {
     const supabase = await createClient()
-    const { data: row } = await supabase
-      .from("stay_offers")
-      .select(`
-        id,
-        status,
-        cabins ( title ),
-        stay_requests ( desired_check_in, desired_check_out )
-      `)
-      .eq("stripe_session_id", sessionId)
-      .maybeSingle()
+    const [{ data: row }, { data: cabinRow }] = await Promise.all([
+      supabase
+        .from("stay_offers")
+        .select(`
+          id,
+          status,
+          cabins ( title ),
+          stay_requests ( desired_check_in, desired_check_out )
+        `)
+        .eq("stripe_session_id", sessionId)
+        .maybeSingle(),
+      supabase.from("cabin_bookings").select("id, status").eq("stripe_session_id", sessionId).maybeSingle(),
+    ])
+
+    if (cabinRow && cabinRow.status === "confirmed") {
+      cabinBookingId = cabinRow.id
+    }
 
     if (row && row.status === "accepted") {
       const cab = unwrapNested(row.cabins as { title: string | null } | { title: string | null }[] | null)
@@ -107,6 +116,11 @@ export default async function StayOfferBookingSuccessPage({ params, searchParams
           </div>
         ) : sessionId.length > 0 ? (
           <p className="text-muted-foreground text-xs">{t("stay_offer_success_fallback")}</p>
+        ) : null}
+        {cabinBookingId ? (
+          <div className="text-left space-y-3">
+            <ContactInfoCard booking_type="cabin_booking" booking_id={cabinBookingId} />
+          </div>
         ) : null}
         <Link
           href="/dashboard?tab=bookings"

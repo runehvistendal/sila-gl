@@ -15,6 +15,24 @@ export const dynamic = "force-dynamic"
 
 const isDev = process.env.NODE_ENV === "development"
 
+function contactInfoUntilFromCheckOutYmd(checkOut: string): string {
+  const d = new Date(checkOut)
+  d.setDate(d.getDate() + 3)
+  return d.toISOString()
+}
+
+function contactInfoUntilFromIsoTimestamp(iso: string): string {
+  const d = new Date(iso)
+  d.setDate(d.getDate() + 3)
+  return d.toISOString()
+}
+
+function contactInfoUntilFromNow(): string {
+  const d = new Date()
+  d.setDate(d.getDate() + 3)
+  return d.toISOString()
+}
+
 export async function POST(request: Request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET
   if (!secret) {
@@ -53,10 +71,15 @@ export async function POST(request: Request) {
 
       if (!offerId || !requestId) return new Response("ok", { status: 200 })
 
+      const transportContactUntil = contactInfoUntilFromNow()
       // Mark offer as accepted
       await service
         .from("transport_offers")
-        .update({ status: "accepted", updated_at: new Date().toISOString() })
+        .update({
+          status: "accepted",
+          updated_at: new Date().toISOString(),
+          contact_info_visible_until: transportContactUntil,
+        })
         .eq("id", offerId)
 
       // Reject all other pending offers on this request
@@ -118,6 +141,16 @@ export async function POST(request: Request) {
       const paymentIntentId2 =
         typeof pi2 === "string" ? pi2 : pi2 && "id" in pi2 ? (pi2 as { id: string }).id : null
 
+      const { data: depRow } = await service
+        .from("ride_shares")
+        .select("departure_at")
+        .eq("id", rideShareId)
+        .maybeSingle()
+      const depAt = (depRow as { departure_at: string } | null)?.departure_at
+      const rideShareContactUntil = depAt
+        ? contactInfoUntilFromIsoTimestamp(depAt)
+        : contactInfoUntilFromNow()
+
       // Confirm the booking
       await service
         .from("ride_share_bookings")
@@ -125,6 +158,7 @@ export async function POST(request: Request) {
           status: "confirmed",
           stripe_payment_intent_id: paymentIntentId2 ?? undefined,
           updated_at: new Date().toISOString(),
+          contact_info_visible_until: rideShareContactUntil,
         })
         .eq("id", bookingId)
         .eq("status", "pending")
@@ -299,6 +333,7 @@ export async function POST(request: Request) {
 
       const platformFeeOre = calcPlatformFee(subtotalOre)
       const serviceFeeOre  = calcServiceFee(subtotalOre)
+      const stayOfferContactUntil = contactInfoUntilFromCheckOutYmd(sr.desired_check_out)
 
       const { data: inserted, error: bookErr } = await service
         .from("cabin_bookings")
@@ -316,6 +351,7 @@ export async function POST(request: Request) {
           stripe_payment_intent_id: paymentIntentIdSo,
           includes_transport:       transportOre > 0,
           transport_total_ore:      transportOre,
+          contact_info_visible_until: stayOfferContactUntil,
         })
         .select("id")
         .maybeSingle()
@@ -408,7 +444,7 @@ export async function POST(request: Request) {
 
     const { data: row, error: findErr } = await service
       .from("cabin_bookings")
-      .select("id, status, stripe_payment_intent_id, deleted_at")
+      .select("id, status, stripe_payment_intent_id, deleted_at, check_out")
       .eq("stripe_session_id", sessionId)
       .maybeSingle()
 
@@ -421,7 +457,12 @@ export async function POST(request: Request) {
       return new Response("ok", { status: 200 })
     }
 
-    const b = row as { id: string; status: string; stripe_payment_intent_id: string | null }
+    const b = row as {
+      id: string
+      status: string
+      stripe_payment_intent_id: string | null
+      check_out: string
+    }
     if (b.status === "confirmed" && b.stripe_payment_intent_id) {
       return new Response("ok", { status: 200 })
     }
@@ -431,12 +472,15 @@ export async function POST(request: Request) {
       return new Response("ok", { status: 200 })
     }
 
+    const cabinContactUntil = contactInfoUntilFromCheckOutYmd(b.check_out)
+
     const { error: upErr } = await service
       .from("cabin_bookings")
       .update({
         status: "confirmed",
         stripe_payment_intent_id: paymentIntentId,
         updated_at: new Date().toISOString(),
+        contact_info_visible_until: cabinContactUntil,
       })
       .eq("id", b.id)
       .is("deleted_at", null)

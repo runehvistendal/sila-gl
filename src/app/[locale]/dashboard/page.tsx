@@ -7,6 +7,9 @@ import Navbar from "@/components/layout/Navbar"
 import DashboardClient from "./DashboardClient"
 import type { CabinBookingData } from "./components/BookingRow"
 import type { TransportRequestData } from "./components/OpenRequestsList"
+import type { RideShareBookingRowData } from "./components/RideShareBookingRow"
+import type { TransportOfferBookingRowData } from "./components/TransportOfferBookingRow"
+import type { StayOfferBookingRowData } from "./components/StayOfferBookingRow"
 
 interface BoatData {
   id: string
@@ -305,6 +308,104 @@ export default async function DashboardPage() {
     getUnreadStayOfferReceivedCount(supabase, user.id),
   ])
 
+  const [
+    { data: rsPassengerRaw },
+    { data: rsSkipperRaw },
+    { data: toGuestRaw },
+    { data: toSkipperRaw },
+    { data: stayGuestOffersRaw },
+    { data: stayProviderOffersRaw },
+    { data: guestStripeSessionsRaw },
+    { data: hostStripeSessionsRaw },
+  ] = await Promise.all([
+    supabase
+      .from("ride_share_bookings")
+      .select(`
+        id, status, num_seats, total_price_ore, created_at, updated_at, passenger_id,
+        ride_shares!inner (
+          from_location, to_location, departure_at, skipper_id,
+          profiles!skipper_id ( full_name )
+        )
+      `)
+      .eq("passenger_id", user.id)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(40),
+    supabase
+      .from("ride_share_bookings")
+      .select(`
+        id, status, num_seats, total_price_ore, created_at, updated_at, passenger_id,
+        ride_shares!inner ( from_location, to_location, departure_at, skipper_id ),
+        profiles!passenger_id ( full_name )
+      `)
+      .eq("ride_shares.skipper_id", user.id)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(40),
+    supabase
+      .from("transport_offers")
+      .select(`
+        id, status, price_ore, created_at, updated_at, skipper_id,
+        transport_requests!inner ( from_location, to_location, desired_date, num_passengers, guest_id ),
+        profiles!skipper_id ( full_name )
+      `)
+      .eq("transport_requests.guest_id", user.id)
+      .eq("status", "accepted")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(40),
+    supabase
+      .from("transport_offers")
+      .select(`
+        id, status, price_ore, created_at, updated_at, skipper_id,
+        transport_requests!inner (
+          from_location, to_location, desired_date, num_passengers, guest_id,
+          profiles!guest_id ( full_name )
+        )
+      `)
+      .eq("skipper_id", user.id)
+      .eq("status", "accepted")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(40),
+    supabase
+      .from("stay_offers")
+      .select(`
+        id, status, stripe_session_id,
+        cabins ( title ),
+        stay_requests!inner ( guest_id, desired_check_in, desired_check_out, num_guests )
+      `)
+      .eq("status", "accepted")
+      .eq("stay_requests.guest_id", user.id)
+      .is("deleted_at", null)
+      .limit(20),
+    supabase
+      .from("stay_offers")
+      .select(`
+        id, status, stripe_session_id,
+        cabins ( title ),
+        stay_requests ( desired_check_in, desired_check_out, num_guests )
+      `)
+      .eq("status", "accepted")
+      .eq("provider_id", user.id)
+      .is("deleted_at", null)
+      .limit(20),
+    supabase
+      .from("cabin_bookings")
+      .select("stripe_session_id")
+      .eq("guest_id", user.id)
+      .not("stripe_session_id", "is", null)
+      .is("deleted_at", null),
+    cabinIds.length > 0
+      ? supabase
+          .from("cabin_bookings")
+          .select("stripe_session_id")
+          .in("cabin_id", cabinIds)
+          .not("stripe_session_id", "is", null)
+          .is("deleted_at", null)
+      : Promise.resolve({ data: [] as { stripe_session_id: string | null }[] | null }),
+  ])
+
   const navUser: NavUser = {
     id: user.id,
     fullName: displayNameResolved,
@@ -319,6 +420,197 @@ export default async function DashboardPage() {
       .map((r: Record<string, unknown>) => r.cabin_booking_id as string | null)
       .filter(Boolean) as string[]
   )
+  const myReviewedRideShareBookingIds = new Set(
+    (myReviewedRaw ?? [])
+      .map((r: Record<string, unknown>) => r.ride_share_booking_id as string | null)
+      .filter(Boolean) as string[]
+  )
+  const myReviewedTransportOfferIds = new Set(
+    (myReviewedRaw ?? [])
+      .map((r: Record<string, unknown>) => r.transport_offer_id as string | null)
+      .filter(Boolean) as string[]
+  )
+
+  const cabinStripeSessionIds = new Set(
+    [...(guestStripeSessionsRaw ?? []), ...(hostStripeSessionsRaw ?? [])]
+      .map((r) => r.stripe_session_id)
+      .filter((s): s is string => Boolean(s && String(s).trim())),
+  )
+
+  function mapRideSharePassengerRow(b: Record<string, unknown>): RideShareBookingRowData | null {
+    const rs = b.ride_shares as
+      | {
+          from_location: string
+          to_location: string
+          departure_at: string
+          skipper_id: string
+          profiles?: { full_name: string | null } | null
+        }
+      | null
+    if (!rs) return null
+    return {
+      id:            b.id as string,
+      status:        b.status as string,
+      num_seats:     b.num_seats as number,
+      total_price_ore: b.total_price_ore as number,
+      created_at:    b.created_at as string,
+      from_location: rs.from_location,
+      to_location:   rs.to_location,
+      departure_at:  rs.departure_at,
+      other_name:    rs.profiles?.full_name ?? null,
+      other_id:      rs.skipper_id,
+      reviewee_id:   rs.skipper_id,
+      isSkipperView: false,
+    }
+  }
+
+  function mapRideShareSkipperRow(b: Record<string, unknown>): RideShareBookingRowData | null {
+    const rs = b.ride_shares as
+      | {
+          from_location: string
+          to_location: string
+          departure_at: string
+          skipper_id: string
+        }
+      | null
+    const pr = b.profiles as { full_name: string | null } | null
+    if (!rs) return null
+    const passengerId = b.passenger_id as string
+    return {
+      id:              b.id as string,
+      status:          b.status as string,
+      num_seats:       b.num_seats as number,
+      total_price_ore: b.total_price_ore as number,
+      created_at:      b.created_at as string,
+      from_location:   rs.from_location,
+      to_location:     rs.to_location,
+      departure_at:    rs.departure_at,
+      other_name:      pr?.full_name ?? null,
+      other_id:        passengerId,
+      reviewee_id:     passengerId,
+      isSkipperView:   true,
+    }
+  }
+
+  function mapTransportGuestRow(o: Record<string, unknown>): TransportOfferBookingRowData | null {
+    const tr = o.transport_requests as
+      | {
+          from_location: string
+          to_location: string
+          desired_date: string
+          num_passengers: number
+          guest_id: string
+        }
+      | null
+    const skipperProfiles = o.profiles as { full_name: string | null } | null
+    if (!tr) return null
+    const skipperId = o.skipper_id as string
+    return {
+      id:             o.id as string,
+      status:         o.status as string,
+      price_ore:      o.price_ore as number,
+      created_at:     o.created_at as string,
+      from_location:  tr.from_location,
+      to_location:    tr.to_location,
+      desired_date:   tr.desired_date,
+      num_passengers: tr.num_passengers,
+      other_name:     skipperProfiles?.full_name ?? null,
+      other_id:       skipperId,
+      reviewee_id:    skipperId,
+      isSkipperView:  false,
+    }
+  }
+
+  function mapTransportSkipperRow(o: Record<string, unknown>): TransportOfferBookingRowData | null {
+    const tr = o.transport_requests as
+      | {
+          from_location: string
+          to_location: string
+          desired_date: string
+          num_passengers: number
+          guest_id: string
+          profiles?: { full_name: string | null } | null
+        }
+      | null
+    if (!tr) return null
+    const guestId = tr.guest_id
+    return {
+      id:             o.id as string,
+      status:         o.status as string,
+      price_ore:      o.price_ore as number,
+      created_at:     o.created_at as string,
+      from_location:  tr.from_location,
+      to_location:    tr.to_location,
+      desired_date:   tr.desired_date,
+      num_passengers: tr.num_passengers,
+      other_name:     tr.profiles?.full_name ?? null,
+      other_id:       guestId,
+      reviewee_id:    guestId,
+      isSkipperView:  true,
+    }
+  }
+
+  function mapStayOfferRow(
+    row: Record<string, unknown>,
+  ): StayOfferBookingRowData | null {
+    const cab = row.cabins as { title: string | null } | { title: string | null }[] | null
+    const cabinTitle = Array.isArray(cab) ? cab[0]?.title ?? null : cab?.title ?? null
+    const sr = row.stay_requests as
+      | {
+          desired_check_in: string
+          desired_check_out: string
+          num_guests: number
+        }
+      | {
+          desired_check_in: string
+          desired_check_out: string
+          num_guests: number
+        }[]
+      | null
+    const req = Array.isArray(sr) ? sr[0] : sr
+    if (!req) return null
+    return {
+      id:                 row.id as string,
+      status:             row.status as string,
+      cabin_title:        cabinTitle,
+      desired_check_in:   req.desired_check_in,
+      desired_check_out:  req.desired_check_out,
+      num_guests:        req.num_guests,
+    }
+  }
+
+  const myRideShareBookingsGuest: RideShareBookingRowData[] = (rsPassengerRaw ?? [])
+    .map((b) => mapRideSharePassengerRow(b as Record<string, unknown>))
+    .filter(Boolean) as RideShareBookingRowData[]
+
+  const myRideShareBookingsSkipper: RideShareBookingRowData[] = (rsSkipperRaw ?? [])
+    .map((b) => mapRideShareSkipperRow(b as Record<string, unknown>))
+    .filter(Boolean) as RideShareBookingRowData[]
+
+  const myTransportOffersGuest: TransportOfferBookingRowData[] = (toGuestRaw ?? [])
+    .map((o) => mapTransportGuestRow(o as Record<string, unknown>))
+    .filter(Boolean) as TransportOfferBookingRowData[]
+
+  const myTransportOffersSkipper: TransportOfferBookingRowData[] = (toSkipperRaw ?? [])
+    .map((o) => mapTransportSkipperRow(o as Record<string, unknown>))
+    .filter(Boolean) as TransportOfferBookingRowData[]
+
+  const stayOffersMerged: StayOfferBookingRowData[] = [
+    ...(stayGuestOffersRaw ?? []),
+    ...(stayProviderOffersRaw ?? []),
+  ]
+    .map((r) => mapStayOfferRow(r as Record<string, unknown>))
+    .filter(Boolean) as StayOfferBookingRowData[]
+
+  const stayOfferById = new Map(stayOffersMerged.map((s) => [s.id, s]))
+  const orphanStayOfferBookings: StayOfferBookingRowData[] = [...stayOfferById.values()].filter((s) => {
+    const raw = [...(stayGuestOffersRaw ?? []), ...(stayProviderOffersRaw ?? [])].find(
+      (r) => (r as { id: string }).id === s.id,
+    ) as { stripe_session_id?: string | null } | undefined
+    const sid = raw?.stripe_session_id
+    if (!sid || !String(sid).trim()) return true
+    return !cabinStripeSessionIds.has(String(sid).trim())
+  })
 
   /* ── Shape data ── */
   type CabinJoinGuest = { title?: string; owner_id?: string; price_per_night_ore?: number; property_type?: string | null; profiles?: { full_name?: string } | null } | null
@@ -489,6 +781,13 @@ export default async function DashboardPage() {
         myBookings={myBookings}
         hostBookings={hostBookings}
         myReviewedCabinBookingIds={[...myReviewedCabinBookingIds]}
+        myReviewedRideShareBookingIds={[...myReviewedRideShareBookingIds]}
+        myReviewedTransportOfferIds={[...myReviewedTransportOfferIds]}
+        myRideShareBookingsGuest={myRideShareBookingsGuest}
+        myRideShareBookingsSkipper={myRideShareBookingsSkipper}
+        myTransportOffersGuest={myTransportOffersGuest}
+        myTransportOffersSkipper={myTransportOffersSkipper}
+        orphanStayOfferBookings={orphanStayOfferBookings}
         myCabins={(myCabinsRaw ?? []) as Parameters<typeof DashboardClient>[0]["myCabins"]}
         myRideShares={(myRideSharesRaw ?? []) as Parameters<typeof DashboardClient>[0]["myRideShares"]}
         myBoats={(myBoatsRaw ?? []) as BoatData[]}

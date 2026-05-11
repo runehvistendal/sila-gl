@@ -560,7 +560,19 @@
     "stripe_onboarding_later": "Senere",
     "stay_offer_success_stay_label": "Ophold",
     "stay_offer_success_dates_label": "Datoer",
-    "stay_offer_success_fallback": "Tjek fanen Bookinger på dit dashboard, hvis detaljerne ikke vises her."
+    "stay_offer_success_fallback": "Tjek fanen Bookinger på dit dashboard, hvis detaljerne ikke vises her.",
+    "contact_card_title_host": "Kontakt din vært",
+    "contact_card_title_skipper": "Kontakt din sejler",
+    "bookings_section_ride_share": "Samsejlads",
+    "bookings_section_transport": "Transport",
+    "bookings_section_stay_offer_booking": "Ophold via tilbud",
+    "booking_row_default_ride_title": "Samsejlads",
+    "booking_row_default_transport_title": "Transport",
+    "booking_row_role_skipper": "Sejler",
+    "booking_row_role_passenger": "Passager",
+    "booking_row_role_guest_tr": "Gæst",
+    "booking_row_transport_accepted": "Accepteret",
+    "stay_offer_booking_row_title": "Accepteret tilbud"
   },
   "profile": {
     "title": "Profil",
@@ -1022,6 +1034,28 @@
     "no_posts": "Ingen indlæg endnu.",
     "read_article": "Læs indlæg",
     "list_meta_description": "Nyheder, guides og historier fra Grønland"
+  },
+  "chat": {
+    "title": "Beskeder",
+    "tab_bookings": "Bookinger",
+    "tab_ai": "Sila AI",
+    "empty_bookings": "Chat åbner efter din første booking",
+    "empty_bookings_sub": "Du kan chatte med udbydere og gæster efter en bekræftet booking.",
+    "ai_title": "Spørg Sila",
+    "ai_sub": "Stil spørgsmål om platformen, bookinger og hvordan Sila.gl fungerer.",
+    "ai_input_placeholder": "Skriv en besked…",
+    "send": "Send",
+    "you": "Dig",
+    "input_placeholder": "Skriv en besked...",
+    "no_conversations": "Ingen aktive samtaler",
+    "no_conversations_sub": "Dine bookingsamtaler vises her.",
+    "back": "Tilbage",
+    "unread": "ulæst",
+    "ai_thinking": "Sila tænker...",
+    "ai_error": "Noget gik galt. Prøv igen.",
+    "ai_suggestion_1": "Hvad koster det som udbyder?",
+    "ai_suggestion_2": "Hvordan fungerer samsejlads?",
+    "ai_suggestion_3": "Hvad sker der efter jeg booker?"
   },
   "ophold": {
     "nature": {

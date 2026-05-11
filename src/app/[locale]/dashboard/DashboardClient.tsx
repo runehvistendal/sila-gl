@@ -17,7 +17,14 @@ import { Button } from "@/components/ui/button"
 import { formatKr } from "@/lib/money"
 import { publishedCabinDetailPath, guestStayRequestHref } from "@/lib/cabinPublicPaths"
 import { getLocationName, formatStayRequestLocationDisplay } from "@/lib/greenlandLocations"
-import BookingRow, { STATUS_COLORS, STATUS_LABELS, type CabinBookingData } from "./components/BookingRow"
+import { STATUS_COLORS, STATUS_LABELS, type CabinBookingData } from "./components/BookingRow"
+import CabinBookingRowWithContact from "./components/CabinBookingRowWithContact"
+import RideShareBookingRowWithContact from "./components/RideShareBookingRowWithContact"
+import TransportOfferBookingRowWithContact from "./components/TransportOfferBookingRowWithContact"
+import StayOfferBookingRowWithContact from "./components/StayOfferBookingRowWithContact"
+import type { RideShareBookingRowData } from "./components/RideShareBookingRow"
+import type { TransportOfferBookingRowData } from "./components/TransportOfferBookingRow"
+import type { StayOfferBookingRowData } from "./components/StayOfferBookingRow"
 import {
   acceptTransportRequest, declineTransportRequest,
   duplicateCabin, duplicateBoat, deleteCabin, deleteBoat,
@@ -121,6 +128,13 @@ interface Props {
   myBookings: CabinBookingData[]
   hostBookings: CabinBookingData[]
   myReviewedCabinBookingIds?: string[]
+  myReviewedRideShareBookingIds?: string[]
+  myReviewedTransportOfferIds?: string[]
+  myRideShareBookingsGuest: RideShareBookingRowData[]
+  myRideShareBookingsSkipper: RideShareBookingRowData[]
+  myTransportOffersGuest: TransportOfferBookingRowData[]
+  myTransportOffersSkipper: TransportOfferBookingRowData[]
+  orphanStayOfferBookings: StayOfferBookingRowData[]
   myCabins: CabinData[]
   myRideShares: RideShareData[]
   myBoats: BoatData[]
@@ -144,6 +158,13 @@ export default function DashboardClient({
   myBookings,
   hostBookings,
   myReviewedCabinBookingIds = [],
+  myReviewedRideShareBookingIds = [],
+  myReviewedTransportOfferIds = [],
+  myRideShareBookingsGuest,
+  myRideShareBookingsSkipper,
+  myTransportOffersGuest,
+  myTransportOffersSkipper,
+  orphanStayOfferBookings,
   myCabins,
   myRideShares,
   myBoats,
@@ -308,6 +329,29 @@ export default function DashboardClient({
   // Booking splits
   const activeMyBookings  = myBookings.filter((b) => ["pending", "confirmed"].includes(b.status))
   const historyMyBookings = myBookings.filter((b) => ["completed", "cancelled"].includes(b.status))
+
+  const todayYmd = new Date().toISOString().slice(0, 10)
+
+  const activeRideGuest = myRideShareBookingsGuest.filter((b) =>
+    ["pending", "confirmed"].includes(b.status),
+  )
+  const historyRideGuest = myRideShareBookingsGuest.filter((b) =>
+    ["completed", "cancelled"].includes(b.status),
+  )
+  const activeRideSkipper = myRideShareBookingsSkipper.filter((b) =>
+    ["pending", "confirmed"].includes(b.status),
+  )
+  const historyRideSkipper = myRideShareBookingsSkipper.filter((b) =>
+    ["completed", "cancelled"].includes(b.status),
+  )
+
+  const activeTransportGuest = myTransportOffersGuest.filter((b) => b.desired_date >= todayYmd)
+  const historyTransportGuest = myTransportOffersGuest.filter((b) => b.desired_date < todayYmd)
+  const activeTransportSkipper = myTransportOffersSkipper.filter((b) => b.desired_date >= todayYmd)
+  const historyTransportSkipper = myTransportOffersSkipper.filter((b) => b.desired_date < todayYmd)
+
+  const activeStayOrphan = orphanStayOfferBookings.filter((b) => b.desired_check_out >= todayYmd)
+  const historyStayOrphan = orphanStayOfferBookings.filter((b) => b.desired_check_out < todayYmd)
 
   const pendingHostBookings = hostBookings.filter((b) => b.status === "pending").length
   const totalOpenRequests   = openTransportRequests.length
@@ -485,7 +529,12 @@ export default function DashboardClient({
                     activeMyBookings.length > 0 ? (
                       <div className="space-y-3">
                         {activeMyBookings.map((b) => (
-                          <BookingRow key={b.id} booking={b} isHost={false} alreadyReviewed={myReviewedCabinBookingIds.includes(b.id)} />
+                          <CabinBookingRowWithContact
+                            key={b.id}
+                            booking={b}
+                            isHost={false}
+                            alreadyReviewed={myReviewedCabinBookingIds.includes(b.id)}
+                          />
                         ))}
                       </div>
                     ) : (
@@ -494,12 +543,58 @@ export default function DashboardClient({
                   ) : historyMyBookings.length > 0 ? (
                     <div className="space-y-3">
                       {historyMyBookings.map((b) => (
-                        <BookingRow key={b.id} booking={b} isHost={false} alreadyReviewed={myReviewedCabinBookingIds.includes(b.id)} />
+                        <CabinBookingRowWithContact
+                          key={b.id}
+                          booking={b}
+                          isHost={false}
+                          alreadyReviewed={myReviewedCabinBookingIds.includes(b.id)}
+                        />
                       ))}
                     </div>
                   ) : (
                     <EmptyState icon={Clock} message="Ingen historik endnu" cta="Udforsk hytter" ctaHref="/ophold/i-naturen" />
                   )}
+
+                  {(bookingFilter === "active" ? activeRideGuest : historyRideGuest).length > 0 ? (
+                    <div className="space-y-3 pt-6 border-t border-border">
+                      <h3 className="font-semibold text-foreground">{tDash("bookings_section_ride_share")}</h3>
+                      <div className="space-y-3">
+                        {(bookingFilter === "active" ? activeRideGuest : historyRideGuest).map((b) => (
+                          <RideShareBookingRowWithContact
+                            key={b.id}
+                            booking={b}
+                            alreadyReviewed={myReviewedRideShareBookingIds.includes(b.id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {(bookingFilter === "active" ? activeTransportGuest : historyTransportGuest).length > 0 ? (
+                    <div className="space-y-3 pt-6 border-t border-border">
+                      <h3 className="font-semibold text-foreground">{tDash("bookings_section_transport")}</h3>
+                      <div className="space-y-3">
+                        {(bookingFilter === "active" ? activeTransportGuest : historyTransportGuest).map((b) => (
+                          <TransportOfferBookingRowWithContact
+                            key={b.id}
+                            booking={b}
+                            alreadyReviewed={myReviewedTransportOfferIds.includes(b.id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {(bookingFilter === "active" ? activeStayOrphan : historyStayOrphan).length > 0 ? (
+                    <div className="space-y-3 pt-6 border-t border-border">
+                      <h3 className="font-semibold text-foreground">{tDash("bookings_section_stay_offer_booking")}</h3>
+                      <div className="space-y-3">
+                        {(bookingFilter === "active" ? activeStayOrphan : historyStayOrphan).map((b) => (
+                          <StayOfferBookingRowWithContact key={b.id} booking={b} />
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               )}
 
@@ -520,10 +615,43 @@ export default function DashboardClient({
                             : ["completed", "cancelled"].includes(b.status)
                         )
                         .map((b) => (
-                          <BookingRow key={b.id} booking={b} isHost={true} alreadyReviewed={myReviewedCabinBookingIds.includes(b.id)} />
+                          <CabinBookingRowWithContact
+                            key={b.id}
+                            booking={b}
+                            isHost={true}
+                            alreadyReviewed={myReviewedCabinBookingIds.includes(b.id)}
+                          />
                         ))}
                     </div>
                   )}
+                  {(bookingFilter === "active" ? activeRideSkipper : historyRideSkipper).length > 0 ? (
+                    <div className="space-y-3 mt-8 pt-8 border-t border-border">
+                      <h3 className="font-semibold text-foreground mb-3">{tDash("bookings_section_ride_share")}</h3>
+                      <div className="space-y-3">
+                        {(bookingFilter === "active" ? activeRideSkipper : historyRideSkipper).map((b) => (
+                          <RideShareBookingRowWithContact
+                            key={b.id}
+                            booking={b}
+                            alreadyReviewed={myReviewedRideShareBookingIds.includes(b.id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                  {(bookingFilter === "active" ? activeTransportSkipper : historyTransportSkipper).length > 0 ? (
+                    <div className="space-y-3 mt-8 pt-8 border-t border-border">
+                      <h3 className="font-semibold text-foreground mb-3">{tDash("bookings_section_transport")}</h3>
+                      <div className="space-y-3">
+                        {(bookingFilter === "active" ? activeTransportSkipper : historyTransportSkipper).map((b) => (
+                          <TransportOfferBookingRowWithContact
+                            key={b.id}
+                            booking={b}
+                            alreadyReviewed={myReviewedTransportOfferIds.includes(b.id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>

@@ -560,7 +560,19 @@
     "stripe_onboarding_later": "Later",
     "stay_offer_success_stay_label": "Stay",
     "stay_offer_success_dates_label": "Dates",
-    "stay_offer_success_fallback": "Check the Bookings tab on your dashboard if details are not shown here."
+    "stay_offer_success_fallback": "Check the Bookings tab on your dashboard if details are not shown here.",
+    "contact_card_title_host": "Contact your host",
+    "contact_card_title_skipper": "Contact your skipper",
+    "bookings_section_ride_share": "Ride shares",
+    "bookings_section_transport": "Transport",
+    "bookings_section_stay_offer_booking": "Stay via offer",
+    "booking_row_default_ride_title": "Ride share",
+    "booking_row_default_transport_title": "Transport",
+    "booking_row_role_skipper": "Skipper",
+    "booking_row_role_passenger": "Passenger",
+    "booking_row_role_guest_tr": "Guest",
+    "booking_row_transport_accepted": "Accepted",
+    "stay_offer_booking_row_title": "Accepted offer"
   },
   "profile": {
     "title": "Profile",
@@ -1022,6 +1034,28 @@
     "no_posts": "No posts yet.",
     "read_article": "Read article",
     "list_meta_description": "News, guides and stories from Greenland"
+  },
+  "chat": {
+    "title": "Messages",
+    "tab_bookings": "Bookings",
+    "tab_ai": "Sila AI",
+    "empty_bookings": "Chat opens after your first booking",
+    "empty_bookings_sub": "You can chat with providers and guests after a confirmed booking.",
+    "ai_title": "Ask Sila",
+    "ai_sub": "Ask questions about the platform, bookings and how Sila.gl works.",
+    "ai_input_placeholder": "Write a message…",
+    "send": "Send",
+    "you": "You",
+    "input_placeholder": "Write a message...",
+    "no_conversations": "No active conversations",
+    "no_conversations_sub": "Your booking conversations will appear here.",
+    "back": "Back",
+    "unread": "unread",
+    "ai_thinking": "Sila is thinking...",
+    "ai_error": "Something went wrong. Please try again.",
+    "ai_suggestion_1": "What does it cost as a provider?",
+    "ai_suggestion_2": "How does sailing sharing work?",
+    "ai_suggestion_3": "What happens after I book?"
   },
   "ophold": {
     "nature": {
