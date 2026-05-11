@@ -1037,6 +1037,7 @@
   },
   "chat": {
     "title": "Beskeder",
+    "section_bookings": "Bookinger",
     "empty_bookings": "Chat åbner efter din første booking",
     "empty_bookings_sub": "Du kan chatte med udbydere og gæster efter en bekræftet booking.",
     "send": "Send",
@@ -1047,7 +1048,7 @@
     "back": "Tilbage",
     "unread": "ulæst",
     "help": {
-      "title": "Hjælp og FAQ",
+      "title": "Hjælp & FAQ",
       "prices_title": "Om priser",
       "prices_provider_q": "Hvad koster det som udbyder?",
       "prices_provider_a": "Der er 5 % platformgebyr. Du sætter selv prisen på dit opslag.",

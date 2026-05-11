@@ -1037,6 +1037,7 @@
   },
   "chat": {
     "title": "Messages",
+    "section_bookings": "Bookings",
     "empty_bookings": "Chat opens after your first booking",
     "empty_bookings_sub": "You can chat with providers and guests after a confirmed booking.",
     "send": "Send",
@@ -1047,7 +1048,7 @@
     "back": "Back",
     "unread": "unread",
     "help": {
-      "title": "Help and FAQ",
+      "title": "Help & FAQ",
       "prices_title": "About prices",
       "prices_provider_q": "What does it cost as a provider?",
       "prices_provider_a": "There is a 5% platform fee. You set the price for your listing.",
