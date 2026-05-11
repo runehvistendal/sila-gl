@@ -1,17 +1,19 @@
-import ContactInfoCard from "@/components/bookings/ContactInfoCard"
+"use client"
+
+import type { ReactNode } from "react"
 import StayOfferBookingRow, { type StayOfferBookingRowData } from "./StayOfferBookingRow"
 
 export default function StayOfferBookingRowWithContact({
   booking,
+  contactSlot,
 }: {
   booking: StayOfferBookingRowData
+  contactSlot?: ReactNode
 }) {
   return (
     <div className="space-y-2">
       <StayOfferBookingRow booking={booking} />
-      {booking.status === "accepted" ? (
-        <ContactInfoCard booking_type="stay_offer" booking_id={booking.id} />
-      ) : null}
+      {contactSlot ?? null}
     </div>
   )
 }

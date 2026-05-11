@@ -1,23 +1,21 @@
-import ContactInfoCard from "@/components/bookings/ContactInfoCard"
-import RideShareBookingRow, { type RideShareBookingRowData } from "./RideShareBookingRow"
+"use client"
 
-function showRideContact(status: string) {
-  return status === "confirmed" || status === "completed"
-}
+import type { ReactNode } from "react"
+import RideShareBookingRow, { type RideShareBookingRowData } from "./RideShareBookingRow"
 
 export default function RideShareBookingRowWithContact({
   booking,
   alreadyReviewed = false,
+  contactSlot,
 }: {
   booking: RideShareBookingRowData
   alreadyReviewed?: boolean
+  contactSlot?: ReactNode
 }) {
   return (
     <div className="space-y-2">
       <RideShareBookingRow booking={booking} alreadyReviewed={alreadyReviewed} />
-      {showRideContact(booking.status) ? (
-        <ContactInfoCard booking_type="ride_share" booking_id={booking.id} />
-      ) : null}
+      {contactSlot ?? null}
     </div>
   )
 }

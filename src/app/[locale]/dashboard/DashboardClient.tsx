@@ -51,6 +51,7 @@ import { StripeOnboardingRequiredModal } from "@/components/stripe/StripeOnboard
 import { STRIPE_PUBLISH_REQUIRED_ERROR } from "@/lib/stripePublishConstants"
 import { markNotificationsByType } from "@/app/actions/notifications"
 import type { NotificationType } from "@/types/notifications"
+import type { ReactNode } from "react"
 
 interface ReviewData {
   id: string
@@ -135,6 +136,11 @@ interface Props {
   myTransportOffersGuest: TransportOfferBookingRowData[]
   myTransportOffersSkipper: TransportOfferBookingRowData[]
   orphanStayOfferBookings: StayOfferBookingRowData[]
+  /** Server-leverede kontaktkort (ContactInfoCard) pr. booking-id */
+  cabinContactSlots: Record<string, ReactNode>
+  rideContactSlots: Record<string, ReactNode>
+  transportContactSlots: Record<string, ReactNode>
+  stayOfferContactSlots: Record<string, ReactNode>
   myCabins: CabinData[]
   myRideShares: RideShareData[]
   myBoats: BoatData[]
@@ -165,6 +171,10 @@ export default function DashboardClient({
   myTransportOffersGuest,
   myTransportOffersSkipper,
   orphanStayOfferBookings,
+  cabinContactSlots,
+  rideContactSlots,
+  transportContactSlots,
+  stayOfferContactSlots,
   myCabins,
   myRideShares,
   myBoats,
@@ -534,6 +544,7 @@ export default function DashboardClient({
                             booking={b}
                             isHost={false}
                             alreadyReviewed={myReviewedCabinBookingIds.includes(b.id)}
+                            contactSlot={cabinContactSlots[b.id]}
                           />
                         ))}
                       </div>
@@ -548,6 +559,7 @@ export default function DashboardClient({
                           booking={b}
                           isHost={false}
                           alreadyReviewed={myReviewedCabinBookingIds.includes(b.id)}
+                          contactSlot={cabinContactSlots[b.id]}
                         />
                       ))}
                     </div>
@@ -564,6 +576,7 @@ export default function DashboardClient({
                             key={b.id}
                             booking={b}
                             alreadyReviewed={myReviewedRideShareBookingIds.includes(b.id)}
+                            contactSlot={rideContactSlots[b.id]}
                           />
                         ))}
                       </div>
@@ -579,6 +592,7 @@ export default function DashboardClient({
                             key={b.id}
                             booking={b}
                             alreadyReviewed={myReviewedTransportOfferIds.includes(b.id)}
+                            contactSlot={transportContactSlots[b.id]}
                           />
                         ))}
                       </div>
@@ -590,7 +604,11 @@ export default function DashboardClient({
                       <h3 className="font-semibold text-foreground">{tDash("bookings_section_stay_offer_booking")}</h3>
                       <div className="space-y-3">
                         {(bookingFilter === "active" ? activeStayOrphan : historyStayOrphan).map((b) => (
-                          <StayOfferBookingRowWithContact key={b.id} booking={b} />
+                          <StayOfferBookingRowWithContact
+                            key={b.id}
+                            booking={b}
+                            contactSlot={stayOfferContactSlots[b.id]}
+                          />
                         ))}
                       </div>
                     </div>
@@ -620,6 +638,7 @@ export default function DashboardClient({
                             booking={b}
                             isHost={true}
                             alreadyReviewed={myReviewedCabinBookingIds.includes(b.id)}
+                            contactSlot={cabinContactSlots[b.id]}
                           />
                         ))}
                     </div>
@@ -633,6 +652,7 @@ export default function DashboardClient({
                             key={b.id}
                             booking={b}
                             alreadyReviewed={myReviewedRideShareBookingIds.includes(b.id)}
+                            contactSlot={rideContactSlots[b.id]}
                           />
                         ))}
                       </div>
@@ -647,6 +667,7 @@ export default function DashboardClient({
                             key={b.id}
                             booking={b}
                             alreadyReviewed={myReviewedTransportOfferIds.includes(b.id)}
+                            contactSlot={transportContactSlots[b.id]}
                           />
                         ))}
                       </div>

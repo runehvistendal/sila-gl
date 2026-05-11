@@ -1,25 +1,24 @@
-import ContactInfoCard from "@/components/bookings/ContactInfoCard"
-import BookingRow, { type CabinBookingData } from "./BookingRow"
+"use client"
 
-function showContactForCabinStatus(status: string) {
-  return status === "confirmed" || status === "completed"
-}
+import type { ReactNode } from "react"
+import BookingRow, { type CabinBookingData } from "./BookingRow"
 
 export default function CabinBookingRowWithContact({
   booking,
   isHost,
   alreadyReviewed = false,
+  contactSlot,
 }: {
   booking: CabinBookingData
   isHost: boolean
   alreadyReviewed?: boolean
+  /** Server-renderet ContactInfoCard — kun sat når kontakt må vises */
+  contactSlot?: ReactNode
 }) {
   return (
     <div className="space-y-2">
       <BookingRow booking={booking} isHost={isHost} alreadyReviewed={alreadyReviewed} />
-      {showContactForCabinStatus(booking.status) ? (
-        <ContactInfoCard booking_type="cabin_booking" booking_id={booking.id} />
-      ) : null}
+      {contactSlot ?? null}
     </div>
   )
 }

@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation"
+import type { ReactNode } from "react"
 import { createClient } from "@/lib/supabase-server"
 import { createServiceClient } from "@/lib/supabase-service"
 import { resolveDisplayName, type NavUser } from "@/lib/getNavUser"
 import { getUnreadCount, getUnreadStayOfferReceivedCount } from "@/lib/notifications"
 import Navbar from "@/components/layout/Navbar"
+import ContactInfoCard from "@/components/bookings/ContactInfoCard"
 import DashboardClient from "./DashboardClient"
 import type { CabinBookingData } from "./components/BookingRow"
 import type { TransportRequestData } from "./components/OpenRequestsList"
@@ -769,6 +771,56 @@ export default async function DashboardPage() {
     }
   })
 
+  function cabinAllowsContactCard(status: string) {
+    return status === "confirmed" || status === "completed"
+  }
+  function rideAllowsContactCard(status: string) {
+    return status === "confirmed" || status === "completed"
+  }
+
+  const cabinContactSlots: Record<string, ReactNode> = {}
+  for (const b of myBookings) {
+    if (cabinAllowsContactCard(b.status)) {
+      cabinContactSlots[b.id] = (
+        <ContactInfoCard key={`dash-cabin-contact-${b.id}`} booking_type="cabin_booking" booking_id={b.id} />
+      )
+    }
+  }
+  for (const b of hostBookings) {
+    if (cabinAllowsContactCard(b.status)) {
+      cabinContactSlots[b.id] = (
+        <ContactInfoCard key={`dash-cabin-contact-${b.id}`} booking_type="cabin_booking" booking_id={b.id} />
+      )
+    }
+  }
+
+  const rideContactSlots: Record<string, ReactNode> = {}
+  for (const b of [...myRideShareBookingsGuest, ...myRideShareBookingsSkipper]) {
+    if (rideAllowsContactCard(b.status)) {
+      rideContactSlots[b.id] = (
+        <ContactInfoCard key={`dash-ride-contact-${b.id}`} booking_type="ride_share" booking_id={b.id} />
+      )
+    }
+  }
+
+  const transportContactSlots: Record<string, ReactNode> = {}
+  for (const b of [...myTransportOffersGuest, ...myTransportOffersSkipper]) {
+    if (b.status === "accepted") {
+      transportContactSlots[b.id] = (
+        <ContactInfoCard key={`dash-to-contact-${b.id}`} booking_type="transport_offer" booking_id={b.id} />
+      )
+    }
+  }
+
+  const stayOfferContactSlots: Record<string, ReactNode> = {}
+  for (const b of orphanStayOfferBookings) {
+    if (b.status === "accepted") {
+      stayOfferContactSlots[b.id] = (
+        <ContactInfoCard key={`dash-stay-contact-${b.id}`} booking_type="stay_offer" booking_id={b.id} />
+      )
+    }
+  }
+
   return (
     <main>
       <Navbar user={navUser} />
@@ -788,6 +840,10 @@ export default async function DashboardPage() {
         myTransportOffersGuest={myTransportOffersGuest}
         myTransportOffersSkipper={myTransportOffersSkipper}
         orphanStayOfferBookings={orphanStayOfferBookings}
+        cabinContactSlots={cabinContactSlots}
+        rideContactSlots={rideContactSlots}
+        transportContactSlots={transportContactSlots}
+        stayOfferContactSlots={stayOfferContactSlots}
         myCabins={(myCabinsRaw ?? []) as Parameters<typeof DashboardClient>[0]["myCabins"]}
         myRideShares={(myRideSharesRaw ?? []) as Parameters<typeof DashboardClient>[0]["myRideShares"]}
         myBoats={(myBoatsRaw ?? []) as BoatData[]}
