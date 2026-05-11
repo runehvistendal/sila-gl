@@ -33,7 +33,11 @@ function previewText(text: string, max = 72): string {
   return t.length <= max ? t : `${t.slice(0, max)}…`
 }
 
-export function BookingChats() {
+type BookingChatsProps = {
+  onViewChange?: (view: "list" | "thread") => void
+}
+
+export function BookingChats({ onViewChange }: BookingChatsProps) {
   const t = useTranslations("chat")
   const tCommon = useTranslations("common")
   const tErr = useTranslations("errors")
@@ -52,6 +56,10 @@ export function BookingChats() {
   const [sending, setSending] = useState(false)
 
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    onViewChange?.(view)
+  }, [view, onViewChange])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setMe(data.user?.id ?? null))

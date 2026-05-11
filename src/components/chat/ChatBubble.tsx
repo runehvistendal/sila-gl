@@ -72,7 +72,7 @@ export function ChatBubble() {
         type="button"
         onClick={() => setDrawerOpen(true)}
         className={cn(
-          "fixed right-4 bottom-4 z-50 flex size-14 items-center justify-center rounded-full shadow-lg transition-opacity hover:opacity-90 sm:right-6 sm:bottom-6 relative",
+          "fixed bottom-6 right-6 z-50 flex size-14 items-center justify-center rounded-full shadow-lg transition-opacity hover:opacity-90",
           "bg-[#114788] text-white focus-visible:ring-2 focus-visible:ring-[#114788] focus-visible:ring-offset-2 focus-visible:outline-none"
         )}
         aria-label={t("title")}
