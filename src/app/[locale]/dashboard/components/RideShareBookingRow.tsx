@@ -1,8 +1,23 @@
 "use client"
 
-import { useState } from "react"
-import Link from "next/link"
-import { Ship, ChevronDown, Calendar, Users, ArrowRight, User } from "lucide-react"
+import { useState, useTransition } from "react"
+import { Link, useRouter } from "@/i18n/navigation"
+import { toast } from "sonner"
+import { Ship, ChevronDown, Calendar, Users, ArrowRight, User, ClipboardList, Info } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
+import { cancelMyRideShareBooking } from "@/app/actions/rideShares"
+import { passengerGetsFullRefund } from "@/lib/rideSharePolicy"
 import { useFormatter, useTranslations } from "next-intl"
 import { Badge } from "@/components/ui/badge"
 import { formatKr } from "@/lib/money"
@@ -24,6 +39,10 @@ export interface RideShareBookingRowData {
   other_id: string | null
   reviewee_id: string | null
   isSkipperView: boolean
+  ride_share_id: string
+  service_fee_ore: number
+  refunded_amount_ore: number
+  cancellation_reason: string | null
 }
 
 interface Props {
@@ -48,6 +67,36 @@ export default function RideShareBookingRow({ booking, alreadyReviewed = false }
   const personRole = booking.isSkipperView ? t("booking_row_role_passenger") : t("booking_row_role_skipper")
 
   const departureLabel = formatNuukFull(booking.departure_at)
+  const router = useRouter()
+  const [cancelPending, startCancel] = useTransition()
+
+  // Gæsten betalte subtotal + servicegebyr; sejleren ser sin subtotal
+  const shownTotal = booking.isSkipperView
+    ? booking.total_price_ore
+    : booking.total_price_ore + booking.service_fee_ore
+  const isUpcoming = new Date(booking.departure_at).getTime() > Date.now()
+  const canCancel = !booking.isSkipperView && booking.status === "confirmed" && isUpcoming
+  const fullRefund = passengerGetsFullRefund(booking.departure_at)
+  const reasonKey = booking.cancellation_reason
+    && ["weather", "skipper_cancelled", "passenger_cancelled", "overbooked_refunded"].includes(booking.cancellation_reason)
+    ? (`rs_reason_${booking.cancellation_reason}` as const)
+    : null
+
+  function handleCancel() {
+    startCancel(async () => {
+      const res = await cancelMyRideShareBooking(booking.id)
+      if ("error" in res) {
+        toast.error(res.error)
+        return
+      }
+      toast.success(
+        res.refundedOre > 0
+          ? t("rs_cancel_done_refund", { amount: formatKr(res.refundedOre) })
+          : t("rs_cancel_done"),
+      )
+      router.refresh()
+    })
+  }
 
   return (
     <div className="bg-white rounded-xl border border-border overflow-hidden">
@@ -84,9 +133,9 @@ export default function RideShareBookingRow({ booking, alreadyReviewed = false }
           >
             {STATUS_LABELS[booking.status] ?? booking.status}
           </Badge>
-          {booking.total_price_ore > 0 && (
+          {shownTotal > 0 && (
             <span className="text-sm font-bold text-foreground hidden sm:inline">
-              {formatKr(booking.total_price_ore)}
+              {formatKr(shownTotal)}
             </span>
           )}
           <ChevronDown
@@ -131,10 +180,62 @@ export default function RideShareBookingRow({ booking, alreadyReviewed = false }
 
           <div className="bg-muted/50 rounded-xl p-3 space-y-1.5 text-xs text-muted-foreground">
             <div className="flex justify-between font-semibold text-foreground">
-              <span>{tc("total")}</span>
-              <span>{formatKr(booking.total_price_ore)}</span>
+              <span>{booking.isSkipperView ? tc("total") : t("rs_paid")}</span>
+              <span>{formatKr(shownTotal)}</span>
             </div>
+            {booking.refunded_amount_ore > 0 && (
+              <div className="flex justify-between text-emerald-700">
+                <span>{t("rs_refunded", { amount: formatKr(booking.refunded_amount_ore) })}</span>
+              </div>
+            )}
           </div>
+
+          {booking.status === "cancelled" && reasonKey && (
+            <p className="text-xs text-muted-foreground flex items-start gap-1.5">
+              <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              {t(reasonKey)}
+            </p>
+          )}
+
+          {booking.isSkipperView && isUpcoming && ["confirmed", "pending"].includes(booking.status) && (
+            <Link
+              href={`/dashboard/sejlads/${booking.ride_share_id}`}
+              className="flex items-center gap-2 text-sm font-medium text-[#114788] hover:underline"
+            >
+              <ClipboardList className="w-4 h-4" />
+              {t("rs_manifest_link")}
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          )}
+
+          {canCancel && (
+            <div className="space-y-2 pt-1">
+              <p className="text-xs text-muted-foreground">{t("rs_policy_line")}</p>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="rounded-lg" disabled={cancelPending}>
+                    {t("rs_cancel_button")}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t("rs_cancel_title")}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {fullRefund
+                        ? t("rs_cancel_full_refund", { amount: formatKr(shownTotal) })
+                        : t("rs_cancel_no_refund")}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t("rs_keep")}</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleCancel} disabled={cancelPending}>
+                      {t("rs_cancel_confirm")}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          )}
 
           {booking.status === "completed" && booking.reviewee_id && (
             alreadyReviewed ? (

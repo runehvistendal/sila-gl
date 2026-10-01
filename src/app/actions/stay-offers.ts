@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase-server"
 import { createServiceClient } from "@/lib/supabase-service"
 import { getAppBaseUrl } from "@/lib/appUrl"
-import { stripe } from "@/lib/stripe"
+import { stripe, checkoutSessionExpiresAt } from "@/lib/stripe"
 import { calcServiceFee, calcPlatformFee } from "@/lib/money"
 import { createNotification } from "@/lib/notifications"
 
@@ -241,6 +241,7 @@ export async function acceptStayOffer(stayOfferId: string): Promise<AcceptStayOf
     sessionCheckout = await stripe.checkout.sessions.create(
       {
         mode: "payment",
+        expires_at: checkoutSessionExpiresAt(),
         payment_method_types: ["card"],
         line_items: lineItems,
         payment_intent_data: {

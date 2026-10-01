@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import LocationAutocomplete from "@/components/shared/LocationAutocomplete"
-import { isInByenCategory, locationToId } from "@/lib/greenlandLocations"
+import { nuukTodayYmd } from "@/lib/nuukTime"
 import { createSamsejlads, type SamsejladsFormState } from "./actions"
 import { PH_STORE } from "@/lib/analytics/posthog-events"
 
@@ -51,6 +51,11 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
   const [priceRoundtripKr, setPriceRoundtripKr] = useState("")
   const [priceOneWayKr, setPriceOneWayKr] = useState("")
   const [oneWayUserEdited, setOneWayUserEdited] = useState(false)
+  const [luggage, setLuggage] = useState<"small" | "medium" | "large">("medium")
+  const [safetyConfirmed, setSafetyConfirmed] = useState(false)
+
+  const selectedBoat = boats.find((b) => b.id === boatId)
+  const maxSeats = Math.max(1, Math.min(12, selectedBoat?.capacity ?? 12))
 
   const suggestedOneWay =
     priceRoundtripKr && !isNaN(Number(priceRoundtripKr)) && Number(priceRoundtripKr) > 0
@@ -69,7 +74,7 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
     }
   }
 
-  const today = new Date().toISOString().split("T")[0]
+  const today = nuukTodayYmd()
 
   return (
     <form
@@ -77,7 +82,7 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
       onSubmit={() => {
         try {
           const el = document.getElementById("total_pladser") as HTMLInputElement | null
-          const seats = Math.max(1, Math.min(20, Number(el?.value ?? 1)))
+          const seats = Math.max(1, Math.min(12, Number(el?.value ?? 1)))
           sessionStorage.setItem(
             PH_STORE.rideSharePending,
             JSON.stringify({
@@ -96,6 +101,7 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
       <input type="hidden" name="boat_id" value={boatId} />
       <input type="hidden" name="from_location" value={fromLocation} />
       <input type="hidden" name="to_location" value={toLocation} />
+      <input type="hidden" name="luggage_allowance" value={luggage} />
 
       {state?.errors?._form && (
         <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -154,8 +160,7 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
                 setFromLocation(name)
                 if (toLocation === name) setToLocation("")
               }}
-              placeholder={t("departure_city_placeholder")}
-              filterLocations={(loc) => isInByenCategory(locationToId(loc))}
+              placeholder={t("rs_from_placeholder")}
             />
           </div>
           <FieldError messages={state?.errors?.from_location} />
@@ -169,12 +174,11 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
               showOptionMeta={false}
               value={toLocation}
               onChange={setToLocation}
-              placeholder={t("arrival_city_placeholder")}
-              filterLocations={(loc) =>
-                isInByenCategory(locationToId(loc)) && loc.name_dk !== fromLocation
-              }
+              placeholder={t("rs_to_placeholder")}
+              filterLocations={(loc) => loc.name_dk !== fromLocation}
             />
           </div>
+          <p className="text-xs text-muted-foreground mt-1.5">{t("rs_to_hint")}</p>
           <FieldError messages={state?.errors?.to_location} />
         </div>
       </div>
@@ -208,6 +212,47 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
             />
             <FieldError messages={state?.errors?.afgang_tid} />
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="estimated_duration_minutes">{t("rs_duration_label")}</Label>
+            <select
+              id="estimated_duration_minutes"
+              name="estimated_duration_minutes"
+              defaultValue=""
+              className="mt-1 h-10 w-full rounded-xl border border-input bg-background px-3 text-sm"
+            >
+              <option value="">{t("rs_duration_placeholder")}</option>
+              {["30", "60", "90", "120", "180", "240", "360"].map((m) => (
+                <option key={m} value={m}>{t(`rs_duration_options.${m}`)}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <Label htmlFor="flexibility_minutes">{t("rs_flex_label")}</Label>
+            <select
+              id="flexibility_minutes"
+              name="flexibility_minutes"
+              defaultValue="60"
+              className="mt-1 h-10 w-full rounded-xl border border-input bg-background px-3 text-sm"
+            >
+              {["0", "30", "60", "120", "240"].map((m) => (
+                <option key={m} value={m}>{t(`rs_flex_options.${m}`)}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <Label htmlFor="meeting_point">{t("rs_meeting_label")}</Label>
+          <Input
+            id="meeting_point"
+            name="meeting_point"
+            maxLength={140}
+            placeholder={t("rs_meeting_placeholder")}
+            className="mt-1 rounded-xl"
+          />
         </div>
 
         <hr className="border-border" />
@@ -263,12 +308,36 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
             name="total_pladser"
             type="number"
             min={1}
-            max={20}
+            max={maxSeats}
             defaultValue={1}
             className="mt-1 rounded-xl"
             required
           />
+          <p className="text-xs text-muted-foreground mt-1.5">{t("rs_seats_hint", { max: maxSeats })}</p>
           <FieldError messages={state?.errors?.total_pladser} />
+        </div>
+        <div>
+          <Label>{t("rs_luggage_label")}</Label>
+          <div className="mt-1 grid grid-cols-3 gap-2" role="radiogroup" aria-label={t("rs_luggage_label")}>
+            {(["small", "medium", "large"] as const).map((opt) => {
+              const active = luggage === opt
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setLuggage(opt)}
+                  className={`rounded-xl border px-2 py-2.5 text-left transition-colors min-h-[56px] ${
+                    active ? "border-[#114788] bg-[#114788]/5" : "border-border hover:border-[#114788]/40"
+                  }`}
+                >
+                  <span className="block text-sm font-semibold text-foreground">{t(`rs_luggage_${opt}`)}</span>
+                  <span className="block text-xs text-muted-foreground">{t(`rs_luggage_${opt}_desc`)}</span>
+                </button>
+              )
+            })}
+          </div>
         </div>
         <div>
           <Label htmlFor="pris_roundtrip_kr">
@@ -330,9 +399,30 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
         </div>
       </div>
 
+      <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
+        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          {t("rs_safety_title")}
+        </p>
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            name="safety_confirmed"
+            value="on"
+            checked={safetyConfirmed}
+            onChange={(e) => setSafetyConfirmed(e.target.checked)}
+            className="mt-0.5 w-5 h-5 shrink-0 accent-[#114788]"
+          />
+          <span className="text-sm text-foreground leading-relaxed">{t("rs_safety_confirm")}</span>
+        </label>
+        <Link href="/udbyderguide#sejlads" className="inline-block text-sm text-[#114788] underline underline-offset-2">
+          {t("rs_safety_link")}
+        </Link>
+        <FieldError messages={state?.errors?.safety_confirmed} />
+      </div>
+
       <Button
         type="submit"
-        disabled={isPending || boats.length === 0}
+        disabled={isPending || boats.length === 0 || !safetyConfirmed}
         className="w-full rounded-xl h-12 text-base font-semibold"
         style={{ backgroundColor: "#114788" }}
       >

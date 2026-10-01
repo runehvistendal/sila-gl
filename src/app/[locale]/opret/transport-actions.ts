@@ -5,6 +5,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase-server"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 import { krToOre } from "@/lib/money"
+import { nuukInputToUtc } from "@/lib/nuukTime"
 
 export type CreateSamsejladsState = {
   errors?: Record<string, string[] | undefined>
@@ -69,10 +70,10 @@ export async function createSamsejlads(
     return { errors: { to_location: ["Afgangs- og ankomstby må ikke være ens"] } }
   }
 
-  // Brugerens input er Nuuk-lokal tid (UTC-3) — gem som korrekt UTC
+  // Brugerens input er Nuuk-lokal tid (sommertid håndteres) — gem som korrekt UTC
   const departureAt = data.departure_time
-    ? new Date(`${data.departure_date}T${data.departure_time}:00-03:00`).toISOString()
-    : new Date(`${data.departure_date}T00:00:00-03:00`).toISOString()
+    ? nuukInputToUtc(data.departure_date, data.departure_time)
+    : nuukInputToUtc(data.departure_date)
 
   // Money conversion — ONLY here, per CLAUDE.md
   const price_per_seat_ore = krToOre(data.price_per_seat_kr)

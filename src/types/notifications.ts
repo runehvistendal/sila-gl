@@ -8,3 +8,6 @@ export type NotificationType =
   | "transport_offer_accepted"
   | "cabin_transport_offer_received"
   | "experience_booking_received"
+  | "ride_share_booking_received"
+  | "ride_share_booking_cancelled"
+  | "ride_share_cancelled"

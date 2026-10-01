@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase-server"
 import { createServiceClient } from "@/lib/supabase-service"
-import { stripe } from "@/lib/stripe"
+import { stripe, checkoutSessionExpiresAt } from "@/lib/stripe"
 import { getAppBaseUrl } from "@/lib/appUrl"
 import { calcServiceFee, calcPlatformFee } from "@/lib/money"
 import { getLocationName } from "@/lib/greenlandLocations"
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   const numSeats = Number(body.seats_booked)
 
   if (!rideShareId) return Response.json({ error: "Manglende ride_share_id" }, { status: 400 })
-  if (!Number.isInteger(numSeats) || numSeats < 1 || numSeats > 20) {
+  if (!Number.isInteger(numSeats) || numSeats < 1 || numSeats > 12) {
     return Response.json({ error: "Ugyldigt antal pladser" }, { status: 400 })
   }
 
@@ -60,6 +60,9 @@ export async function POST(request: Request) {
 
   if (rs.deleted_at || rs.status !== "active") {
     return Response.json({ error: "Tur er ikke tilgængelig" }, { status: 400 })
+  }
+  if (new Date(rs.departure_at).getTime() < Date.now()) {
+    return Response.json({ error: "Turen er allerede sejlet" }, { status: 400 })
   }
   if (rs.seats_available < numSeats) {
     return Response.json({ error: "Ikke nok ledige pladser" }, { status: 400 })
@@ -106,13 +109,22 @@ export async function POST(request: Request) {
     .single()
 
   if (insErr || !booking) {
+    // Trigger ride_share_seat_hold afviser når pladserne er taget i mellemtiden
+    if (insErr?.message?.includes("Ikke nok ledige pladser")) {
+      return Response.json(
+        { error: "Pladserne blev netop booket af en anden. Vælg færre pladser eller en anden tur." },
+        { status: 409 },
+      )
+    }
     return Response.json({ error: "Kunne ikke oprette booking" }, { status: 500 })
   }
 
   const bookingId = (booking as { id: string }).id
   const base = getAppBaseUrl()
   const departure = new Date(rs.departure_at)
-  const dateLabel = departure.toLocaleDateString("da-DK", { day: "numeric", month: "long", year: "numeric" })
+  const dateLabel = departure.toLocaleString("da-DK", {
+    timeZone: "America/Godthab", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
+  })
 
   const lineItems: Array<{
     quantity: number
@@ -148,6 +160,7 @@ export async function POST(request: Request) {
   try {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
+        expires_at: checkoutSessionExpiresAt(),
       payment_method_types: ["card"],
       line_items: lineItems,
       payment_intent_data: {
@@ -176,8 +189,16 @@ export async function POST(request: Request) {
 
     return Response.json({ url: session.url })
   } catch (e) {
-    // Clean up pending booking on Stripe failure
-    await service.from("ride_share_bookings").delete().eq("id", bookingId)
+    // Frigiv de holdte pladser (DELETE ville ikke udløse seat-triggeren)
+    await service
+      .from("ride_share_bookings")
+      .update({
+        status: "cancelled",
+        cancelled_at: new Date().toISOString(),
+        cancellation_reason: "stripe_failed",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", bookingId)
     const msg = e instanceof Error ? e.message : "Betalingen kunne ikke startes"
     return Response.json({ error: msg }, { status: 500 })
   }

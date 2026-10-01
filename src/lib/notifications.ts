@@ -5,6 +5,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { getLocaleUrl } from "@/lib/appUrl"
 import { oreToKr } from "@/lib/money"
+import { getLocationName } from "@/lib/greenlandLocations"
 import { createServiceClient } from "@/lib/supabase-service"
 import type { NotificationType } from "@/types/notifications"
 
@@ -40,6 +41,9 @@ const NOTIFICATION_TYPES = new Set<string>([
   "transport_offer_accepted",
   "cabin_transport_offer_received",
   "experience_booking_received",
+  "ride_share_booking_received",
+  "ride_share_booking_cancelled",
+  "ride_share_cancelled",
 ])
 
 export async function createNotification(
@@ -241,8 +245,216 @@ export async function notifyNewReview(reviewId: string): Promise<void> {
   console.log("[NOTIFY] Ny anmeldelse:", reviewId)
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Samsejlads — bekræftelse, aflysning
+// ─────────────────────────────────────────────────────────────────────────────
+
+type RideShareCtx = {
+  rideShareId: string
+  skipperId: string
+  from: string
+  to: string
+  departureAt: string
+  meetingPoint: string | null
+}
+
+async function loadRideShareCtx(
+  service: SupabaseClient,
+  rideShareId: string,
+): Promise<RideShareCtx | null> {
+  const { data } = await service
+    .from("ride_shares")
+    .select("id, skipper_id, from_location, to_location, departure_at, meeting_point")
+    .eq("id", rideShareId)
+    .maybeSingle()
+  if (!data) return null
+  const r = data as {
+    id: string; skipper_id: string; from_location: string; to_location: string
+    departure_at: string; meeting_point: string | null
+  }
+  return {
+    rideShareId: r.id,
+    skipperId: r.skipper_id,
+    from: getLocationName(r.from_location),
+    to: getLocationName(r.to_location),
+    departureAt: r.departure_at,
+    meetingPoint: r.meeting_point,
+  }
+}
+
+function formatNuukDateTime(iso: string, lang: NotificationEmailLang): string {
+  return new Intl.DateTimeFormat(intlLocale(lang), {
+    timeZone: "America/Godthab",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso))
+}
+
+async function emailFor(service: SupabaseClient, userId: string): Promise<string | null> {
+  const { data } = await service.auth.admin.getUserById(userId)
+  return data.user?.email?.trim() || null
+}
+
+async function displayName(service: SupabaseClient, userId: string, fallback: string): Promise<string> {
+  const { data } = await service.from("profiles").select("full_name").eq("id", userId).maybeSingle()
+  return (data as { full_name?: string | null } | null)?.full_name?.trim() || fallback
+}
+
+const PASSENGER_SAFETY: Record<NotificationEmailLang, string> = {
+  da:
+    "Før afgang:\n" +
+    "• Mød op 15 minutter før afgang.\n" +
+    "• Tag varmt, vindtæt tøj, hue og handsker på — også om sommeren.\n" +
+    "• Sejleren giver en kort sikkerhedsinstruks og sørger for redningsvest til alle.\n" +
+    "• Sejladsen sker altid med vejrforbehold. Aflyser sejleren pga. vejr eller is, får du hele beløbet refunderet.\n" +
+    "• Nødnummer i Grønland: 112. På havet: VHF kanal 16.\n",
+  en:
+    "Before departure:\n" +
+    "• Arrive 15 minutes before departure.\n" +
+    "• Bring warm, windproof clothing, a hat and gloves — even in summer.\n" +
+    "• The skipper gives a short safety briefing and provides life jackets for everyone.\n" +
+    "• All trips are subject to weather. If the skipper cancels due to weather or ice, you get a full refund.\n" +
+    "• Emergency number in Greenland: 112. At sea: VHF channel 16.\n",
+}
+
 export async function notifyRideShareBookingConfirmed(bookingId: string): Promise<void> {
-  console.log("[NOTIFY] Samsejlads booking bekræftet:", bookingId)
+  const service = createServiceClient()
+  const { data } = await service
+    .from("ride_share_bookings")
+    .select("id, ride_share_id, passenger_id, num_seats, total_price_ore, service_fee_ore")
+    .eq("id", bookingId)
+    .maybeSingle()
+  if (!data) return
+  const b = data as {
+    id: string; ride_share_id: string; passenger_id: string
+    num_seats: number; total_price_ore: number; service_fee_ore: number
+  }
+  const ctx = await loadRideShareCtx(service, b.ride_share_id)
+  if (!ctx) return
+
+  await createNotification(ctx.skipperId, "ride_share_booking_received", ctx.rideShareId)
+
+  const [skipperLang, passengerLang, skipperEmail, passengerEmail, passengerName, skipperName] =
+    await Promise.all([
+      getUserLanguage(ctx.skipperId, service),
+      getUserLanguage(b.passenger_id, service),
+      emailFor(service, ctx.skipperId),
+      emailFor(service, b.passenger_id),
+      displayName(service, b.passenger_id, "Sila-gæst"),
+      displayName(service, ctx.skipperId, "Sila-sejler"),
+    ])
+
+  if (skipperEmail) {
+    const en = skipperLang === "en"
+    const when = formatNuukDateTime(ctx.departureAt, skipperLang)
+    const url = getLocaleUrl(skipperLang, `/dashboard/sejlads/${ctx.rideShareId}`)
+    await sendTransactionalEmailResend(
+      skipperEmail,
+      en
+        ? `New passenger: ${ctx.from} → ${ctx.to}`
+        : `Ny passager: ${ctx.from} → ${ctx.to}`,
+      en
+        ? `Hello ${skipperName},\n\n${passengerName} has booked ${b.num_seats} seat(s) on your trip ` +
+          `${ctx.from} → ${ctx.to} (${when}, Nuuk time).\n\n` +
+          `Your passenger list is here — keep it with someone ashore before you leave:\n${url}\n\n` +
+          `Remember the safety briefing and life jackets for everyone on board.\n\nKind regards\nSila.gl\n`
+        : `Hej ${skipperName},\n\n${passengerName} har booket ${b.num_seats} plads(er) på din tur ` +
+          `${ctx.from} → ${ctx.to} (${when}, Nuuk-tid).\n\n` +
+          `Din passagerliste finder du her — efterlad den hos en person i land før afgang:\n${url}\n\n` +
+          `Husk sikkerhedsinstruks og redningsvest til alle om bord.\n\nVenlig hilsen\nSila.gl\n`,
+    )
+  }
+
+  if (passengerEmail) {
+    const en = passengerLang === "en"
+    const when = formatNuukDateTime(ctx.departureAt, passengerLang)
+    const total = formatPriceKrEmail(b.total_price_ore + b.service_fee_ore, passengerLang)
+    const meet = ctx.meetingPoint ? (en ? `Meeting point: ${ctx.meetingPoint}\n` : `Mødested: ${ctx.meetingPoint}\n`) : ""
+    const url = getLocaleUrl(passengerLang, "/dashboard?tab=bookings")
+    await sendTransactionalEmailResend(
+      passengerEmail,
+      en ? `Booking confirmed: ${ctx.from} → ${ctx.to}` : `Booking bekræftet: ${ctx.from} → ${ctx.to}`,
+      en
+        ? `Hello ${passengerName},\n\nYou're booked on ${skipperName}'s trip ${ctx.from} → ${ctx.to}.\n\n` +
+          `Departure: ${when} (Nuuk time)\n${meet}Seats: ${b.num_seats}\nPaid: ${total}\n\n` +
+          `${PASSENGER_SAFETY.en}\nYour booking and the skipper's contact details:\n${url}\n\nKind regards\nSila.gl\n`
+        : `Hej ${passengerName},\n\nDu er booket på ${skipperName}s tur ${ctx.from} → ${ctx.to}.\n\n` +
+          `Afgang: ${when} (Nuuk-tid)\n${meet}Pladser: ${b.num_seats}\nBetalt: ${total}\n\n` +
+          `${PASSENGER_SAFETY.da}\nDin booking og sejlerens kontaktoplysninger:\n${url}\n\nVenlig hilsen\nSila.gl\n`,
+    )
+  }
+}
+
+/** Sejleren har aflyst hele turen — alle passagerer får besked om fuld refusion. */
+export async function notifyRideShareCancelledBySkipper(
+  rideShareId: string,
+  passengers: Array<{ passengerId: string; refundedOre: number }>,
+  reason: "weather" | "skipper_cancelled",
+): Promise<void> {
+  const service = createServiceClient()
+  const ctx = await loadRideShareCtx(service, rideShareId)
+  if (!ctx) return
+  await Promise.all(
+    passengers.map(async (p) => {
+      await createNotification(p.passengerId, "ride_share_cancelled", rideShareId)
+      const [lang, email, name] = await Promise.all([
+        getUserLanguage(p.passengerId, service),
+        emailFor(service, p.passengerId),
+        displayName(service, p.passengerId, "Sila-gæst"),
+      ])
+      if (!email) return
+      const en = lang === "en"
+      const when = formatNuukDateTime(ctx.departureAt, lang)
+      const amount = formatPriceKrEmail(p.refundedOre, lang)
+      const why = reason === "weather"
+        ? (en ? "due to weather or ice conditions" : "på grund af vejr eller isforhold")
+        : (en ? "by the skipper" : "af sejleren")
+      const findUrl = getLocaleUrl(lang, "/transport")
+      await sendTransactionalEmailResend(
+        email,
+        en ? `Trip cancelled: ${ctx.from} → ${ctx.to}` : `Tur aflyst: ${ctx.from} → ${ctx.to}`,
+        en
+          ? `Hello ${name},\n\nThe trip ${ctx.from} → ${ctx.to} on ${when} has been cancelled ${why}.\n\n` +
+            `You'll receive a full refund of ${amount}. It usually appears on your card within 5–10 days.\n\n` +
+            `Find another trip or post a request:\n${findUrl}\n\nKind regards\nSila.gl\n`
+          : `Hej ${name},\n\nTuren ${ctx.from} → ${ctx.to} ${when} er aflyst ${why}.\n\n` +
+            `Du får hele beløbet på ${amount} refunderet. Det står normalt på dit kort inden for 5–10 dage.\n\n` +
+            `Find en anden tur eller efterlys en sejlads:\n${findUrl}\n\nVenlig hilsen\nSila.gl\n`,
+      )
+    }),
+  )
+}
+
+/** En passager har annulleret — sejleren får besked. */
+export async function notifyRideShareBookingCancelledByPassenger(
+  rideShareId: string,
+  passengerId: string,
+  seats: number,
+): Promise<void> {
+  const service = createServiceClient()
+  const ctx = await loadRideShareCtx(service, rideShareId)
+  if (!ctx) return
+  await createNotification(ctx.skipperId, "ride_share_booking_cancelled", rideShareId)
+  const [lang, email, passengerName] = await Promise.all([
+    getUserLanguage(ctx.skipperId, service),
+    emailFor(service, ctx.skipperId),
+    displayName(service, passengerId, "Sila-gæst"),
+  ])
+  if (!email) return
+  const en = lang === "en"
+  const when = formatNuukDateTime(ctx.departureAt, lang)
+  await sendTransactionalEmailResend(
+    email,
+    en ? `Booking cancelled: ${ctx.from} → ${ctx.to}` : `Afbestilling: ${ctx.from} → ${ctx.to}`,
+    en
+      ? `${passengerName} has cancelled ${seats} seat(s) on your trip ${ctx.from} → ${ctx.to} (${when}). ` +
+        `The seats are available again.\n\nSila.gl\n`
+      : `${passengerName} har afbestilt ${seats} plads(er) på din tur ${ctx.from} → ${ctx.to} (${when}). ` +
+        `Pladserne er ledige igen.\n\nSila.gl\n`,
+  )
 }
 
 export async function notifyStayOfferConfirmedGuestPush(stayOfferId: string): Promise<void> {

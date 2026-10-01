@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button"
 import { formatKr, calcDisplayPrice } from "@/lib/money"
 import { publishedCabinDetailPath, guestStayRequestHref } from "@/lib/cabinPublicPaths"
 import { getLocationName, formatStayRequestLocationDisplay } from "@/lib/greenlandLocations"
+import { formatNuukFull } from "@/lib/nuukTime"
 import { STATUS_COLORS, STATUS_LABELS, type CabinBookingData } from "./components/BookingRow"
 import CabinBookingRowWithContact from "./components/CabinBookingRowWithContact"
 import RideShareBookingRowWithContact from "./components/RideShareBookingRowWithContact"
@@ -88,6 +89,7 @@ interface RideShareData {
   to_location: string
   departure_at: string
   seats_available: number
+  total_seats: number
   status: string
 }
 
@@ -1035,6 +1037,63 @@ export default function DashboardClient({
                       )})}
                     </div>
                   )}
+                </div>
+
+                {/* ── Mine sejladser (kommende) ── */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-foreground">{tDash("my_trips")}</h3>
+                    <Button size="sm" asChild className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg gap-1.5">
+                      <Link href="/opret/samsejlads">
+                        <PlusCircle className="w-3.5 h-3.5" /> {tDash("my_trips_new")}
+                      </Link>
+                    </Button>
+                  </div>
+                  {(() => {
+                    const upcoming = myRideShares
+                      .filter((r) => new Date(r.departure_at).getTime() > Date.now())
+                      .sort((a, b) => a.departure_at.localeCompare(b.departure_at))
+                    if (upcoming.length === 0) {
+                      return (
+                        <EmptyState icon={Anchor} message={tDash("my_trips_empty")} cta={tDash("my_trips_cta")} ctaHref="/opret/samsejlads" />
+                      )
+                    }
+                    return (
+                      <div className="space-y-3">
+                        {upcoming.map((r) => (
+                          <Link
+                            key={r.id}
+                            href={`/dashboard/sejlads/${r.id}`}
+                            className="bg-white rounded-xl border border-border p-4 flex items-center gap-4 hover:border-primary/40 transition-colors min-h-[64px]"
+                          >
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                              <Anchor className="w-5 h-5 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm text-foreground truncate">
+                                {getLocationName(r.from_location)} → {getLocationName(r.to_location)}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {formatNuukFull(r.departure_at)}
+                              </p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              {r.status === "cancelled" ? (
+                                <Badge className="bg-red-100 text-red-700 border-0 text-xs">{tDash("my_trips_status_cancelled")}</Badge>
+                              ) : r.status === "full" ? (
+                                <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">{tDash("my_trips_status_full")}</Badge>
+                              ) : (
+                                <span className="text-xs font-medium text-foreground tabular-nums">
+                                  {tDash("my_trips_seats", { booked: r.total_seats - r.seats_available, total: r.total_seats })}
+                                </span>
+                              )}
+                            </div>
+                            <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                          </Link>
+                        ))}
+                      </div>
+                    )
+                  })()}
                 </div>
 
                 {/* ── Mine både ── */}

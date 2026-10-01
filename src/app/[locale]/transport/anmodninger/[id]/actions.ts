@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { requireSession } from "@/lib/requireSession"
 import { getAppBaseUrl } from "@/lib/appUrl"
-import { stripe } from "@/lib/stripe"
+import { stripe, checkoutSessionExpiresAt } from "@/lib/stripe"
 import { krToOre, calcServiceFee, calcPlatformFee } from "@/lib/money"
 import {
   createNotification,
@@ -210,6 +210,7 @@ export async function acceptTransportOffer(offerId: string): Promise<AcceptOffer
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
+        expires_at: checkoutSessionExpiresAt(),
       payment_method_types: ["card"],
       line_items: lineItems,
       payment_intent_data: {

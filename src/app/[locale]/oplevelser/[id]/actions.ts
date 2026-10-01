@@ -4,7 +4,7 @@ import { createServiceClient } from "@/lib/supabase-service"
 import { createClient } from "@/lib/supabase-server"
 import { calcPlatformFee, calcServiceFee } from "@/lib/money"
 import { getAppBaseUrl } from "@/lib/appUrl"
-import { stripe } from "@/lib/stripe"
+import { stripe, checkoutSessionExpiresAt } from "@/lib/stripe"
 
 export type CreateExperienceBookingResult = { url: string } | { error: string }
 
@@ -268,6 +268,7 @@ export async function createExperienceBooking(input: {
     const sessionCheckout = await stripe.checkout.sessions.create(
       {
         mode: "payment",
+        expires_at: checkoutSessionExpiresAt(),
         payment_method_types: ["card"],
         line_items: lineItems,
         payment_intent_data: {

@@ -165,3 +165,28 @@ DO $$ DECLARE n int; BEGIN
 EXCEPTION WHEN insufficient_privilege THEN PERFORM pg_temp.check('T10 anon kan ikke røre experience_bookings', true);
 END $$;
 RESET ROLE;
+
+-- ── T11: cron-jobs kører uden fejl og afslutter forbigangne bookinger ─
+INSERT INTO ride_shares (id, skipper_id, from_location, from_latitude, from_longitude, to_location, to_latitude, to_longitude,
+  departure_at, total_seats, seats_available, price_per_seat_ore, status)
+VALUES ('10000000-0000-0000-0000-000000000009', '00000000-0000-0000-0000-00000000000a', 'nuuk', 1, 1, 'qooqqut', 1, 1,
+  now() + interval '1 day', 4, 4, 100, 'active');
+SET ROLE service_role;
+INSERT INTO ride_share_bookings (id, ride_share_id, passenger_id, num_seats, total_price_ore, platform_fee_ore, status)
+VALUES ('40000000-0000-0000-0000-000000000009', '10000000-0000-0000-0000-000000000009', '00000000-0000-0000-0000-00000000000b', 1, 100, 5, 'pending');
+UPDATE ride_share_bookings SET status = 'confirmed' WHERE id = '40000000-0000-0000-0000-000000000009';
+RESET ROLE;
+ALTER TABLE ride_shares DISABLE TRIGGER trg_ride_shares_guard_update;
+UPDATE ride_shares SET departure_at = now() - interval '2 days' WHERE id = '10000000-0000-0000-0000-000000000009';
+ALTER TABLE ride_shares ENABLE TRIGGER trg_ride_shares_guard_update;
+DO $$ DECLARE j record; BEGIN
+  FOR j IN SELECT command FROM cron.job WHERE jobname IN ('cancel-expired-pending-bookings','close-past-ride-shares-and-requests') LOOP
+    EXECUTE j.command;
+  END LOOP;
+  PERFORM pg_temp.check('T11a cron-kommandoer kører', true);
+EXCEPTION WHEN OTHERS THEN PERFORM pg_temp.check('T11a cron-kommandoer kører: ' || SQLERRM, false);
+END $$;
+SELECT pg_temp.check('T11b booking afsluttet → kan anmeldes',
+  (SELECT status::text FROM ride_share_bookings WHERE id = '40000000-0000-0000-0000-000000000009') = 'completed');
+SELECT pg_temp.check('T11c tur afsluttet',
+  (SELECT status::text FROM ride_shares WHERE id = '10000000-0000-0000-0000-000000000009') = 'completed');

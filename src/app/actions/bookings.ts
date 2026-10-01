@@ -4,7 +4,7 @@ import { requireSession } from "@/lib/requireSession"
 import { createServiceClient } from "@/lib/supabase-service"
 import { enumerateNights } from "@/lib/cabinBookingDates"
 import { getAppBaseUrl } from "@/lib/appUrl"
-import { stripe } from "@/lib/stripe"
+import { stripe, checkoutSessionExpiresAt } from "@/lib/stripe"
 import { calcServiceFee, calcPlatformFee } from "@/lib/money"
 
 export type TransportTrip = "none" | "round_trip" | "outbound" | "return"
@@ -490,6 +490,7 @@ export async function createCabinBooking(
     const sessionCheckout = await stripe.checkout.sessions.create(
       {
         mode: "payment",
+        expires_at: checkoutSessionExpiresAt(),
         payment_method_types: ["card"],
         line_items: lineItems,
         payment_intent_data: {

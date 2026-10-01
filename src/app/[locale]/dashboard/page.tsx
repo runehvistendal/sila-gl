@@ -245,7 +245,7 @@ export default async function DashboardPage() {
     // My ride shares
     supabase
       .from("ride_shares")
-      .select("id, from_location, to_location, departure_at, seats_available, status")
+      .select("id, from_location, to_location, departure_at, seats_available, total_seats, status")
       .eq("skipper_id", user.id)
       .is("deleted_at", null)
       .order("departure_at", { ascending: false }),
@@ -333,7 +333,8 @@ export default async function DashboardPage() {
     supabase
       .from("ride_share_bookings")
       .select(`
-        id, status, num_seats, total_price_ore, created_at, updated_at, passenger_id,
+        id, status, num_seats, total_price_ore, service_fee_ore, refunded_amount_ore, cancellation_reason,
+        created_at, updated_at, passenger_id, ride_share_id,
         ride_shares!inner (
           from_location, to_location, departure_at, skipper_id,
           profiles!skipper_id ( full_name )
@@ -346,7 +347,8 @@ export default async function DashboardPage() {
     supabase
       .from("ride_share_bookings")
       .select(`
-        id, status, num_seats, total_price_ore, created_at, updated_at, passenger_id,
+        id, status, num_seats, total_price_ore, service_fee_ore, refunded_amount_ore, cancellation_reason,
+        created_at, updated_at, passenger_id, ride_share_id,
         ride_shares!inner ( from_location, to_location, departure_at, skipper_id ),
         profiles!passenger_id ( full_name )
       `)
@@ -473,6 +475,10 @@ export default async function DashboardPage() {
       other_id:      rs.skipper_id,
       reviewee_id:   rs.skipper_id,
       isSkipperView: false,
+      ride_share_id:   b.ride_share_id as string,
+      service_fee_ore: (b.service_fee_ore as number | null) ?? 0,
+      refunded_amount_ore: (b.refunded_amount_ore as number | null) ?? 0,
+      cancellation_reason: (b.cancellation_reason as string | null) ?? null,
     }
   }
 
@@ -501,6 +507,10 @@ export default async function DashboardPage() {
       other_id:        passengerId,
       reviewee_id:     passengerId,
       isSkipperView:   true,
+      ride_share_id:   b.ride_share_id as string,
+      service_fee_ore: (b.service_fee_ore as number | null) ?? 0,
+      refunded_amount_ore: (b.refunded_amount_ore as number | null) ?? 0,
+      cancellation_reason: (b.cancellation_reason as string | null) ?? null,
     }
   }
 

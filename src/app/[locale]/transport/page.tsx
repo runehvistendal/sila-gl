@@ -6,6 +6,7 @@ import Navbar from "@/components/layout/Navbar"
 import { buildMetadata } from "@/lib/metadata"
 import TransportClient from "./TransportClient"
 import type { RideShareCardData } from "./components/TransportCard"
+import { nuukInputToUtc } from "@/lib/nuukTime"
 
 export const dynamic = "force-dynamic"
 
@@ -22,12 +23,14 @@ type Props = {
 
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
 
-/** Konvertér YYYY-MM-DD til UTC ISO ved midnat i Nuuk-tid (UTC-3, ingen sommertid). */
+/** Konvertér YYYY-MM-DD til UTC ISO ved midnat i Nuuk-tid (sommertid håndteres af nuukInputToUtc). */
 function nuukDateToUtcIso(ymd: string): string | null {
   if (!YMD_RE.test(ymd)) return null
-  const d = new Date(`${ymd}T00:00:00-03:00`)
-  if (Number.isNaN(d.getTime())) return null
-  return d.toISOString()
+  try {
+    return nuukInputToUtc(ymd)
+  } catch {
+    return null
+  }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

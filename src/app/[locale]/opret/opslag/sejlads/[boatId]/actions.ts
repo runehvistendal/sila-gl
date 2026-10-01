@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase-server"
 import { krToOre } from "@/lib/money"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 import type { AddOnService } from "@/components/shared/AddOnServicesEditor"
+import { nuukInputToUtc } from "@/lib/nuukTime"
 
 const schema = z
   .object({
@@ -104,10 +105,10 @@ export async function createSejladsOpslag(
   if (!fromLoc) return { errors: { from_location: ["Ukendt afgangssted"] } }
   if (!toLoc) return { errors: { to_location: ["Ukendt destination"] } }
 
-  // Brugerens input er Nuuk-lokal tid (UTC-3) — gem som korrekt UTC
+  // Brugerens input er Nuuk-lokal tid (sommertid håndteres) — gem som korrekt UTC
   const departure_at = departure_time
-    ? new Date(`${departure_date}T${departure_time}:00-03:00`).toISOString()
-    : new Date(`${departure_date}T00:00:00-03:00`).toISOString()
+    ? nuukInputToUtc(departure_date, departure_time)
+    : nuukInputToUtc(departure_date)
 
   // Price calculation
   const price_per_seat_roundtrip_ore = krToOre(price_per_seat_roundtrip_kr)

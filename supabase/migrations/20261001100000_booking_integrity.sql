@@ -454,7 +454,9 @@ SELECT cron.schedule(
   $$
 );
 
--- Afsluttede samsejladser + udløbne transportanmodninger (dagligt, Nuuk-tid)
+-- Afslut gennemførte bookinger + ture, luk udløbne transportanmodninger.
+-- Uden dette blev ingen booking nogensinde 'completed', og anmeldelses-
+-- systemet (som kræver status='completed') kunne aldrig bruges.
 SELECT cron.unschedule('close-past-ride-shares-and-requests')
 WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'close-past-ride-shares-and-requests');
 
@@ -462,14 +464,27 @@ SELECT cron.schedule(
   'close-past-ride-shares-and-requests',
   '15 * * * *',
   $$
+    UPDATE public.ride_share_bookings b
+    SET status = 'completed', updated_at = NOW()
+    FROM public.ride_shares rs
+    WHERE rs.id = b.ride_share_id
+      AND b.status = 'confirmed'
+      AND rs.status IN ('active', 'full')
+      AND rs.departure_at < NOW() - INTERVAL '12 hours';
+
     UPDATE public.ride_shares
     SET status = 'completed', updated_at = NOW()
     WHERE status IN ('active', 'full')
       AND departure_at < NOW() - INTERVAL '12 hours';
 
+    UPDATE public.cabin_bookings
+    SET status = 'completed', updated_at = NOW()
+    WHERE status = 'confirmed'
+      AND check_out <= (NOW() AT TIME ZONE 'America/Nuuk')::date;
+
     UPDATE public.transport_requests
     SET status = 'closed', updated_at = NOW()
     WHERE status = 'open'
-      AND desired_date < (NOW() AT TIME ZONE 'America/Godthab')::date;
+      AND desired_date < (NOW() AT TIME ZONE 'America/Nuuk')::date;
   $$
 );

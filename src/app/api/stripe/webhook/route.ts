@@ -1,7 +1,7 @@
 import type Stripe from "stripe"
 import { headers } from "next/headers"
 import { createServiceClient } from "@/lib/supabase-service"
-import { stripe } from "@/lib/stripe"
+import { stripe, refundPaymentIntent } from "@/lib/stripe"
 import { revalidatePath } from "next/cache"
 import {
   createNotification,
@@ -151,36 +151,67 @@ export async function POST(request: Request) {
         ? contactInfoUntilFromIsoTimestamp(depAt)
         : contactInfoUntilFromNow()
 
-      // Confirm the booking
-      await service
+      // Bekræft. Pladserne er allerede holdt siden checkout (trigger
+      // ride_share_seat_hold) — der må IKKE trækkes pladser her igen.
+      const confirmPatch = {
+        status: "confirmed" as const,
+        stripe_payment_intent_id: paymentIntentId2 ?? undefined,
+        updated_at: new Date().toISOString(),
+        contact_info_visible_until: rideShareContactUntil,
+      }
+      const { data: confirmedRows, error: confirmErr } = await service
         .from("ride_share_bookings")
-        .update({
-          status: "confirmed",
-          stripe_payment_intent_id: paymentIntentId2 ?? undefined,
-          updated_at: new Date().toISOString(),
-          contact_info_visible_until: rideShareContactUntil,
-        })
+        .update(confirmPatch)
         .eq("id", bookingId)
         .eq("status", "pending")
+        .select("id")
 
-      // Atomically decrement seats; if 0 remaining, mark as full
-      const { data: rsRow } = await service
-        .from("ride_shares")
-        .select("seats_available")
-        .eq("id", rideShareId)
-        .maybeSingle()
+      if (confirmErr) {
+        console.error("[stripe webhook] ride_share confirm", confirmErr.message)
+        return new Response("Opdatering fejlede", { status: 500 })
+      }
 
-      if (rsRow) {
-        const r = rsRow as { seats_available: number }
-        const newSeats = Math.max(0, r.seats_available - seatsBooked)
-        await service
-          .from("ride_shares")
-          .update({
-            seats_available: newSeats,
-            status: newSeats === 0 ? "full" : "active",
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", rideShareId)
+      if (!confirmedRows || confirmedRows.length === 0) {
+        const { data: existing } = await service
+          .from("ride_share_bookings")
+          .select("status")
+          .eq("id", bookingId)
+          .maybeSingle()
+        const st = (existing as { status: string } | null)?.status
+
+        if (st === "confirmed") {
+          return new Response("ok", { status: 200 }) // webhook-retry
+        }
+
+        // Bookingen udløb (pending > 35 min) men betalingen kom alligevel.
+        // Forsøg at genhente pladserne; lykkes det ikke, refunderes alt.
+        const { error: reinstateErr } = st === "cancelled"
+          ? await service
+              .from("ride_share_bookings")
+              .update({ ...confirmPatch, cancelled_at: null, cancellation_reason: null })
+              .eq("id", bookingId)
+              .eq("status", "cancelled")
+          : { error: { message: "unknown booking state" } }
+
+        if (reinstateErr) {
+          if (paymentIntentId2) {
+            const refund = await refundPaymentIntent(paymentIntentId2, {
+              idempotencyKey: `ride_share_overbooked_${bookingId}`,
+            })
+            await service
+              .from("ride_share_bookings")
+              .update({
+                cancellation_reason: "overbooked_refunded",
+                refunded_amount_ore: refund.ok ? refund.amountOre : 0,
+                stripe_payment_intent_id: paymentIntentId2,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", bookingId)
+            if (!refund.ok) console.error("[stripe webhook] refund fejlede", bookingId, refund.error)
+          }
+          revalidatePath(`/transport/${rideShareId}`)
+          return new Response("ok", { status: 200 })
+        }
       }
 
       await notifyRideShareBookingConfirmed(bookingId)
@@ -517,7 +548,7 @@ export async function POST(request: Request) {
 
     const { data: row, error: findErr } = await service
       .from("cabin_bookings")
-      .select("id, status, stripe_payment_intent_id, deleted_at, check_out")
+      .select("id, status, stripe_payment_intent_id, deleted_at, check_in, check_out, cabin_id")
       .eq("stripe_session_id", sessionId)
       .maybeSingle()
 
@@ -534,7 +565,9 @@ export async function POST(request: Request) {
       id: string
       status: string
       stripe_payment_intent_id: string | null
+      check_in: string
       check_out: string
+      cabin_id: string
     }
     if (b.status === "confirmed" && b.stripe_payment_intent_id) {
       return new Response("ok", { status: 200 })
@@ -543,6 +576,46 @@ export async function POST(request: Request) {
     if (!paymentIntentId) {
       if (isDev) console.error("[stripe webhook] mangler payment_intent", sessionId)
       return new Response("ok", { status: 200 })
+    }
+
+    // Bookingen kan være udløbet (cron efter 35 min) mens gæsten stadig betalte.
+    // Bekræft kun hvis datoerne stadig er frie — ellers fuld refusion.
+    if (b.status === "cancelled") {
+      const [{ data: clash }, { data: blocked }] = await Promise.all([
+        service
+          .from("cabin_bookings")
+          .select("id")
+          .eq("cabin_id", b.cabin_id)
+          .neq("id", b.id)
+          .in("status", ["pending", "confirmed"])
+          .lt("check_in", b.check_out)
+          .gt("check_out", b.check_in)
+          .is("deleted_at", null)
+          .limit(1),
+        service
+          .from("cabin_availability")
+          .select("date")
+          .eq("cabin_id", b.cabin_id)
+          .eq("is_available", false)
+          .gte("date", b.check_in)
+          .lt("date", b.check_out)
+          .limit(1),
+      ])
+      if ((clash ?? []).length > 0 || (blocked ?? []).length > 0) {
+        const refund = await refundPaymentIntent(paymentIntentId, {
+          idempotencyKey: `cabin_overbooked_${b.id}`,
+        })
+        await service
+          .from("cabin_bookings")
+          .update({
+            stripe_payment_intent_id: paymentIntentId,
+            cancellation_reason: "overbooked_refunded",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", b.id)
+        if (!refund.ok) console.error("[stripe webhook] cabin refund fejlede", b.id, refund.error)
+        return new Response("ok", { status: 200 })
+      }
     }
 
     const cabinContactUntil = contactInfoUntilFromCheckOutYmd(b.check_out)

@@ -9,66 +9,8 @@ import { checkStripeOnboardingComplete, requireStripeForPublish } from "@/app/ac
 /** Matcher STRIPE_PUBLISH_REQUIRED_ERROR på klienten */
 const STRIPE_REQUIRED = "stripe_required"
 
-export async function confirmBooking(bookingId: string) {
-  const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session?.user) throw new Error("Ikke logget ind")
-  const user = session.user
-
-  // Verify caller owns the cabin for this booking
-  const { data: booking } = await supabase
-    .from("cabin_bookings")
-    .select("cabin_id")
-    .eq("id", bookingId)
-    .single()
-
-  if (!booking) throw new Error("Booking ikke fundet")
-
-  const { data: cabin } = await supabase
-    .from("cabins")
-    .select("owner_id")
-    .eq("id", booking.cabin_id)
-    .single()
-
-  if (!cabin || cabin.owner_id !== user.id) throw new Error("Ingen adgang")
-
-  const { error } = await supabase
-    .from("cabin_bookings")
-    .update({ status: "confirmed" })
-    .eq("id", bookingId)
-
-  if (error) throw new Error(error.message)
-}
-
-export async function declineBooking(bookingId: string) {
-  const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session?.user) throw new Error("Ikke logget ind")
-  const user = session.user
-
-  const { data: booking } = await supabase
-    .from("cabin_bookings")
-    .select("cabin_id")
-    .eq("id", bookingId)
-    .single()
-
-  if (!booking) throw new Error("Booking ikke fundet")
-
-  const { data: cabin } = await supabase
-    .from("cabins")
-    .select("owner_id")
-    .eq("id", booking.cabin_id)
-    .single()
-
-  if (!cabin || cabin.owner_id !== user.id) throw new Error("Ingen adgang")
-
-  const { error } = await supabase
-    .from("cabin_bookings")
-    .update({ status: "cancelled" })
-    .eq("id", bookingId)
-
-  if (error) throw new Error(error.message)
-}
+// confirmBooking/declineBooking fjernet 1.10.2026: værter kunne bekræfte ubetalte
+// pending-bookinger. Bookinger bekræftes nu kun af Stripe-webhooken.
 
 export async function acceptTransportRequest(requestId: string) {
   const supabase = await createClient()

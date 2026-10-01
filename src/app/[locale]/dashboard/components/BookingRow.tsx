@@ -1,16 +1,14 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import {
-  Home, Calendar, Users, ChevronDown, Check, X,
+  Home, Calendar, Users, ChevronDown,
   CreditCard, ArrowRight, User,
 } from "lucide-react"
 import { useFormatter } from "next-intl"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { formatKr } from "@/lib/money"
-import { confirmBooking, declineBooking } from "../actions"
 import ReviewDialog from "@/components/reviews/ReviewDialog"
 import { publishedCabinDetailPath } from "@/lib/cabinPublicPaths"
 
@@ -62,15 +60,8 @@ interface Props {
 
 export default function BookingRow({ booking, isHost, alreadyReviewed = false }: Props) {
   const [open, setOpen] = useState(false)
-  const [isPending, startTransition] = useTransition()
   const fmt = useFormatter()
 
-  function handleConfirm() {
-    startTransition(async () => { await confirmBooking(booking.id) })
-  }
-  function handleDecline() {
-    startTransition(async () => { await declineBooking(booking.id) })
-  }
 
   const nights = (() => {
     const d = Math.round(
@@ -240,25 +231,10 @@ export default function BookingRow({ booking, isHost, alreadyReviewed = false }:
 
           {/* Bekræft / afvis — kun udbyder + pending */}
           {isHost && booking.status === "pending" && (
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                onClick={handleConfirm}
-                disabled={isPending}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg gap-1.5"
-              >
-                <Check className="w-3.5 h-3.5" /> Bekræft
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleDecline}
-                disabled={isPending}
-                className="rounded-lg gap-1.5 text-destructive border-destructive/30 hover:bg-destructive hover:text-white"
-              >
-                <X className="w-3.5 h-3.5" /> Afvis
-              </Button>
-            </div>
+            <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+              Gæsten er i gang med at betale. Bookingen bekræftes automatisk, når betalingen går igennem —
+              ellers frigives datoerne efter 35 minutter.
+            </p>
           )}
 
           {/* Anmeld */}
