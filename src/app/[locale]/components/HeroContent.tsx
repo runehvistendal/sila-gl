@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { useLocale, useTranslations } from "next-intl"
+import { useTranslations } from "next-intl"
 import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
 import { cn } from "@/lib/utils"
 import HeroSearchBar from "./HeroSearchBar"
@@ -14,11 +14,10 @@ type HeroTab = "ophold" | "samsejlads"
 export default function HeroContent() {
   const t = useTranslations("home")
   const tHero = useTranslations("hero")
-  const locale = useLocale()
   const [tab, setTab] = useState<HeroTab>("ophold")
 
-  const opholdLabel = locale === "da" ? tHero("tab_ophold") : tHero("tab_stays")
-  const samsejladsLabel = locale === "da" ? tHero("tab_samsejlads") : tHero("tab_sailing")
+  const opholdLabel = tHero("tab_ophold")
+  const samsejladsLabel = tHero("tab_samsejlads")
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-20 pb-16 md:pt-28 md:pb-24">

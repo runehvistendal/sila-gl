@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed:sanity": "tsx scripts/seed-sanity-content.ts"
+    "seed:sanity": "tsx scripts/seed-sanity-content.ts",
+    "check:i18n": "node scripts/check-i18n.mjs"
   },
   "dependencies": {
     "@portabletext/react": "^6.1.0",
