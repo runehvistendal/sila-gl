@@ -226,6 +226,11 @@ export default function DashboardClient({
   const urlTab = (() => {
     if (rawTab === "mine-opslag") return "listings"
     if (rawTab === "mine-oplevelser") return "experiences"
+    if (rawTab === "mine-oensker") return isTraveler ? "requests" : "bookings"
+    if (rawTab === "gaesteoensker") return isProvider ? "open-requests" : "bookings"
+    // Ukendt fane (gammelt link, tastefejl) → vis bookinger frem for en tom side
+    if (!["bookings", "requests", "open-requests", "listings", "experiences", "inbox"].includes(rawTab))
+      return "bookings"
     if (!isTraveler && rawTab === "requests") return "bookings"
     if (!isProvider && (rawTab === "listings" || rawTab === "open-requests" || rawTab === "experiences"))
       return "bookings"

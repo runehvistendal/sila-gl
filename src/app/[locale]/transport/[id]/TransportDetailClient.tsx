@@ -598,7 +598,7 @@ export default function TransportDetailClient({
                     <div>
                       <p className="text-sm font-semibold text-green-800">{t("return_request_sent")}</p>
                       <p className="text-xs text-green-700 mt-0.5">{t("return_request_sent_body")}</p>
-                      <Link href="/dashboard?tab=mine-oensker" className="text-xs font-medium text-green-800 underline mt-1 inline-block">
+                      <Link href="/dashboard?tab=requests" className="text-xs font-medium text-green-800 underline mt-1 inline-block">
                         {t("return_request_see")}
                       </Link>
                     </div>

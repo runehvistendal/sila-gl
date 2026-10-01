@@ -704,6 +704,8 @@ export default async function DashboardPage() {
     num_passengers:  r.num_passengers as number,
     status:          r.status as string,
     description:     r.description as string | null,
+    preferred_time_from: (r.preferred_time_from as string | null) ?? null,
+    preferred_time_to:   (r.preferred_time_to as string | null) ?? null,
     profiles:        r.profiles as { full_name: string | null } | null,
   }))
 

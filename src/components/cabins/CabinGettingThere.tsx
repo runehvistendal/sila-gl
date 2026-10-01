@@ -251,7 +251,7 @@ export default function CabinGettingThere({
             {hasOpenRequest ? (
               <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5 text-sm text-amber-900">
                 {t("gt_request_open")}{" "}
-                <Link href="/dashboard?tab=mine-oensker" className="font-semibold underline">
+                <Link href="/dashboard?tab=requests" className="font-semibold underline">
                   {t("gt_request_open_link")}
                 </Link>
               </div>
