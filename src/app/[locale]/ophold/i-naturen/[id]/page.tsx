@@ -23,7 +23,6 @@ import type { AcceptedTransportOfferProp } from "@/app/actions/bookings"
 import ListingImageGallery from "@/components/cabins/ListingImageGallery"
 import CabinReviews from "@/components/cabins/CabinReviews"
 import CabinDetailLayout from "@/components/cabins/CabinDetailLayout"
-import TransferRoutesDisplay from "@/components/cabins/TransferRoutesDisplay"
 import { CabinViewTracker } from "@/components/analytics/CabinViewTracker"
 import { getLocationName } from "@/lib/greenlandLocations"
 import type { TransferRoute } from "@/types/transfer"
@@ -166,6 +165,10 @@ export default async function OpholdNatureDetailPage({
   if (cabinError || !cabinRaw) notFound()
 
   const cabin = cabinRaw as unknown as CabinNatureDetailData
+  // Lokationsnøgler indeholder kun bogstaver, mellemrum og bindestreg — fjern alt
+  // der kunne bryde PostgREST-filteret.
+  const hubKey = cabin.location_hub.toLowerCase().replace(/["\\,()]/g, "")
+  const nowIso = new Date().toISOString()
 
   const [
     { data: occRows },
@@ -181,18 +184,20 @@ export default async function OpholdNatureDetailPage({
       .eq("cabin_id", id)
       .eq("is_available", false)
       .is("deleted_at", null),
+    // Sejladser til OG fra hyttens lokation (begge retninger, kommende)
     supabase
       .from("ride_shares")
       .select(
         `id, from_location, to_location, departure_at,
-           seats_available, total_seats, price_per_seat_ore,
+           seats_available, price_per_seat_ore,
            profiles!skipper_id ( full_name )`,
       )
-      .eq("to_location", cabin.location_hub.toLowerCase())
+      .or(`to_location.eq."${hubKey}",from_location.eq."${hubKey}"`)
       .in("status", ["active", "full"])
-      .gt("departure_at", new Date().toISOString())
+      .is("deleted_at", null)
+      .gt("departure_at", nowIso)
       .order("departure_at", { ascending: true })
-      .limit(5),
+      .limit(60),
     supabase
       .from("transfer_routes")
       .select(
@@ -328,18 +333,11 @@ export default async function OpholdNatureDetailPage({
             min_nights: cabin.min_nights ?? 1,
             location_hub: cabin.location_hub,
             instant_book: cabin.instant_book,
-          }}
-          transportCabin={{
-            id: cabin.id,
-            location_hub: cabin.location_hub,
-            offers_transport: cabin.offers_transport,
-            transport_price_per_person_ore: cabin.transport_price_per_person_ore,
-            profiles: cabin.profiles,
+            property_type: "cabin",
           }}
           transports={
-            (transportRows ?? []) as unknown as import("@/components/cabins/CabinTransportSection").RideShareData[]
+            (transportRows ?? []) as unknown as import("@/components/cabins/CabinGettingThere").GettingThereRideShare[]
           }
-          transferRoutesContent={<TransferRoutesDisplay cabinId={cabin.id} />}
           transferRoutes={transferRoutes}
           enableCabinTransportRequest={
             transferRoutes.length === 0 && acceptedTransportOffer == null

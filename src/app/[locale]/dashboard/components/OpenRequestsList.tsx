@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { getLocationCoordinates, getLocationName } from "@/lib/greenlandLocations"
+import { timeWindowLabel } from "@/lib/transportRequestTime"
 
 export interface TransportRequestData {
   id: string
@@ -21,8 +22,11 @@ export interface TransportRequestData {
   num_passengers: number
   status: string
   description: string | null
+  preferred_time_from?: string | null
+  preferred_time_to?: string | null
   profiles: { full_name: string | null } | null
 }
+
 
 interface Props {
   nearby: TransportRequestData[]
@@ -121,6 +125,9 @@ function RequestCard({
             {r.desired_date ? fmtDate(new Date(r.desired_date)) : "—"}
             {r.num_passengers
               ? ` · ${r.num_passengers} passager${r.num_passengers !== 1 ? "er" : ""}`
+              : ""}
+            {timeWindowLabel(r.preferred_time_from, r.preferred_time_to)
+              ? ` · ${timeWindowLabel(r.preferred_time_from, r.preferred_time_to)}`
               : ""}
           </p>
         </div>

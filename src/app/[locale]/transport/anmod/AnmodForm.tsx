@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useTransition } from "react"
+import { useState, useTransition } from "react"
 import { Anchor, ArrowRight } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "@/i18n/navigation"
@@ -27,27 +27,36 @@ function ymdDayAfter(ymd: string): string {
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`
 }
 
-export default function AnmodForm() {
+export interface AnmodInitial {
+  from?: string
+  to?: string
+  date?: string
+  returnDate?: string
+  passengers?: number
+  bookingId?: string
+}
+
+/** Afgangsvinduer i hele timer, 05:00–22:00 (Nuuk-tid) */
+const HOURS = Array.from({ length: 18 }, (_, i) => `${String(i + 5).padStart(2, "0")}:00`)
+
+export default function AnmodForm({ initial = {} }: { initial?: AnmodInitial }) {
   const t = useTranslations("request")
   const tCommon = useTranslations("common")
   const router = useRouter()
 
-  const [fromLoc, setFromLoc] = useState("")
-  const [toLoc, setToLoc] = useState("")
-  const [desiredDate, setDesiredDate] = useState("")
-  const [returnDate, setReturnDate] = useState("")
-  const [passengers, setPassengers] = useState(1)
-  const [tripType, setTripType] = useState<TripType>("one_way")
+  const [fromLoc, setFromLoc] = useState(initial.from ?? "")
+  const [toLoc, setToLoc] = useState(initial.to ?? "")
+  const [desiredDate, setDesiredDate] = useState(initial.date ?? "")
+  const [returnDate, setReturnDate] = useState(initial.returnDate ?? "")
+  const [passengers, setPassengers] = useState(initial.passengers ?? 1)
+  const [tripType, setTripType] = useState<TripType>(initial.returnDate ? "round_trip" : "one_way")
+  const [timeFrom, setTimeFrom] = useState("")
+  const [timeTo, setTimeTo] = useState("")
   const [description, setDescription] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   const needsReturn = tripType === "round_trip"
-
-  useEffect(() => {
-    if (!needsReturn || !returnDate || !desiredDate) return
-    if (returnDate <= desiredDate) setReturnDate("")
-  }, [desiredDate, needsReturn, returnDate])
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -72,6 +81,11 @@ export default function AnmodForm() {
       }
     }
 
+    if (timeFrom && timeTo && timeTo <= timeFrom) {
+      setError(t("transport_error_time_window"))
+      return
+    }
+
     startTransition(async () => {
       const result = await createTransportRequest({
         from_location: fromLoc,
@@ -81,6 +95,9 @@ export default function AnmodForm() {
         trip_type: tripType,
         return_date: needsReturn ? returnDate : undefined,
         description: description || undefined,
+        preferred_time_from: timeFrom || undefined,
+        preferred_time_to: timeTo || undefined,
+        linked_cabin_booking_id: initial.bookingId,
       })
 
       if ("error" in result) {
@@ -165,7 +182,11 @@ export default function AnmodForm() {
         <DatePickerButton
           mode="single"
           date={desiredDate}
-          onDateChange={setDesiredDate}
+          onDateChange={(d) => {
+            setDesiredDate(d)
+            // En returdato før den nye udrejse giver ikke mening — ryd den
+            if (returnDate && d && returnDate <= d) setReturnDate("")
+          }}
           placeholder={t("dates_placeholder")}
           aria-label={needsReturn ? t("transport_date_out") : t("transport_date_single")}
           className="w-full"
@@ -189,6 +210,48 @@ export default function AnmodForm() {
         </div>
       )}
 
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium text-foreground">
+          {t("transport_time_window")}{" "}
+          <span className="text-muted-foreground font-normal">({t("transport_message_optional")})</span>
+        </legend>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label htmlFor="transport-time-from" className="text-xs text-muted-foreground">
+              {t("transport_time_from")}
+            </Label>
+            <select
+              id="transport-time-from"
+              value={timeFrom}
+              onChange={(e) => setTimeFrom(e.target.value)}
+              className="mt-1 w-full h-11 rounded-xl border border-input bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">{t("transport_time_any")}</option>
+              {HOURS.map((h) => (
+                <option key={h} value={h}>{h}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <Label htmlFor="transport-time-to" className="text-xs text-muted-foreground">
+              {t("transport_time_to")}
+            </Label>
+            <select
+              id="transport-time-to"
+              value={timeTo}
+              onChange={(e) => setTimeTo(e.target.value)}
+              className="mt-1 w-full h-11 rounded-xl border border-input bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">{t("transport_time_any")}</option>
+              {HOURS.filter((h) => !timeFrom || h > timeFrom).map((h) => (
+                <option key={h} value={h}>{h}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">{t("transport_time_hint")}</p>
+      </fieldset>
+
       <div className="space-y-2">
         <Label htmlFor="transport-passengers" className="text-sm font-medium text-foreground">
           {t("transport_passengers")} <span className="text-destructive">*</span>
@@ -197,12 +260,17 @@ export default function AnmodForm() {
           id="transport-passengers"
           type="number"
           min={1}
-          max={20}
+          max={12}
+          inputMode="numeric"
           value={passengers}
-          onChange={(e) => setPassengers(Number(e.target.value))}
+          onChange={(e) => setPassengers(Math.max(1, Math.min(12, Math.floor(Number(e.target.value)) || 1)))}
           required
-          className="rounded-xl h-10 w-full sm:max-w-[12rem]"
+          aria-describedby="transport-passengers-hint"
+          className="rounded-xl h-11 w-full sm:max-w-[12rem]"
         />
+        <p id="transport-passengers-hint" className="text-xs text-muted-foreground">
+          {t("transport_passengers_hint")}
+        </p>
       </div>
 
       <div className="space-y-2">
@@ -224,7 +292,7 @@ export default function AnmodForm() {
       </div>
 
       {error && (
-        <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
+        <p role="alert" className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
       )}
 
       <div className="flex gap-3 pt-1">

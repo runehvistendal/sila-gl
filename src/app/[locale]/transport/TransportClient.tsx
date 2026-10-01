@@ -79,6 +79,17 @@ export default function TransportClient({
     () => ({ ...localFilters, date: initialDate }),
     [localFilters, initialDate],
   )
+  // Tom søgning → efterspørgsel med samme rute, dato og antal forudfyldt
+  const requestHref = useMemo(() => {
+    const p = new URLSearchParams()
+    if (filters.fromLoc !== "all" && filters.fromLoc) p.set("from", filters.fromLoc)
+    if (filters.toLoc !== "all" && filters.toLoc) p.set("to", filters.toLoc)
+    if (filters.date) p.set("date", filters.date)
+    if (initialGuests >= 1) p.set("guests", String(initialGuests))
+    const qs = p.toString()
+    return `/transport/anmod${qs ? `?${qs}` : ""}`
+  }, [filters.fromLoc, filters.toLoc, filters.date, initialGuests])
+
   const [view, setView]         = useState<"grid" | "map">("grid")
   const [showAll, setShowAll]   = useState(false)
   const [selectedRouteId, setSelectedRouteId] = useState<string | undefined>()
@@ -280,7 +291,12 @@ export default function TransportClient({
           <div className="text-center py-24">
             <Anchor className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
             <p className="text-lg font-medium text-foreground mb-1">{t("noResults")}</p>
-            <p className="text-muted-foreground text-sm">{t("tryNewSearch")}</p>
+            <p className="text-muted-foreground text-sm max-w-sm mx-auto">{t("empty_request_body")}</p>
+            <Button asChild className="mt-5 h-12 rounded-xl px-6 font-semibold bg-[#114788] hover:bg-[#114788]/90 text-white">
+              <Link href={requestHref}>
+                {t("empty_request_cta")} <ArrowRight className="w-4 h-4" />
+              </Link>
+            </Button>
           </div>
         ) : (
           <>

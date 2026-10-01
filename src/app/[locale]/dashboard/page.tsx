@@ -253,7 +253,7 @@ export default async function DashboardPage() {
     // Open transport requests (for providers to see)
     supabase
       .from("transport_requests")
-      .select("id, from_location, to_location, desired_date, num_passengers, status, description, profiles!guest_id(full_name)")
+      .select("id, from_location, to_location, desired_date, num_passengers, status, description, preferred_time_from, preferred_time_to, profiles!guest_id(full_name)")
       .eq("status", "open")
       .is("deleted_at", null)
       .order("created_at", { ascending: false })

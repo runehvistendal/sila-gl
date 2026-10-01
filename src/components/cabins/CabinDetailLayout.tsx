@@ -1,11 +1,13 @@
 "use client"
 
-import { useState, type ReactNode } from "react"
+import { useCallback, useRef, useState, type ReactNode } from "react"
 import type { AcceptedTransportOfferProp } from "@/app/actions/bookings"
-import CabinBookingWidget from "@/components/cabins/CabinBookingWidget"
-import CabinTransportSection, {
-  type RideShareData,
-} from "@/components/cabins/CabinTransportSection"
+import CabinBookingWidget, {
+  type CabinBookingWidgetHandle,
+} from "@/components/cabins/CabinBookingWidget"
+import CabinGettingThere, {
+  type GettingThereRideShare,
+} from "@/components/cabins/CabinGettingThere"
 import type { TransferRoute } from "@/types/transfer"
 
 interface CabinBookingProps {
@@ -20,25 +22,15 @@ interface CabinBookingProps {
   property_type?: "cabin" | "residence" | null
 }
 
-interface CabinTransportProps {
-  id: string
-  location_hub: string
-  offers_transport: boolean
-  transport_price_per_person_ore: number | null
-  profiles: { full_name: string | null } | null
-}
-
 interface Props {
   bookingCabin: CabinBookingProps
-  transportCabin: CabinTransportProps
-  transports: RideShareData[]
+  /** Kommende samsejladser til og fra opholdets lokation */
+  transports: GettingThereRideShare[]
   isLoggedIn: boolean
   loginNextPath: string
   disabledYmd: string[]
-  /** Strukturerede transfer-ruter til booking (samme som TransferRoutesDisplay-kilden) */
+  /** Strukturerede transfer-ruter (vises under «Sådan kommer du dertil» og kan vælges i bookingboksen) */
   transferRoutes?: TransferRoute[]
-  /** Server-komponent: strukturerede transfer-ruter (fx TransferRoutesDisplay) */
-  transferRoutesContent?: ReactNode
   /** Server-rendered statisk indhold til venstre kolonne (Om hytten, Inkluderet, Din vært) */
   leftContent: ReactNode
   /** Server-rendered anmeldelsessektion — vises i bunden af venstre kolonne */
@@ -52,82 +44,76 @@ interface Props {
 
 export default function CabinDetailLayout({
   bookingCabin,
-  transportCabin,
   transports,
   isLoggedIn,
   loginNextPath,
   disabledYmd,
   transferRoutes = [],
-  transferRoutesContent,
   leftContent,
   reviewsContent,
   enableCabinTransportRequest = false,
   acceptedTransportOffer = null,
-  hasOpenTransportRequest,
+  hasOpenTransportRequest = false,
 }: Props) {
   const [guests, setGuests] = useState(1)
+  const [dates, setDates] = useState<{ checkIn: string; checkOut: string }>({ checkIn: "", checkOut: "" })
+  const widgetRef = useRef<CabinBookingWidgetHandle | null>(null)
 
-  const showTransport =
-    transports.length > 0 || transportCabin.offers_transport
+  const handleDatesChange = useCallback((checkIn: string, checkOut: string) => {
+    setDates((prev) => (prev.checkIn === checkIn && prev.checkOut === checkOut ? prev : { checkIn, checkOut }))
+  }, [])
 
-  const bookingWidget = (
-    <CabinBookingWidget
-      cabin={bookingCabin}
-      isLoggedIn={isLoggedIn}
-      loginNextPath={loginNextPath}
-      disabledYmd={disabledYmd}
-      onGuestsChange={setGuests}
-      transferRoutes={transferRoutes}
-      enableCabinTransportRequest={enableCabinTransportRequest}
-      acceptedTransportOffer={acceptedTransportOffer}
-      hasOpenTransportRequest={hasOpenTransportRequest ?? false}
-    />
-  )
+  const boatAccess = bookingCabin.property_type !== "residence"
+  const legacyHostTransportOre =
+    transferRoutes.length === 0 && bookingCabin.offers_transport
+      ? bookingCabin.transport_price_per_person_ore
+      : null
+  const canRequest = enableCabinTransportRequest && transferRoutes.length === 0 && !acceptedTransportOffer
 
-  const transportSection = showTransport ? (
-    <CabinTransportSection
-      cabin={transportCabin}
-      transports={transports}
-      guests={guests}
-      showSectionTitle={!transferRoutesContent}
-    />
-  ) : null
-
-  const komDertilBlock =
-    transferRoutesContent || transportSection ? (
-      <div className="space-y-6">
-        {transferRoutesContent}
-        {transportSection}
-      </div>
-    ) : null
+  const showGettingThere =
+    boatAccess || transferRoutes.length > 0 || transports.length > 0 || (legacyHostTransportOre ?? 0) > 0
 
   return (
-    <div className="mt-6 lg:mt-10">
+    // Ét sæt komponenter: på mobil ligger bookingboksen efter beskrivelsen,
+    // på desktop er den en sticky højre kolonne der spænder over begge rækker.
+    <div className="mt-6 lg:mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_384px] lg:gap-x-12 lg:items-start">
+      <div className="space-y-8 min-w-0">{leftContent}</div>
 
-      {/* ── DESKTOP: to-kolonne med sticky sidebar ── */}
-      <div className="hidden lg:grid lg:grid-cols-[1fr_384px] lg:gap-12 lg:items-start">
-
-        {/* Venstre kolonne */}
-        <div className="space-y-8">
-          {leftContent}
-          {komDertilBlock}
-          {reviewsContent}
-        </div>
-
-        {/* Højre kolonne — sticky */}
-        <div className="sticky top-24">
-          {bookingWidget}
-        </div>
+      <div className="min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-24">
+        <CabinBookingWidget
+          cabin={bookingCabin}
+          isLoggedIn={isLoggedIn}
+          loginNextPath={loginNextPath}
+          disabledYmd={disabledYmd}
+          onGuestsChange={setGuests}
+          onDatesChange={handleDatesChange}
+          actionsRef={widgetRef}
+          transferRoutes={transferRoutes}
+          enableCabinTransportRequest={enableCabinTransportRequest}
+          acceptedTransportOffer={acceptedTransportOffer}
+          hasOpenTransportRequest={hasOpenTransportRequest}
+        />
       </div>
 
-      {/* ── MOBILE: én kolonne ── */}
-      <div className="lg:hidden space-y-8">
-        {leftContent}
-        {bookingWidget}
-        {komDertilBlock}
+      <div className="space-y-8 min-w-0 lg:col-start-1">
+        {showGettingThere && (
+          <CabinGettingThere
+            locationHub={bookingCabin.location_hub}
+            boatAccess={boatAccess}
+            transferRoutes={transferRoutes}
+            legacyHostTransportOre={legacyHostTransportOre}
+            rideShares={transports}
+            checkIn={dates.checkIn}
+            checkOut={dates.checkOut}
+            guests={guests}
+            canRequest={canRequest}
+            hasOpenRequest={hasOpenTransportRequest}
+            hasAcceptedOffer={Boolean(acceptedTransportOffer)}
+            onRequestTransport={() => widgetRef.current?.openTransportRequest()}
+          />
+        )}
         {reviewsContent}
       </div>
-
     </div>
   )
 }

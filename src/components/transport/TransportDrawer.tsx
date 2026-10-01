@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter } from "@/i18n/navigation"
 import { ArrowRight, Calendar, Clock, Users, Anchor, User, X } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -94,14 +94,16 @@ export default function TransportDrawer({ id, seats, onClose }: Props) {
       const json = (await res.json()) as { url?: string; error?: string }
       if (res.status === 401) {
         toast.error(tErrors("unauthorized"))
-        router.push("/login")
+        router.push(`/login?next=${encodeURIComponent(`/transport/${id}`)}`)
         return
       }
       if (!res.ok || !json.url) {
         toast.error(json.error ?? tErrors("generic"))
         return
       }
-      router.push(json.url)
+      // Stripe Checkout er ekstern — fuld navigation
+      window.location.assign(json.url)
+      return
     } catch {
       toast.error(tErrors("network"))
     } finally {

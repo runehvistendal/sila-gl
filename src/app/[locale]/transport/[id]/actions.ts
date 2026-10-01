@@ -19,6 +19,14 @@ export async function createTransportRequest(input: {
 }): Promise<{ ok: true; id: string } | { error: string }> {
   const { supabase, user } = await requireSession()
 
+  const { error: rlErr } = await supabase.rpc("consume_rate_limit", {
+    p_user_id:        user.id,
+    p_action:         "create_transport_request",
+    p_max_attempts:   5,
+    p_window_seconds: 600,
+  })
+  if (rlErr) return { error: "For mange forsøg. Prøv igen om lidt." }
+
   const all = getAllLocationsSorted()
   const fromLoc = all.find((l) => l.name_dk.toLowerCase() === input.from_location.toLowerCase())
   const toLoc = all.find((l) => l.name_dk.toLowerCase() === input.to_location.toLowerCase())

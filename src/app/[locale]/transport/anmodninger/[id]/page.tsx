@@ -8,6 +8,7 @@ import { getNavUserForPage } from "@/lib/getNavUser"
 import Navbar from "@/components/layout/Navbar"
 import TransportRequestOffers from "@/components/transport/TransportRequestOffers"
 import { getLocationName } from "@/lib/greenlandLocations"
+import { timeWindowLabel } from "@/lib/transportRequestTime"
 
 const TRIP_TYPE_LABELS: Record<string, string> = {
   one_way:    "Enkelttur",
@@ -51,6 +52,7 @@ export default async function TransportRequestDetailPage({
     .select(`
       id, guest_id, from_location, to_location, desired_date, num_passengers,
       trip_type, return_date, description, status,
+      preferred_time_from, preferred_time_to,
       profiles!guest_id ( full_name )
     `)
     .eq("id", id)
@@ -70,8 +72,11 @@ export default async function TransportRequestDetailPage({
     return_date: string | null
     description: string | null
     status: string
+    preferred_time_from: string | null
+    preferred_time_to: string | null
     profiles: { full_name: string | null } | null
   }
+  const timeWindow = timeWindowLabel(req.preferred_time_from, req.preferred_time_to)
 
   const isRequester = req.guest_id === user.id
 
@@ -151,6 +156,12 @@ export default async function TransportRequestDetailPage({
               <p className="text-muted-foreground text-xs mb-0.5">Passagerer</p>
               <p className="font-medium">{req.num_passengers}</p>
             </div>
+            {timeWindow && (
+              <div>
+                <p className="text-muted-foreground text-xs mb-0.5">Ønsket afgang</p>
+                <p className="font-medium">{timeWindow}</p>
+              </div>
+            )}
           </div>
 
           {req.description && (

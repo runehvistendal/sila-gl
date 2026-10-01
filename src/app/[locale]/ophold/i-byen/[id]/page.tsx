@@ -15,7 +15,6 @@ import { oreToKr, formatKr, calcDisplayPrice } from "@/lib/money"
 import ListingImageGallery from "@/components/cabins/ListingImageGallery"
 import CabinReviews from "@/components/cabins/CabinReviews"
 import CabinDetailLayout from "@/components/cabins/CabinDetailLayout"
-import TransferRoutesDisplay from "@/components/cabins/TransferRoutesDisplay"
 import { CabinViewTracker } from "@/components/analytics/CabinViewTracker"
 import { getLocationName } from "@/lib/greenlandLocations"
 import type { TransferRoute } from "@/types/transfer"
@@ -252,15 +251,7 @@ export default async function ResidenceDetailPage({
             instant_book: cabin.instant_book,
             property_type: "residence",
           }}
-          transportCabin={{
-            id: cabin.id,
-            location_hub: cabin.location_hub,
-            offers_transport: false,
-            transport_price_per_person_ore: null,
-            profiles: cabin.profiles,
-          }}
           transports={[]}
-          transferRoutesContent={<TransferRoutesDisplay cabinId={cabin.id} />}
           transferRoutes={transferRoutes}
           isLoggedIn={!!user}
           loginNextPath={`/ophold/i-byen/${cabin.id}`}

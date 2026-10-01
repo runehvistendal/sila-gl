@@ -1,6 +1,9 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
+import {
+  useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, useTransition,
+  type RefObject,
+} from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import Link from "next/link"
@@ -63,6 +66,10 @@ type Props = {
   disabledYmd: string[]
   /** Kaldes når gæsteantal ændres — bruges til at synkronisere med CabinTransportSection */
   onGuestsChange?: (guests: number) => void
+  /** Kaldes når datoerne ændres (YYYY-MM-DD, tom streng = ikke valgt) */
+  onDatesChange?: (checkIn: string, checkOut: string) => void
+  /** Lader «Sådan kommer du dertil» åbne transportanmodningen i bookingboksen */
+  actionsRef?: RefObject<CabinBookingWidgetHandle | null>
   /** Strukturerede transferruter fra `transfer_routes` (server-hentet) */
   transferRoutes?: TransferRoute[]
   /** Fx /ophold/i-naturen/[id]: anmod om transport når der ikke er strukturerede ruter */
@@ -71,6 +78,10 @@ type Props = {
   acceptedTransportOffer?: AcceptedTransportOfferProp | null
   /** Om gæsten allerede har en åben cabin_transport_request på denne hytte */
   hasOpenTransportRequest?: boolean
+}
+
+export type CabinBookingWidgetHandle = {
+  openTransportRequest: () => void
 }
 
 function parseYmdLocal(s: string): Date {
@@ -94,6 +105,8 @@ export default function CabinBookingWidget({
   loginNextPath,
   disabledYmd,
   onGuestsChange,
+  onDatesChange,
+  actionsRef,
   transferRoutes = [],
   enableCabinTransportRequest = false,
   acceptedTransportOffer = null,
@@ -162,6 +175,10 @@ export default function CabinBookingWidget({
     range?.to && !isNaN(range.to.getTime())
       ? formatDate(range.to, "yyyy-MM-dd")
       : ""
+
+  useEffect(() => {
+    onDatesChange?.(checkIn, checkOut)
+  }, [checkIn, checkOut, onDatesChange])
 
   const nights =
     checkIn && checkOut
@@ -431,6 +448,17 @@ export default function CabinBookingWidget({
     setTransportMessage("")
     setTransportRequestExpanded(true)
   }
+
+  const transportRequestRef = useRef<HTMLDivElement | null>(null)
+  useImperativeHandle(actionsRef, () => ({
+    openTransportRequest: () => {
+      openTransportRequestFlow()
+      // Vent til formularen er renderet, og rul den ind i billedet
+      requestAnimationFrame(() => {
+        transportRequestRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+      })
+    },
+  }))
 
   function onSubmitTransportRequest(e: React.FormEvent) {
     e.preventDefault()
@@ -753,7 +781,7 @@ export default function CabinBookingWidget({
         {enableCabinTransportRequest &&
           transferRoutes.length === 0 &&
           !hasAcceptedTransportOffer && (
-          <div className="mt-5 pt-4 border-t border-border/80 space-y-3">
+          <div ref={transportRequestRef} className="mt-5 pt-4 border-t border-border/80 space-y-3 scroll-mt-24">
             {transportRequestSuccess ? (
               <p
                 role="status"
