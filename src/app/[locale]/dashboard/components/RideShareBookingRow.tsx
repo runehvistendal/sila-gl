@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { cancelMyRideShareBooking } from "@/app/actions/rideShares"
-import { passengerGetsFullRefund } from "@/lib/rideSharePolicy"
+import { hoursUntil, passengerGetsFullRefund } from "@/lib/rideSharePolicy"
 import { useFormatter, useTranslations } from "next-intl"
 import { Badge } from "@/components/ui/badge"
 import { formatKr } from "@/lib/money"
@@ -74,7 +74,7 @@ export default function RideShareBookingRow({ booking, alreadyReviewed = false }
   const shownTotal = booking.isSkipperView
     ? booking.total_price_ore
     : booking.total_price_ore + booking.service_fee_ore
-  const isUpcoming = new Date(booking.departure_at).getTime() > Date.now()
+  const isUpcoming = hoursUntil(booking.departure_at) > 0
   const canCancel = !booking.isSkipperView && booking.status === "confirmed" && isUpcoming
   const fullRefund = passengerGetsFullRefund(booking.departure_at)
   const reasonKey = booking.cancellation_reason
@@ -120,11 +120,7 @@ export default function RideShareBookingRow({ booking, alreadyReviewed = false }
           <p className="text-xs text-muted-foreground mt-0.5 truncate">
             {booking.isSkipperView
               ? `${t("booking_row_role_passenger")}: ${personName}`
-              : fmt.dateTime(new Date(booking.created_at), {
-                  day:      "numeric",
-                  month:    "short",
-                  year:     "numeric",
-                })}
+              : departureLabel}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">

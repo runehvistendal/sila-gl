@@ -807,7 +807,11 @@
     "my_trips_cta": "Opret samsejlads",
     "my_trips_seats": "{booked}/{total} booket",
     "my_trips_status_cancelled": "Aflyst",
-    "my_trips_status_full": "Fuld"
+    "my_trips_status_full": "Fuld",
+    "booking_row_service_fee": "Servicegebyr (12 %)",
+    "booking_row_transport_title": "Husk transport til hytten",
+    "booking_row_transport_body": "Hytten ligger uden for vejnettet, og der er ingen transport på din booking.",
+    "booking_row_transport_cta": "Find eller anmod om transport"
   },
   "profile": {
     "title": "Profil",

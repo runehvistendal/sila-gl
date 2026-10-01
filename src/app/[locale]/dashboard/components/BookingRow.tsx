@@ -1,12 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
 import {
   Home, Calendar, Users, ChevronDown,
-  CreditCard, ArrowRight, User,
+  CreditCard, ArrowRight, User, Ship,
 } from "lucide-react"
-import { useFormatter } from "next-intl"
+import { useFormatter, useTranslations } from "next-intl"
+import { Link } from "@/i18n/navigation"
+import { getLocationName } from "@/lib/greenlandLocations"
+import { nuukTodayYmd } from "@/lib/nuukTime"
 import { Badge } from "@/components/ui/badge"
 import { formatKr } from "@/lib/money"
 import ReviewDialog from "@/components/reviews/ReviewDialog"
@@ -50,6 +52,11 @@ export interface CabinBookingData {
   reviewee_id?: string | null
   /** cabins.property_type for public URL */
   cabin_property_type?: string | null
+  /** Gæstens servicegebyr (12 %) — lægges oven i total_price_ore i gæstevisning */
+  service_fee_ore?: number
+  cabin_location_hub?: string | null
+  /** Gæstevisning: hytte i naturen uden transfer eller transport på bookingen */
+  needs_transport?: boolean
 }
 
 interface Props {
@@ -61,7 +68,31 @@ interface Props {
 export default function BookingRow({ booking, isHost, alreadyReviewed = false }: Props) {
   const [open, setOpen] = useState(false)
   const fmt = useFormatter()
+  const t = useTranslations("dashboard")
 
+  // Datoer er rene kalenderdatoer — formatér i UTC, så de ikke rykker en dag
+  const day = (ymd: string, withYear = false) =>
+    fmt.dateTime(new Date(`${ymd.slice(0, 10)}T12:00:00Z`), {
+      timeZone: "UTC", day: "numeric", month: "short", ...(withYear ? { year: "numeric" } : {}),
+    })
+  const stayLabel = `${day(booking.check_in)} – ${day(booking.check_out, true)}`
+
+  // Gæsten betalte udbyderens pris + servicegebyr; værten ser sin egen pris
+  const serviceFee = !isHost ? booking.service_fee_ore ?? 0 : 0
+  const shownTotal = booking.total_price_ore + serviceFee
+
+  const isUpcoming = booking.check_in >= nuukTodayYmd()
+  const showTransportHint =
+    !isHost && booking.needs_transport && booking.status === "confirmed" && isUpcoming && booking.cabin_location_hub
+  const transportHref = showTransportHint
+    ? `/transport/anmod?${new URLSearchParams({
+        to: getLocationName(booking.cabin_location_hub as string),
+        date: booking.check_in,
+        return: booking.check_out,
+        guests: String(booking.num_guests),
+        booking: booking.id,
+      }).toString()}`
+    : null
 
   const nights = (() => {
     const d = Math.round(
@@ -103,9 +134,7 @@ export default function BookingRow({ booking, isHost, alreadyReviewed = false }:
             {booking.cabin_title ?? "Hytte"}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {isHost
-              ? `Fra: ${personName}`
-              : `Booket ${fmt.dateTime(new Date(booking.created_at), { day: "numeric", month: "short", year: "numeric" })}`}
+            {isHost ? `${personName} · ${stayLabel}` : stayLabel}
           </p>
         </div>
 
@@ -117,9 +146,9 @@ export default function BookingRow({ booking, isHost, alreadyReviewed = false }:
             {STATUS_LABELS[booking.status] ?? booking.status}
           </Badge>
 
-          {booking.total_price_ore > 0 && (
+          {shownTotal > 0 && (
             <span className="text-sm font-bold text-foreground hidden sm:inline">
-              {formatKr(booking.total_price_ore)}
+              {formatKr(shownTotal)}
             </span>
           )}
 
@@ -174,9 +203,7 @@ export default function BookingRow({ booking, isHost, alreadyReviewed = false }:
           <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5" />
-              {fmt.dateTime(new Date(booking.check_in), { day: "numeric", month: "short" })}
-              {" – "}
-              {fmt.dateTime(new Date(booking.check_out), { day: "numeric", month: "short", year: "numeric" })}
+              {stayLabel}
             </span>
             <span className="flex items-center gap-1">
               <Users className="w-3.5 h-3.5" />
@@ -192,7 +219,13 @@ export default function BookingRow({ booking, isHost, alreadyReviewed = false }:
                 <span>{formatKr(booking.cabin_price_per_night_ore * nights)}</span>
               </div>
             )}
-            {booking.platform_fee_ore != null && booking.platform_fee_ore > 0 && (
+            {serviceFee > 0 && (
+              <div className="flex justify-between">
+                <span>{t("booking_row_service_fee")}</span>
+                <span>{formatKr(serviceFee)}</span>
+              </div>
+            )}
+            {isHost && booking.platform_fee_ore != null && booking.platform_fee_ore > 0 && (
               <div className="flex justify-between">
                 <span>Platformsgebyr (5 %)</span>
                 <span>{formatKr(booking.platform_fee_ore)}</span>
@@ -200,9 +233,26 @@ export default function BookingRow({ booking, isHost, alreadyReviewed = false }:
             )}
             <div className="flex justify-between font-semibold text-foreground border-t border-border pt-1.5 mt-1">
               <span>Total</span>
-              <span>{formatKr(booking.total_price_ore)}</span>
+              <span>{formatKr(shownTotal)}</span>
             </div>
           </div>
+
+          {/* Hytte i naturen uden transport på bookingen */}
+          {transportHref && (
+            <div className="rounded-xl border border-[#114788]/25 bg-[#114788]/5 p-3">
+              <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <Ship className="w-4 h-4 text-[#114788]" aria-hidden />
+                {t("booking_row_transport_title")}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">{t("booking_row_transport_body")}</p>
+              <Link
+                href={transportHref}
+                className="mt-2 inline-flex h-10 items-center gap-1.5 rounded-lg bg-[#114788] px-4 text-xs font-semibold text-white hover:bg-[#114788]/90"
+              >
+                {t("booking_row_transport_cta")} <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+          )}
 
           {/* Stripe ID */}
           {booking.stripe_payment_intent_id && (

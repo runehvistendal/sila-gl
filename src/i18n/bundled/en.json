@@ -807,7 +807,11 @@
     "my_trips_cta": "Create a shared trip",
     "my_trips_seats": "{booked}/{total} booked",
     "my_trips_status_cancelled": "Cancelled",
-    "my_trips_status_full": "Full"
+    "my_trips_status_full": "Full",
+    "booking_row_service_fee": "Service fee (12%)",
+    "booking_row_transport_title": "Remember transport to the cabin",
+    "booking_row_transport_body": "The cabin is off the road network and there is no transport on your booking.",
+    "booking_row_transport_cta": "Find or request transport"
   },
   "profile": {
     "title": "Profile",

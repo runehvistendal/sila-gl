@@ -216,9 +216,9 @@ export default async function DashboardPage() {
       .from("cabin_bookings")
       .select(`
         id, cabin_id, status, check_in, check_out, num_guests,
-        total_price_ore, platform_fee_ore, stripe_payment_intent_id,
-        guest_message, created_at,
-        cabins!cabin_id(title, owner_id, price_per_night_ore, property_type, profiles!owner_id(full_name))
+        total_price_ore, platform_fee_ore, service_fee_ore, stripe_payment_intent_id,
+        guest_message, created_at, includes_transport, transfer_route_id,
+        cabins!cabin_id(title, owner_id, price_per_night_ore, property_type, location_hub, profiles!owner_id(full_name))
       `)
       .eq("guest_id", user.id)
       .is("deleted_at", null)
@@ -635,7 +635,7 @@ export default async function DashboardPage() {
   })
 
   /* ── Shape data ── */
-  type CabinJoinGuest = { title?: string; owner_id?: string; price_per_night_ore?: number; property_type?: string | null; profiles?: { full_name?: string } | null } | null
+  type CabinJoinGuest = { title?: string; owner_id?: string; price_per_night_ore?: number; property_type?: string | null; location_hub?: string | null; profiles?: { full_name?: string } | null } | null
   type CabinJoinHost  = { title?: string; price_per_night_ore?: number; property_type?: string | null } | null
   type GuestProfile   = { id?: string; full_name?: string; avatar_url?: string | null } | null
 
@@ -661,6 +661,11 @@ export default async function DashboardPage() {
       host_name:                cabin?.profiles?.full_name ?? null,
       host_id:                  cabin?.owner_id ?? null,
       reviewee_id:              cabin?.owner_id ?? null,
+      service_fee_ore:          (b.service_fee_ore as number | null) ?? 0,
+      cabin_location_hub:       cabin?.location_hub ?? null,
+      // Hytte i naturen booket uden transfer/transport → gæsten skal selv finde en båd
+      needs_transport:
+        cabin?.property_type !== "residence" && !b.includes_transport && !b.transfer_route_id,
     }
   })
 

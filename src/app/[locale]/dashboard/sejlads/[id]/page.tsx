@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { hoursUntil } from "@/lib/rideSharePolicy"
 import { notFound, redirect } from "next/navigation"
 import { getTranslations, setRequestLocale } from "next-intl/server"
 import { ArrowLeft, Anchor, Users, Clock, MapPin } from "lucide-react"
@@ -102,7 +103,7 @@ export default async function RideShareManifestPage({ params }: PageProps) {
   const confirmed = passengers.filter((p) => p.status === "confirmed")
   const confirmedSeats = confirmed.reduce((sum, p) => sum + p.num_seats, 0)
   const isCancelled = rs.status === "cancelled"
-  const isUpcoming = new Date(rs.departure_at).getTime() > Date.now()
+  const isUpcoming = hoursUntil(rs.departure_at) > 0
 
   return (
     <main className="min-h-screen bg-background">
