@@ -25,7 +25,8 @@
 - Hårdt loft: **max 12 passagerer** pr. tur (DB-constraint + server-validering) og aldrig over bådens kapacitet.
 - Sejleren skal **bekræfte** redningsvest til alle, sikkerhedsinstruks, vejrforbehold og kendskab til reglerne før en tur kan oprettes.
 - **Passagerliste** til sejleren (`/dashboard/sejlads/[id]`), print-venlig, med antal om bord inkl. fører — så den kan efterlades i land.
-- Bådprofil har nu felter for **erhvervsstatus, længde, registrering, fartstilladelse/syn-reference og førerbevis** (`boats.operator_type` m.fl.). Endnu ikke vist i bådformularen — se åbne punkter.
+- Bådformularen spørger om **privat/erhverv, længde, registrering, fartstilladelse/syn, førerbevis og ansvarsforsikring**. Det er sejlerens egne oplysninger; Sila verificerer dem ikke og siger det tydeligt. Turside viser «Sejleren oplyser at sejle erhvervsmæssigt».
+- BEK 956 er kontrolleret som **gældende** pr. 1.10.2026 og har særlige regler for grønlandske farvande i bilag 1 (regel 9), bilag 2 (regel 11) og bilag 3 (regel 7) — [PDF fra Retsinformation](https://www.retsinformation.dk/api/pdf/141932).
 
 ## 2. Turisme — Inatsisartutlov nr. 62 af 25.11.2024 om turistvirksomhed
 
@@ -40,7 +41,7 @@
 | 2.7 | En samsejlads A→B er persontransport; en bådtur med sightseeing/fiskeri er en oplevelse. | **F** |
 | 2.8 | Om **Sila selv** driver turistvirksomhed, hvis Sila sælger pakker (hytte + transport + oplevelse) i ét checkout. Loven nævner ikke platforme. | **A** — Departementet for Erhverv (Naalakkersuisut) |
 
-**Bygget:** felter `experiences.tourism_license_status` (`licensed` / `applied` / `below_threshold`) og `tourism_license_ref`. Formular-felt mangler endnu (se åbne punkter).
+**Bygget:** `/opret/oplevelse` kræver, at udbyderen erklærer sin status (`licensed` / `applied` / `below_threshold`) og kan angive licensnummer. Sila kontrollerer ikke licensen.
 
 ## 3. Betaling og udbetaling
 

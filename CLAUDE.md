@@ -2,6 +2,32 @@
 
 > **Claude Code & udviklerkontekst** — dette dokument er autoritativt for agent og mennesker. Kort agent-hukommelse: se `hukommelse.md` i roden.
 
+## Status (1.10.2026) — autonom session (branch `claude/autonomous-v1`)
+
+> **Før deploy:** kør `supabase db push`. Koden læser kolonner fra tre nye migrationer:
+> `20261001100000_booking_integrity`, `20261001200000_ride_share_guard_hardening`, `20261001210000_public_provider_profiles`.
+
+- **Regler:** `docs/regulatorisk-notat.md` — hvad der er dokumenteret, fortolket, usikkert, og hvad der skal afklares med myndighed. Fire åbne spørgsmål til Søfartsstyrelsen, Departementet for Erhverv, Stripe og revisor.
+- **Tidszone:** Nuuk er **UTC-2 om vinteren / UTC-1 om sommeren** (ikke fast UTC-3). Brug altid `nuukInputToUtc()` / `nuukTodayYmd()` / `nuukDateYmd()` fra `src/lib/nuukTime.ts`.
+- **Booking-integritet (DB):** pladser holdes af trigger ved pending (ingen overbooking), brugere kan kun pending→cancelled, pending udløber efter 35 min (Stripe-session 30 min), webhook refunderer automatisk hvis datoer/pladser er taget.
+- **Samsejlads:** max **12 passagerer** pr. tur (trigger). Sejltid, mødested, bagage, fleksibilitet. Sejler bekræfter sikkerhed ved oprettelse. Sejler kan aflyse (vejr/andet) → alle refunderes. Gæst: gratis afbestilling indtil 48 t før (`src/lib/rideSharePolicy.ts`). Passagerliste: `/dashboard/sejlads/[id]`.
+- **Guard på `ride_shares`:** med aktive bookinger kan sejleren ikke ændre pris, tid, rute, status eller soft-delete — aflysning går via `cancelRideShare` (server), så passagerer refunderes.
+- **«Sådan kommer du dertil»** (`CabinGettingThere.tsx`): værtens transfer · samsejlads til og fra hytten (markerer ture der passer til valgte datoer) · anmod om transport (åbner formularen i bookingboksen via `actionsRef`) · egen båd · vejr-note. Erstatter `CabinTransportSection` + `TransferRoutesDisplay` (slettet).
+- **Efter booking:** `/booking/success` viser faktisk status (bekræftet/afventer/refunderet) og `BookingTransportPrompt` med passende sejladser + forudfyldt anmodning. Dashboard-rækken viser «Husk transport til hytten».
+- **`/transport/anmod`:** forudfyldes fra URL (`from`, `to`, `date`, `return`, `guests`, `booking`), ønsket afgangsvindue (`preferred_time_from/to`), kobling til hyttebooking (`linked_cabin_booking_id`). Tom søgning på `/transport` linker hertil.
+- **Formularer:** båd har privat/erhverv, længde, registrering, fartstilladelse, førerbevis, forsikring (egne oplysninger, ikke verificeret). Oplevelse kræver erklæring om turistlicens.
+- **Publicering:** et ophold kræver mindst ét billede (`src/lib/cabinPublishChecks.ts`, alle tre publicér-stier). Ingen stockfotos som erstatning nogen steder i gæste-UI.
+- **Profiler:** anon kan læse udbyderes sikre felter (navn, avatar, bio) — før var vært/sejler usynlig uden login.
+- **i18n:** `npm run check:i18n` fejler på nøgler der bruges men ikke findes. next-intl forstår **ikke** `_one/_other` — brug ICU: `{count, plural, one {…} other {…}}`.
+- **Dashboard-faner:** gyldige `?tab=`-værdier er `bookings`, `requests` (Mine ønsker), `open-requests` (Gæsteønsker), `listings`, `experiences`, `inbox`.
+- **Kendte huller efter sessionen:**
+  - Sanity `globalSettings` overstyrer `transport.nuuk_time` med «Nuuk-tid (UTC-3)» — ret i Studio.
+  - `/transport/anmodninger/[id]`, `OplevelsesForm`, `BookingRow` m.fl. har stadig hardkodet dansk tekst.
+  - Migration `20260427020000_security_audit` kan ikke køres på en tom database (refererer til senere kolonner/tabeller) — kræver squash før nyt miljø.
+  - Transport-påmindelsen i dashboard ved ikke, om gæsten allerede har booket en samsejlads til samme dato.
+  - ESLint: ca. 30 ældre `set-state-in-effect`-fejl (ingen nye).
+  - Stripe live E2E er stadig ikke kørt (ingen nøgler i dette miljø).
+
 ## Status (13.5.2026)
 
 - **Oplevelser — komplet modul ✅**
@@ -182,7 +208,7 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - **Samsejlads bookingflow:** fusioneret ind i /transport (`/api/transport/checkout`) — **`ride_share_bookings.service_fee_ore`**; **12 %-** servicegebyr — /samsejlads eksisterer ikke længere ✅
 - **Mapbox kortvisning:** `TransportMap.tsx` (streets-v12; **detail** `/transport/[id]`: buet linje + HTML-markører ⚓/🏁 med blå toner; **overview** (forside, /transport, /hytter-kort): destinations-prik, ikke rute-midtpunkt; capitalize i popups; blå prik + lys hvid stroke; `isolation:isolate` på kort-wrapper) ✅
 - **Returture:** `return_ride_share_id` på ride_shares, badge på listekort, alternative ture fra andre sejlere på /transport/[id] ✅
-- **Timezone:** `src/lib/nuukTime.ts` — America/Godthab (UTC-3), alle departure_at vises i Nuuk-tid ✅
+- **Timezone:** `src/lib/nuukTime.ts` — America/Godthab (UTC-2 vinter / UTC-1 sommer siden 2024), alle departure_at vises i Nuuk-tid ✅
 - **Testdata:** 4 profiler (Malik, Sara, Hans, Aviaja), 3 hytter, 8 transportture ✅
 - **src/lib/notifications.ts** — `createNotification`, `getUnreadCount`, `getUnreadStayOfferReceivedCount`, `markNotificationsReadByTypes`; transactional e-mails hvor relevant ✅
 - **/profil/[id]** — offentlig profilside med anmeldelser og gennemsnitsscore ✅
@@ -476,7 +502,7 @@ Rolle-**UPDATE** (reconcile, server): `src/lib/supabase-service.ts` med **`SUPAB
 - **Ingen console.log** af service role key eller andre secrets — ikke engang prefix
 - **Rate limiting**: alle server actions der skriver kritiske data bruger `consume_rate_limit` RPC
 - **ride_shares lokationer**: `from_location` og `to_location` gemmes som **lowercase** i DB — visning altid via `getLocationName()` fra `GREENLAND_LOCATIONS` (name_dk)
-- **departure_at**: gemmes som UTC i DB — vises KUN via `src/lib/nuukTime.ts` (America/Godthab, UTC-3)
+- **departure_at**: gemmes som UTC i DB — vises KUN via `src/lib/nuukTime.ts` (America/Godthab; sommertid håndteres — antag aldrig fast UTC-3)
 - **/samsejlads eksisterer ikke** — al funktionalitet (søgeside, detaljeside, opret, bekræftelse) er på **/transport**
 - `TransportMap.tsx` erstatter de slettede `SejlruteMap.tsx` og `SamsejladsOversigt.tsx`
 - **Alternative returture query**: `WHERE from_location = [to_location] AND skipper_id != [denne turs skipper_id]` — vises kun når `return_ride_share_id IS NULL`
