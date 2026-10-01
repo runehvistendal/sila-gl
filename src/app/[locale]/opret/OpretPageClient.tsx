@@ -1,10 +1,12 @@
 "use client"
 
+import Image from "next/image"
 import { useState, useTransition, useEffect, useRef } from "react"
-import { useRouter, useSearchParams, usePathname } from "next/navigation"
-import { Anchor } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
+import { Anchor, Building2, Home, Ship, Sparkles } from "lucide-react"
 import { useTranslations } from "next-intl"
-import { Link } from "@/i18n/navigation"
+import { Link, usePathname, useRouter } from "@/i18n/navigation"
+import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -39,6 +41,7 @@ export interface CabinRow {
   location_hub: string
   published: boolean
   property_type: string | null
+  images?: string[] | null
 }
 
 export interface BoatRow {
@@ -46,14 +49,58 @@ export interface BoatRow {
   name: string
   boat_type: string | null
   capacity: number
+  images?: string[] | null
+}
+
+export type ExperienceRow = {
+  id: string
+  title: string
+  images: string[]
+  published: boolean
 }
 
 interface Props {
   cabins: CabinRow[]
   boats: BoatRow[]
+  experiences: ExperienceRow[]
 }
 
-export default function OpretPageClient({ cabins, boats }: Props) {
+function coerceImgList(raw: string[] | null | undefined): string[] {
+  if (!Array.isArray(raw)) return []
+  return raw.filter((x): x is string => typeof x === "string" && x.length > 0)
+}
+
+function ListingThumb({
+  url,
+  label,
+  icon: Icon,
+}: {
+  url: string | undefined
+  label: string
+  icon: LucideIcon
+}) {
+  if (url) {
+    return (
+      <Image
+        src={url}
+        alt={label}
+        width={48}
+        height={48}
+        className="h-12 w-12 shrink-0 rounded-lg object-cover bg-muted"
+      />
+    )
+  }
+  return (
+    <div
+      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"
+      aria-hidden
+    >
+      <Icon className="size-5" />
+    </div>
+  )
+}
+
+export default function OpretPageClient({ cabins, boats, experiences }: Props) {
   const t = useTranslations("create")
   const tCommon = useTranslations("common")
   const tDash = useTranslations("dashboard")
@@ -76,10 +123,6 @@ export default function OpretPageClient({ cabins, boats }: Props) {
     const qs = sp.toString()
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
   }, [searchParams, router, pathname])
-
-  function onHytteCardClick() {
-    router.push("/opret/hytte")
-  }
 
   function onTransportCardClick() {
     router.push("/opret/baad")
@@ -160,10 +203,9 @@ export default function OpretPageClient({ cabins, boats }: Props) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        <button
-          type="button"
-          onClick={onHytteCardClick}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <Link
+          href="/opret/hytte"
           className="text-left border-2 border-border rounded-2xl p-5 sm:p-6 bg-white flex flex-col gap-3 min-h-0 min-w-0 hover:border-primary/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-lg shrink-0">
@@ -175,11 +217,10 @@ export default function OpretPageClient({ cabins, boats }: Props) {
               {t("cabin_card_subtitle")}
             </p>
           </div>
-        </button>
+        </Link>
 
-        <button
-          type="button"
-          onClick={() => router.push("/opret/bolig")}
+        <Link
+          href="/opret/bolig"
           className="text-left border-2 border-border rounded-2xl p-5 sm:p-6 bg-white flex flex-col gap-3 min-h-0 min-w-0 hover:border-primary/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-lg shrink-0">
@@ -191,7 +232,7 @@ export default function OpretPageClient({ cabins, boats }: Props) {
               {t("residence_card_subtitle")}
             </p>
           </div>
-        </button>
+        </Link>
 
         <button
           type="button"
@@ -208,6 +249,19 @@ export default function OpretPageClient({ cabins, boats }: Props) {
             </p>
           </div>
         </button>
+
+        <Link
+          href="/opret/oplevelse"
+          className="text-left border-2 border-border rounded-2xl p-5 sm:p-6 bg-white flex flex-col gap-3 min-h-0 min-w-0 hover:border-primary/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <Sparkles className="w-5 h-5 text-primary" aria-hidden />
+          </div>
+          <div>
+            <h2 className="font-bold text-foreground">{t("experience_card_title")}</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">{t("experience_card_subtitle")}</p>
+          </div>
+        </Link>
       </div>
 
       {cabins.length > 0 && (
@@ -223,14 +277,23 @@ export default function OpretPageClient({ cabins, boats }: Props) {
               const availPath = isResidence
                 ? `/opret/bolig/${c.id}/tilgaengelighed`
                 : `/opret/hytte/${c.id}/tilgaengelighed`
+              const imgs = coerceImgList(c.images)
+              const thumbUrl = imgs[0]
               return (
                 <li
                   key={c.id}
                   className="flex flex-col gap-2 rounded-xl border border-border p-3 bg-white"
                 >
+                  <div className="flex gap-3 min-w-0">
+                    <ListingThumb
+                      url={thumbUrl}
+                      label={c.title}
+                      icon={isResidence ? Building2 : Home}
+                    />
+                    <div className="min-w-0 flex-1 flex flex-col gap-2">
                   <Link
                     href={c.published ? publicPath : editPath}
-                    className="min-w-0 group"
+                    className="min-w-0 group block"
                   >
                     <p className="font-semibold text-foreground break-words group-hover:underline">{c.title}</p>
                     <p className="text-xs text-muted-foreground break-words">{getLocationName(c.location_hub)}</p>
@@ -323,6 +386,8 @@ export default function OpretPageClient({ cabins, boats }: Props) {
                       </Button>
                     </div>
                   </div>
+                    </div>
+                  </div>
                 </li>
               )
             })}
@@ -341,12 +406,18 @@ export default function OpretPageClient({ cabins, boats }: Props) {
       {boats.length > 0 && (
         <section className="rounded-2xl border border-border bg-muted/20 p-4 sm:p-5">
           <ul className="space-y-2 break-words">
-            {boats.map((b) => (
+            {boats.map((b) => {
+              const bImgs = coerceImgList(b.images)
+              const bThumb = bImgs[0]
+              return (
               <li
                 key={b.id}
                 className="flex flex-col gap-2 rounded-xl border border-border p-3 bg-white"
               >
-                <div className="min-w-0">
+                <div className="flex gap-3 min-w-0">
+                  <ListingThumb url={bThumb} label={b.name} icon={Ship} />
+                  <div className="min-w-0 flex-1 flex flex-col gap-2">
+                    <div className="min-w-0">
                   <p className="font-semibold text-foreground break-words">{b.name}</p>
                   <p className="text-xs text-muted-foreground break-words">
                     {b.boat_type ?? t("boat_fallback_type")} — {b.capacity} {tCommon("seats")}
@@ -378,12 +449,68 @@ export default function OpretPageClient({ cabins, boats }: Props) {
                     {tCommon("delete")}
                   </Button>
                 </div>
+                  </div>
+                </div>
               </li>
-            ))}
+            )})}
           </ul>
           <div className="pt-3 border-t border-border mt-3">
             <Link href="/opret/baad" className="text-sm font-medium text-primary hover:underline">
               {t("add_new_boat")}
+            </Link>
+          </div>
+        </section>
+      )}
+
+      {experiences.length > 0 && (
+        <section className="mt-6 rounded-2xl border border-border bg-muted/20 p-4 sm:p-5">
+          <ul className="space-y-2 break-words">
+            {experiences.slice(0, 3).map((e) => {
+              const imgs = coerceImgList(e.images)
+              const thumbUrl = imgs[0]
+              const editHref = `/opret/oplevelse/${e.id}/rediger`
+              return (
+                <li
+                  key={e.id}
+                  className="flex flex-col gap-2 rounded-xl border border-border bg-white p-3"
+                >
+                  <div className="flex gap-3 min-w-0">
+                    <ListingThumb url={thumbUrl} label={e.title} icon={Sparkles} />
+                    <div className="flex min-w-0 flex-1 flex-col gap-2">
+                      <Link href={editHref} className="group min-w-0 block">
+                        <p className="break-words font-semibold text-foreground group-hover:underline">
+                          {e.title}
+                        </p>
+                      </Link>
+                      <Badge
+                        className={
+                          e.published
+                            ? "w-fit border-0 bg-green-100 text-green-800"
+                            : "w-fit border-0 bg-gray-100 text-gray-600"
+                        }
+                      >
+                        {e.published ? tCommon("active") : tCommon("draft")}
+                      </Badge>
+                    </div>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+          <div className="mt-3 flex flex-col gap-3 border-t border-border pt-3">
+            {experiences.length > 3 ? (
+              <Link
+                href="/dashboard?tab=mine-opslag"
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                Se alle →
+              </Link>
+            ) : null}
+            <Link
+              href="/opret/oplevelse"
+              className="flex items-center justify-center rounded-xl border-2 border-dashed border-border py-3 text-sm font-semibold text-primary transition-colors hover:bg-muted/50"
+            >
+              + Opret ny oplevelse
             </Link>
           </div>
         </section>

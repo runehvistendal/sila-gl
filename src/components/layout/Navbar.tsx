@@ -212,6 +212,9 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            <Link href="/oplevelser" className="transition-colors">
+              {locale === "en" ? "Experiences" : "Oplevelser"}
+            </Link>
             <Link href="/transport" className="transition-colors">{t("transport")}</Link>
 
             {user && (
@@ -430,6 +433,9 @@ export default function Navbar({ user }: { user?: NavUser | null }) {
             </p>
             <Link href="/ophold/i-naturen" onClick={() => setMobileOpen(false)} className="w-full text-center py-3 text-lg font-medium text-white/90 hover:text-primary transition-colors">{t("stayNature")}</Link>
             <Link href="/ophold/i-byen" onClick={() => setMobileOpen(false)} className="w-full text-center py-3 text-lg font-medium text-white/90 hover:text-primary transition-colors">{t("stayCity")}</Link>
+            <Link href="/oplevelser" onClick={() => setMobileOpen(false)} className="w-full text-center py-3 text-lg font-medium text-white/90 hover:text-primary transition-colors">
+              {locale === "en" ? "Experiences" : "Oplevelser"}
+            </Link>
             <Link href="/transport" onClick={() => setMobileOpen(false)} className="w-full text-center py-4 text-xl font-medium text-white/90 hover:text-primary transition-colors border-t border-white/10 mt-2">{t("transport")}</Link>
 
             {user ? (

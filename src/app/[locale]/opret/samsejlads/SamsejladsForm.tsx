@@ -13,7 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { GREENLAND_LOCATIONS } from "@/lib/greenlandLocations"
+import LocationAutocomplete from "@/components/shared/LocationAutocomplete"
+import { isInByenCategory, locationToId } from "@/lib/greenlandLocations"
 import { createSamsejlads, type SamsejladsFormState } from "./actions"
 import { PH_STORE } from "@/lib/analytics/posthog-events"
 
@@ -28,10 +29,6 @@ interface Props {
   boats: Boat[]
   defaultBoatId?: string
 }
-
-const SORTED_LOCATIONS = [...GREENLAND_LOCATIONS].sort((a, b) =>
-  a.name_dk.localeCompare(b.name_dk, "da"),
-)
 
 function FieldError({ messages }: { messages?: string[] }) {
   if (!messages?.length) return null
@@ -148,35 +145,36 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
         </p>
         <div>
           <Label>{tCommon("from")} <span className="text-destructive">*</span></Label>
-          <Select onValueChange={setFromLocation} value={fromLocation} required>
-            <SelectTrigger className="mt-1 rounded-xl">
-              <SelectValue placeholder={t("departure_city_placeholder")} />
-            </SelectTrigger>
-            <SelectContent>
-              {SORTED_LOCATIONS.map((l) => (
-                <SelectItem key={`${l.postal_code}-${l.name_dk}`} value={l.name_dk}>
-                  {l.name_dk}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="mt-1">
+            <LocationAutocomplete
+              variant="default"
+              showOptionMeta={false}
+              value={fromLocation}
+              onChange={(name) => {
+                setFromLocation(name)
+                if (toLocation === name) setToLocation("")
+              }}
+              placeholder={t("departure_city_placeholder")}
+              filterLocations={(loc) => isInByenCategory(locationToId(loc))}
+            />
+          </div>
           <FieldError messages={state?.errors?.from_location} />
         </div>
 
         <div>
           <Label>{tCommon("to")} <span className="text-destructive">*</span></Label>
-          <Select onValueChange={setToLocation} value={toLocation} required>
-            <SelectTrigger className="mt-1 rounded-xl">
-              <SelectValue placeholder={t("arrival_city_placeholder")} />
-            </SelectTrigger>
-            <SelectContent>
-              {SORTED_LOCATIONS.filter((l) => l.name_dk !== fromLocation).map((l) => (
-                <SelectItem key={`${l.postal_code}-${l.name_dk}`} value={l.name_dk}>
-                  {l.name_dk}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="mt-1">
+            <LocationAutocomplete
+              variant="default"
+              showOptionMeta={false}
+              value={toLocation}
+              onChange={setToLocation}
+              placeholder={t("arrival_city_placeholder")}
+              filterLocations={(loc) =>
+                isInByenCategory(locationToId(loc)) && loc.name_dk !== fromLocation
+              }
+            />
+          </div>
           <FieldError messages={state?.errors?.to_location} />
         </div>
       </div>
@@ -211,6 +209,46 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
             <FieldError messages={state?.errors?.afgang_tid} />
           </div>
         </div>
+
+        <hr className="border-border" />
+
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            name="returtur"
+            value="on"
+            checked={returtur}
+            onChange={(e) => setReturtur(e.target.checked)}
+            className="w-4 h-4 accent-primary"
+          />
+          <span className="text-sm font-medium">{t("offers_return")}</span>
+        </label>
+
+        {returtur ? (
+          <div className="grid grid-cols-2 gap-4 pt-1">
+            <div>
+              <Label htmlFor="retur_dato">{t("return_date_label")} <span className="text-destructive">*</span></Label>
+              <Input
+                id="retur_dato"
+                name="retur_dato"
+                type="date"
+                min={today}
+                className="mt-1 rounded-xl"
+              />
+              <FieldError messages={state?.errors?.retur_dato} />
+            </div>
+            <div>
+              <Label htmlFor="retur_tid">{t("return_time_label")} <span className="text-destructive">*</span></Label>
+              <Input
+                id="retur_tid"
+                name="retur_tid"
+                type="time"
+                className="mt-1 rounded-xl"
+              />
+              <FieldError messages={state?.errors?.retur_tid} />
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {/* Pladser + pris */}
@@ -292,55 +330,11 @@ export default function SamsejladsForm({ boats, defaultBoatId }: Props) {
         </div>
       </div>
 
-      {/* Returtur */}
-      <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-4">
-        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          {t("section_return")}
-        </p>
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            name="returtur"
-            value="on"
-            checked={returtur}
-            onChange={(e) => setReturtur(e.target.checked)}
-            className="w-4 h-4 accent-primary"
-          />
-          <span className="text-sm font-medium">{t("offers_return")}</span>
-        </label>
-
-        {returtur && (
-          <div className="grid grid-cols-2 gap-4 pt-1">
-            <div>
-              <Label htmlFor="retur_dato">{t("return_date_label")} <span className="text-destructive">*</span></Label>
-              <Input
-                id="retur_dato"
-                name="retur_dato"
-                type="date"
-                min={today}
-                className="mt-1 rounded-xl"
-              />
-              <FieldError messages={state?.errors?.retur_dato} />
-            </div>
-            <div>
-              <Label htmlFor="retur_tid">{t("return_time_label")} <span className="text-destructive">*</span></Label>
-              <Input
-                id="retur_tid"
-                name="retur_tid"
-                type="time"
-                className="mt-1 rounded-xl"
-              />
-              <FieldError messages={state?.errors?.retur_tid} />
-            </div>
-          </div>
-        )}
-      </div>
-
       <Button
         type="submit"
         disabled={isPending || boats.length === 0}
         className="w-full rounded-xl h-12 text-base font-semibold"
-        style={{ backgroundColor: "#4A9CC7" }}
+        style={{ backgroundColor: "#114788" }}
       >
         {isPending ? t("creating_trip") : t("create_trip_button")}
       </Button>

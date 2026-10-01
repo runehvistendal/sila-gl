@@ -4,23 +4,31 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import Link from "next/link"
-import { useLocale, useTranslations } from "next-intl"
+import { useTranslations } from "next-intl"
 import { useFormatPrice } from "@/hooks/useFormatPrice"
 import { format as formatDate, parseISO } from "date-fns"
 import { Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import {
   createCabinBooking,
+  type AcceptedTransportOfferProp,
   type TransportTrip,
 } from "@/app/actions/bookings"
+import { createCabinTransportRequest } from "@/app/actions/cabinTransportRequests"
 import { cn } from "@/lib/utils"
 import { captureEvent, PH_STORE } from "@/lib/analytics/posthog-events"
 import { calcServiceFee, oreToKr, calcDisplayPrice } from "@/lib/money"
 import type { TransferRoute } from "@/types/transfer"
-import ServiceFeeHelpIcon from "@/components/shared/ServiceFeeHelpIcon"
 import { CalendarDropdown } from "@/components/shared/CalendarDropdown"
 import { localTodayYmd } from "@/lib/calendarYmd"
+import {
+  getArrivalPoints,
+  getLocationName,
+  type ArrivalPoint,
+} from "@/lib/greenlandLocations"
 
 const DRAFT_KEY = "sila_cabin_booking_draft_v1"
 
@@ -57,6 +65,12 @@ type Props = {
   onGuestsChange?: (guests: number) => void
   /** Strukturerede transferruter fra `transfer_routes` (server-hentet) */
   transferRoutes?: TransferRoute[]
+  /** Fx /ophold/i-naturen/[id]: anmod om transport når der ikke er strukturerede ruter */
+  enableCabinTransportRequest?: boolean
+  /** Accepteret hytte-transportbud — kun uden strukturerede transfer_ruter */
+  acceptedTransportOffer?: AcceptedTransportOfferProp | null
+  /** Om gæsten allerede har en åben cabin_transport_request på denne hytte */
+  hasOpenTransportRequest?: boolean
 }
 
 function parseYmdLocal(s: string): Date {
@@ -81,14 +95,29 @@ export default function CabinBookingWidget({
   disabledYmd,
   onGuestsChange,
   transferRoutes = [],
+  enableCabinTransportRequest = false,
+  acceptedTransportOffer = null,
+  hasOpenTransportRequest = false,
 }: Props) {
   const router = useRouter()
-  const locale = useLocale()
   const t = useTranslations("cabins")
   const tCommon = useTranslations("common")
   const formatPrice = useFormatPrice()
   const [pending, start] = useTransition()
+  const [transportPending, startTransport] = useTransition()
   const todayYmd = localTodayYmd()
+
+  const [transportRequestExpanded, setTransportRequestExpanded] = useState(false)
+  const [transportRequestSuccess, setTransportRequestSuccess] = useState(false)
+  const [transportRequestError, setTransportRequestError] = useState<string | null>(
+    null,
+  )
+  const [transportArrivalPoint, setTransportArrivalPoint] =
+    useState<ArrivalPoint>("harbour")
+  const [transportArrivalDate, setTransportArrivalDate] = useState("")
+  const [transportReturnDate, setTransportReturnDate] = useState("")
+  const [transportReqPersons, setTransportReqPersons] = useState("1")
+  const [transportMessage, setTransportMessage] = useState("")
 
   const disabledSet = useMemo(
     () => new Set(disabledYmd),
@@ -168,7 +197,24 @@ export default function CabinBookingWidget({
     return 0
   }, [transferRoutes.length, cabin.offers_transport, transport, perPerson, guests])
 
-  const transportAddonOre = transferRoutes.length > 0 ? structuredTransferOre : legacyTransportOre
+  const hasAcceptedTransportOffer = Boolean(
+    acceptedTransportOffer &&
+      transferRoutes.length === 0 &&
+      Number.isFinite(acceptedTransportOffer.price_ore) &&
+      acceptedTransportOffer.price_ore > 0,
+  )
+
+  const acceptedOfferOre = useMemo(() => {
+    if (!hasAcceptedTransportOffer || !acceptedTransportOffer) return 0
+    return Math.floor(acceptedTransportOffer.price_ore)
+  }, [hasAcceptedTransportOffer, acceptedTransportOffer])
+
+  const transportAddonOre =
+    transferRoutes.length > 0
+      ? structuredTransferOre
+      : acceptedOfferOre > 0
+        ? acceptedOfferOre
+        : legacyTransportOre
   const subtotalOre = cabinTotalOre + transportAddonOre
   const serviceFeeOre = subtotalOre > 0 ? calcServiceFee(subtotalOre) : 0
   const guestTotalOre = subtotalOre + serviceFeeOre
@@ -275,12 +321,21 @@ export default function CabinBookingWidget({
           check_out: checkOut,
           guests,
           transport_trip:
-            transferRoutes.length > 0 ? "none" : cabin.offers_transport ? transport : "none",
+            transferRoutes.length > 0
+              ? "none"
+              : hasAcceptedTransportOffer
+                ? "none"
+                : cabin.offers_transport
+                  ? transport
+                  : "none",
         }
         if (selectedTransferRouteId) {
           payload.transfer_route_id = selectedTransferRouteId
           payload.transfer_is_roundtrip = transferIsRoundtrip
           payload.transfer_price_ore = structuredTransferOre
+        }
+        if (hasAcceptedTransportOffer && acceptedTransportOffer) {
+          payload.transport_offer_id = acceptedTransportOffer.id
         }
         const r = await createCabinBooking(payload)
         if ("error" in r) {
@@ -319,7 +374,10 @@ export default function CabinBookingWidget({
   }
 
   const needsLegacyTransportPrice =
-    transferRoutes.length === 0 && cabin.offers_transport && perPerson <= 0
+    !hasAcceptedTransportOffer &&
+    transferRoutes.length === 0 &&
+    cabin.offers_transport &&
+    perPerson <= 0
 
   const bookDisabled =
     pending ||
@@ -330,6 +388,98 @@ export default function CabinBookingWidget({
     !checkIn ||
     !checkOut ||
     needsLegacyTransportPrice
+
+  const arrivalPointTypes = useMemo((): ArrivalPoint[] => {
+    const pts = getArrivalPoints(cabin.location_hub)
+    return pts.length > 0 ? pts : ["harbour"]
+  }, [cabin.location_hub])
+
+  const arrivalSelectOptions = useMemo(() => {
+    const place = getLocationName(cabin.location_hub)
+    return arrivalPointTypes.map((pt) => ({
+      value: pt,
+      label:
+        pt === "airport"
+          ? `${t("booking_transport_arrival_airport")} · ${place}`
+          : pt === "helipad"
+            ? `${t("booking_transport_arrival_helipad")} · ${place}`
+            : `${t("booking_transport_arrival_harbour")} · ${place}`,
+    }))
+  }, [arrivalPointTypes, cabin.location_hub, t])
+
+  useEffect(() => {
+    setTransportRequestSuccess(false)
+    setTransportRequestExpanded(false)
+    setTransportRequestError(null)
+    setTransportReturnDate("")
+  }, [cabin.id])
+
+  function openTransportRequestFlow() {
+    if (!isLoggedIn) {
+      persistDraft()
+      void router.push(loginHref)
+      return
+    }
+    setTransportRequestError(null)
+    const pts = arrivalPointTypes
+    setTransportArrivalPoint(pts[0] ?? "harbour")
+    setTransportArrivalDate(checkIn || "")
+    setTransportReturnDate("")
+    setTransportReqPersons(
+      String(Math.min(Math.max(guests, 1), cabin.max_guests)),
+    )
+    setTransportMessage("")
+    setTransportRequestExpanded(true)
+  }
+
+  function onSubmitTransportRequest(e: React.FormEvent) {
+    e.preventDefault()
+    setTransportRequestError(null)
+    if (!checkIn) {
+      setTransportRequestError(t("booking_transport_request_need_checkin"))
+      return
+    }
+    const ad = transportArrivalDate.trim()
+    if (!ad || ad < checkIn) {
+      setTransportRequestError(t("booking_transport_request_bad_arrival_date"))
+      return
+    }
+    const rd = transportReturnDate.trim()
+    if (rd) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(rd) || rd < ad) {
+        setTransportRequestError(
+          "Returdato kan ikke være før ankomstdato.",
+        )
+        return
+      }
+    }
+    const num = Math.floor(Number(transportReqPersons))
+    if (num < 1 || num > cabin.max_guests) {
+      setTransportRequestError(t("booking_transport_request_bad_persons"))
+      return
+    }
+    if (!arrivalPointTypes.includes(transportArrivalPoint)) {
+      setTransportRequestError(tCommon("error"))
+      return
+    }
+    startTransport(async () => {
+      const r = await createCabinTransportRequest({
+        cabin_id: cabin.id,
+        check_in: checkIn,
+        arrival_date: ad,
+        ...(rd ? { return_date: rd } : {}),
+        arrival_point: transportArrivalPoint,
+        num_persons: num,
+        message: transportMessage.trim() || null,
+      })
+      if ("error" in r && r.error) {
+        setTransportRequestError(r.error)
+        return
+      }
+      setTransportRequestSuccess(true)
+      setTransportRequestExpanded(false)
+    })
+  }
 
   return (
     <div
@@ -411,6 +561,23 @@ export default function CabinBookingWidget({
               <p className="text-xs text-destructive mt-1">{guestError}</p>
             )}
           </div>
+
+          {hasAcceptedTransportOffer && acceptedTransportOffer ? (
+            <div className="rounded-xl border border-[#114788]/25 bg-[#114788]/08 p-4 space-y-2">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+                {t("booking_transport_included_title")}
+              </span>
+              <p className="text-sm font-semibold text-foreground tabular-nums">
+                {fmtOreKrLine(acceptedOfferOre)}
+              </p>
+              {acceptedTransportOffer.message != null &&
+                acceptedTransportOffer.message.trim() !== "" && (
+                  <p className="text-xs text-muted-foreground whitespace-pre-wrap border-t border-border/60 pt-2 mt-1">
+                    {acceptedTransportOffer.message.trim()}
+                  </p>
+                )}
+            </div>
+          ) : null}
 
           {transferRoutes.length > 0 && (
             <div className="space-y-3">
@@ -505,12 +672,27 @@ export default function CabinBookingWidget({
             </div>
           )}
 
-          {transferRoutes.length === 0 && cabin.offers_transport && perPerson > 0 && (
+          {transferRoutes.length === 0 &&
+            cabin.offers_transport &&
+            perPerson > 0 &&
+            !hasAcceptedTransportOffer && (
             <div>
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">
                 {t("booking_transport_label")}
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTransport("none")}
+                  className={cn(
+                    "text-left rounded-lg px-3 py-2.5 text-sm border transition-colors",
+                    transport === "none"
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border hover:border-primary/50",
+                  )}
+                >
+                  {t("booking_trip_none")}
+                </button>
                 {TRIP_OPTIONS.map((o) => (
                   <button
                     key={o.value}
@@ -549,6 +731,8 @@ export default function CabinBookingWidget({
                 <span className="min-w-0">
                   {transferRoutes.length > 0 && selectedTransferRoute ? (
                     <>Transfer (fra {selectedTransferRoute.from_arrival_point})</>
+                  ) : hasAcceptedTransportOffer ? (
+                    t("booking_transport_included_title")
                   ) : (
                     t("booking_transport_addon")
                   )}
@@ -559,37 +743,166 @@ export default function CabinBookingWidget({
               </div>
             )}
             <div className="my-2 border-t border-border" aria-hidden />
-            {serviceFeeOre > 0 && (
-              <div className="flex justify-between text-muted-foreground items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 min-w-0">
-                  {t("booking_service_fee_3")}
-                  <ServiceFeeHelpIcon
-                    tooltipText={t("booking_service_fee_hint")}
-                    ariaLabel={t("booking_service_fee_aria")}
-                  />
-                </span>
-                <span className="font-medium text-foreground tabular-nums">
-                  {fmtOreKrLine(serviceFeeOre)}
-                </span>
-              </div>
-            )}
-            {serviceFeeOre > 0 && subtotalOre > 0 && (
-              <p className="text-xs text-muted-foreground pt-1 leading-relaxed">
-                {t("booking_price_equation", {
-                  subtotal: fmtOreKrLine(subtotalOre),
-                  fee: fmtOreKrLine(serviceFeeOre),
-                  total: fmtOreKrLine(guestTotalOre),
-                })}
-              </p>
-            )}
-            <div className="flex justify-between font-bold text-foreground pt-1.5 border-t border-border">
+            <div className="flex justify-between font-bold text-foreground pt-1.5">
               <span>{t("booking_grand_total")}</span>
               <span className="tabular-nums">{fmtOreKrLine(guestTotalOre)}</span>
             </div>
-            <p className="text-[11px] text-muted-foreground">{t("price_includes_service_fee")}</p>
-            <p className="text-xs text-muted-foreground pt-1">
-              {t("booking_platform_fee_note")}
-            </p>
+          </div>
+        )}
+
+        {enableCabinTransportRequest &&
+          transferRoutes.length === 0 &&
+          !hasAcceptedTransportOffer && (
+          <div className="mt-5 pt-4 border-t border-border/80 space-y-3">
+            {transportRequestSuccess ? (
+              <p
+                role="status"
+                className="text-sm leading-relaxed rounded-xl border border-[#114788]/25 bg-[#114788]/08 text-foreground px-4 py-3"
+              >
+                {t("booking_transport_request_success")}
+              </p>
+            ) : !transportRequestExpanded ? (
+              <>
+                {hasOpenTransportRequest && !transportRequestSuccess && (
+                  <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    Du har en åben transportanmodning. Vi anbefaler at vente til transport er bekræftet.
+                  </p>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 w-full rounded-xl border-[#114788] text-[#114788] bg-transparent hover:bg-[#114788]/10 font-semibold"
+                  onClick={openTransportRequestFlow}
+                >
+                  {t("booking_transport_request_cta")}
+                </Button>
+              </>
+            ) : (
+              <form
+                className="space-y-3 rounded-xl border border-border p-3 sm:p-4 bg-muted/10"
+                onSubmit={onSubmitTransportRequest}
+              >
+                {!checkIn && (
+                  <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    {t("booking_transport_request_need_checkin")}
+                  </p>
+                )}
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="cabin_transport_arrival"
+                    className="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+                  >
+                    {t("booking_transport_request_arrival_label")}
+                  </Label>
+                  <select
+                    id="cabin_transport_arrival"
+                    value={transportArrivalPoint}
+                    onChange={(e) =>
+                      setTransportArrivalPoint(e.target.value as ArrivalPoint)
+                    }
+                    className={cn(
+                      "flex h-11 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#114788]/40 focus-visible:ring-offset-2",
+                    )}
+                  >
+                    {arrivalSelectOptions.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="cabin_transport_arrival_date"
+                    className="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+                  >
+                    {t("booking_transport_request_date_label")}
+                  </Label>
+                  <Input
+                    id="cabin_transport_arrival_date"
+                    type="date"
+                    required
+                    min={checkIn || undefined}
+                    value={transportArrivalDate}
+                    onChange={(e) => setTransportArrivalDate(e.target.value)}
+                    className="rounded-xl h-11"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="cabin_transport_return_date"
+                    className="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+                  >
+                    Returdato (valgfrit)
+                  </Label>
+                  <Input
+                    id="cabin_transport_return_date"
+                    type="date"
+                    min={
+                      transportArrivalDate.trim() || checkIn || undefined
+                    }
+                    value={transportReturnDate}
+                    onChange={(e) => setTransportReturnDate(e.target.value)}
+                    className="rounded-xl h-11"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="cabin_transport_persons"
+                    className="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+                  >
+                    {t("booking_transport_request_persons_label")}
+                  </Label>
+                  <Input
+                    id="cabin_transport_persons"
+                    type="number"
+                    min={1}
+                    max={cabin.max_guests}
+                    value={transportReqPersons}
+                    onChange={(e) => setTransportReqPersons(e.target.value)}
+                    className="rounded-xl h-11 w-full sm:max-w-[12rem]"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="cabin_transport_message"
+                    className="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+                  >
+                    {t("booking_transport_request_message_label")}
+                  </Label>
+                  <Textarea
+                    id="cabin_transport_message"
+                    maxLength={500}
+                    value={transportMessage}
+                    onChange={(e) => setTransportMessage(e.target.value)}
+                    rows={3}
+                    className="rounded-xl resize-y min-h-[88px] text-sm focus-visible:ring-[#114788]/40"
+                  />
+                  <p className="text-[11px] text-muted-foreground text-right tabular-nums">
+                    {transportMessage.length}/500
+                  </p>
+                </div>
+                {transportRequestError && (
+                  <p className="text-xs text-destructive" role="alert">
+                    {transportRequestError}
+                  </p>
+                )}
+                <Button
+                  type="submit"
+                  disabled={transportPending || !checkIn}
+                  className="h-11 w-full rounded-xl bg-[#114788] hover:bg-[#0d3566] text-white font-semibold"
+                >
+                  {transportPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin inline" />
+                      {t("booking_transport_request_submitting")}
+                    </>
+                  ) : (
+                    t("booking_transport_request_submit")
+                  )}
+                </Button>
+              </form>
+            )}
           </div>
         )}
 

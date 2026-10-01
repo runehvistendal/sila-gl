@@ -21,6 +21,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/ophold/i-naturen",
     "/ophold/i-byen",
     "/transport",
+    "/oplevelser",
     "/anmod",
     "/om",
     "/faq",
@@ -34,7 +35,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${BASE_URL}/${locale}${path}`,
       lastModified: new Date(),
       changeFrequency: (path === "" ? "weekly" : "monthly") as "weekly" | "monthly",
-      priority: (path === "" ? 1 : path === "/ophold/i-naturen" || path === "/ophold/i-byen" || path === "/transport" ? 0.8 : 0.6),
+      priority: (path === "" ? 1 : path === "/ophold/i-naturen" || path === "/ophold/i-byen" || path === "/transport" || path === "/oplevelser" ? 0.8 : 0.6),
     }))
   )
 
@@ -50,6 +51,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     LOCALES.map((locale) => ({
       url: `${BASE_URL}/${locale}${publishedCabinDetailPath(cabin.property_type, cabin.id)}`,
       lastModified: new Date(cabin.updated_at),
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    }))
+  )
+
+  const { data: experiences } = await supabase
+    .from("experiences")
+    .select("id, updated_at")
+    .eq("published", true)
+    .is("deleted_at", null)
+
+  const experienceUrls: MetadataRoute.Sitemap = (experiences ?? []).flatMap((exp) =>
+    LOCALES.map((locale) => ({
+      url: `${BASE_URL}/${locale}/oplevelser/${exp.id}`,
+      lastModified: new Date(exp.updated_at),
       changeFrequency: "weekly" as const,
       priority: 0.7,
     }))
@@ -82,5 +98,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Sanity er nede — sitemap fortsætter uden blogindlæg
   }
 
-  return [...staticUrls, ...cabinUrls, ...destinationUrls, ...blogUrls]
+  return [...staticUrls, ...cabinUrls, ...experienceUrls, ...destinationUrls, ...blogUrls]
 }

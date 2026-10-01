@@ -6,3 +6,5 @@ export type NotificationType =
   | "message_received"
   | "transport_offer_received"
   | "transport_offer_accepted"
+  | "cabin_transport_offer_received"
+  | "experience_booking_received"

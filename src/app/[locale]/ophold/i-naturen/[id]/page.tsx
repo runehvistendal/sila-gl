@@ -19,6 +19,7 @@ import Navbar from "@/components/layout/Navbar"
 import { buildMetadata } from "@/lib/metadata"
 import { JsonLd } from "@/components/seo/JsonLd"
 import { oreToKr, formatKr, calcDisplayPrice } from "@/lib/money"
+import type { AcceptedTransportOfferProp } from "@/app/actions/bookings"
 import ListingImageGallery from "@/components/cabins/ListingImageGallery"
 import CabinReviews from "@/components/cabins/CabinReviews"
 import CabinDetailLayout from "@/components/cabins/CabinDetailLayout"
@@ -77,10 +78,13 @@ export async function generateMetadata({
 
 export default async function OpholdNatureDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string; locale: string }>
+  searchParams: Promise<{ transport_offer?: string | string[] }>
 }) {
   const { id, locale } = await params
+  const sp = await searchParams
   setRequestLocale(locale)
 
   const supabase = await createClient()
@@ -90,6 +94,55 @@ export default async function OpholdNatureDetailPage({
     data: { user },
   } = await supabase.auth.getUser()
   const navUser = user ? await getNavUserForPage(supabase, user) : null
+
+  const rawTransportOffer = sp.transport_offer
+  const transportOfferParam =
+    typeof rawTransportOffer === "string"
+      ? rawTransportOffer.trim()
+      : Array.isArray(rawTransportOffer)
+        ? rawTransportOffer[0]?.trim() ?? ""
+        : ""
+
+  let acceptedTransportOffer: AcceptedTransportOfferProp | undefined
+  if (transportOfferParam !== "" && user) {
+    const { data: offerRow } = await supabase
+      .from("cabin_transport_offers")
+      .select("id, price_ore, message, status, request_id")
+      .eq("id", transportOfferParam)
+      .eq("status", "accepted")
+      .maybeSingle()
+
+    if (offerRow) {
+      const rid = (offerRow as { request_id: string }).request_id
+      const { data: reqRow } = await supabase
+        .from("cabin_transport_requests")
+        .select("cabin_id, guest_id")
+        .eq("id", rid)
+        .maybeSingle()
+
+      if (
+        reqRow &&
+        (reqRow as { cabin_id: string }).cabin_id === id &&
+        (reqRow as { guest_id: string }).guest_id === user.id
+      ) {
+        const msg = (offerRow as { message: string | null }).message
+        const po = Number((offerRow as { price_ore: number }).price_ore)
+        if (Number.isFinite(po) && po >= 1) {
+          acceptedTransportOffer = {
+            id: (offerRow as { id: string }).id,
+            price_ore: Math.floor(po),
+            message: msg != null && msg.trim() !== "" ? msg.trim() : undefined,
+          }
+        }
+      }
+    }
+  }
+
+  const loginNextPath =
+    `/ophold/i-naturen/${id}` +
+    (transportOfferParam !== ""
+      ? `?transport_offer=${encodeURIComponent(transportOfferParam)}`
+      : "")
 
   const { data: cabinRaw, error: cabinError } = await supabase
     .from("cabins")
@@ -114,35 +167,50 @@ export default async function OpholdNatureDetailPage({
 
   const cabin = cabinRaw as unknown as CabinNatureDetailData
 
-  const [{ data: occRows }, { data: blockRows }, { data: transportRows }, { data: transferRouteRows }] =
-    await Promise.all([
-      supabase.rpc("get_cabin_occupancy", { p_cabin_id: id }),
-      supabase
-        .from("cabin_availability")
-        .select("date")
-        .eq("cabin_id", id)
-        .eq("is_available", false)
-        .is("deleted_at", null),
-      supabase
-        .from("ride_shares")
-        .select(
-          `id, from_location, to_location, departure_at,
+  const [
+    { data: occRows },
+    { data: blockRows },
+    { data: transportRows },
+    { data: transferRouteRows },
+    { data: openTransportReqRows },
+  ] = await Promise.all([
+    supabase.rpc("get_cabin_occupancy", { p_cabin_id: id }),
+    supabase
+      .from("cabin_availability")
+      .select("date")
+      .eq("cabin_id", id)
+      .eq("is_available", false)
+      .is("deleted_at", null),
+    supabase
+      .from("ride_shares")
+      .select(
+        `id, from_location, to_location, departure_at,
            seats_available, total_seats, price_per_seat_ore,
            profiles!skipper_id ( full_name )`,
-        )
-        .eq("to_location", cabin.location_hub.toLowerCase())
-        .in("status", ["active", "full"])
-        .gt("departure_at", new Date().toISOString())
-        .order("departure_at", { ascending: true })
-        .limit(5),
-      supabase
-        .from("transfer_routes")
-        .select(
-          "id, from_arrival_point, transport_type, price_one_way_ore, price_roundtrip_ore, max_guests, description, sort_order",
-        )
-        .eq("cabin_id", id)
-        .order("sort_order", { ascending: true }),
-    ])
+      )
+      .eq("to_location", cabin.location_hub.toLowerCase())
+      .in("status", ["active", "full"])
+      .gt("departure_at", new Date().toISOString())
+      .order("departure_at", { ascending: true })
+      .limit(5),
+    supabase
+      .from("transfer_routes")
+      .select(
+        "id, from_arrival_point, transport_type, price_one_way_ore, price_roundtrip_ore, max_guests, description, sort_order",
+      )
+      .eq("cabin_id", id)
+      .order("sort_order", { ascending: true }),
+    supabase
+      .from("cabin_transport_requests")
+      .select("id")
+      .eq("cabin_id", id)
+      .eq("status", "open")
+      .eq("guest_id", user?.id ?? "")
+      .limit(1),
+  ])
+
+  const hasOpenTransportRequest =
+    !!user && (openTransportReqRows ?? []).length > 0
 
   const transferRoutes: TransferRoute[] = (transferRouteRows ?? []).map((r) => ({
     id: r.id,
@@ -273,9 +341,14 @@ export default async function OpholdNatureDetailPage({
           }
           transferRoutesContent={<TransferRoutesDisplay cabinId={cabin.id} />}
           transferRoutes={transferRoutes}
+          enableCabinTransportRequest={
+            transferRoutes.length === 0 && acceptedTransportOffer == null
+          }
           isLoggedIn={!!user}
-          loginNextPath={`/ophold/i-naturen/${cabin.id}`}
+          loginNextPath={loginNextPath}
           disabledYmd={disabledYmd}
+          acceptedTransportOffer={acceptedTransportOffer ?? null}
+          hasOpenTransportRequest={hasOpenTransportRequest}
           leftContent={
             <>
               <div>

@@ -2,6 +2,31 @@
 
 > **Claude Code & udviklerkontekst** — dette dokument er autoritativt for agent og mennesker. Kort agent-hukommelse: se `hukommelse.md` i roden.
 
+## Status (13.5.2026)
+
+- **Oplevelser — komplet modul ✅**
+  - **DB:** `experiences`, `experience_availability`, `experience_bookings`, `experience_listings` med RLS; **UPDATE-guard** på `experience_bookings` (immutable felter). `experience_listings`: junction (`listing_type` cabin \| samsejlads) — **persistens klar; ingen app-UI til vedligehold endnu** (ingen queries i `src/`).
+  - **Udbyder:** `/opret/oplevelse` → `/opret/oplevelse/[id]/tilgaengelighed` (kalender, settings, Stripe-gate ved publicering).
+  - **Gæst:** `/oplevelser` (søgeside; filtre hub/dato/kategori), `/oplevelser/[id]` (to-kolonne, `ExperienceBookingWidget`, `CalendarDropdown` enkelt-dato), Stripe Checkout (**5 % / 12 %**), webhook `meta.type === "experience_booking"`, **`/booking/oplevelse-success`** med **ContactInfoCard**.
+  - **Dashboard:** fane **Mine oplevelser** (provider/both). **Navbar:** **Oplevelser** som tredje punkt (kan env-feature-flagges).
+  - **Kategorier:** JSONB-array med **`key` + `description`** pr. valgte kategori (listen over tilladte nøgler + labels i `src/lib/experienceCategories.ts`).
+  - **`preparation_days`** på `experiences`. **`get_experience_provider_stripe`** RPC (**SECURITY DEFINER**) — se migration `20260513160000`.
+  - **Migrationer:** `20260513000000_experiences.sql`, `20260513010000_experience_categories.sql`, `20260513160000_experience_preparation_stripe_contact.sql`.
+- **Kendte huller:** **`/opret/oplevelse/[id]/rediger`** ikke bygget (dashboard linker). **`experience_listings`:** tabel + RLS findes; **koblings-UI** fra hytte-/tur-opslag mangler.
+
+## Status (12.5.2026)
+
+- **`arrival_points`:** `CITY_ARRIVAL_POINTS` + `VILLAGE_HELIPAD_LIST` + `deriveArrivalPoints` rettet i `greenlandLocations.ts` — 14 lufthavne, bekræftede helistops, nature → `["harbour"]`.
+- **Returdato** på `cabin_transport_requests`-formular i `CabinBookingWidget` — migration `20260512010000` pushet.
+- **Dashboard Mine ønsker:** to transportanmodnings-sektioner samlet til én (`DashboardClient.tsx`).
+- **"Aktiv"-badge** på `transport_requests` med `status = open` — `TransportRequestRow` bruger `tDash("guest_wishes_transport_status_active")`.
+- **`CabinBookingWidget`:** `hasOpenTransportRequest`-prop (fra `page.tsx` → `CabinDetailLayout`), advarselsboks, "Ingen transport"-knap, forenklet prisblok (ingen gebyr-linjer).
+
+## Status (11.5.2026 — session 2)
+
+- **Cabin transport requests:** komplet flow — DB (`cabin_transport_requests`, `cabin_transport_offers`), RPC `accept_cabin_transport_offer`, server actions, widget på `/ophold/i-naturen/[id]`, dashboard udbyder/gæst, detaljeside, notifikationer/email på modtagers sprog, **Scenarie C** (accept → hytteside med `?transport_offer=` → `createCabinBooking` med Stripe-linjeføring). Detaljer under **Bygget og komplet**.
+- **Dashboard UI:** åbne transportanmodninger samlet; inline bud (`OpenRequestsList` / `RequestCard`); `TransportMiniStaticMap`; «Aktiv»-badge; opholdskort «Se anmodning» (uden pil). Se **Bygget og komplet**.
+
 ## Status (10.5.2026)
 
 - **Gebyrmodel:** 5 % platform (vært) + 12 % service (gæst) — se **Pengebeløb** og **Bygget og komplet** (10.5.2026).
@@ -30,11 +55,12 @@ Grønlands marketplace for hytteudlejning og samsejlads.
 
 ## Produktstrategi — besluttet 7.5.2026
 
-### Navigation (to primære kategorier i navbar)
+### Navigation (primære kategorier i navbar)
 - **Ophold** — korttidsudlejning af hytter og boliger
-- **Samsejlads** — selvstændig kategori for sejlads med lokale
+- **Samsejlads** — selvstændig kategori for sejlads med lokale (`/transport`)
+- **Oplevelser** — `/oplevelser` (**leveret 13.5.2026** — komplet bookingflow; **`experience_listings`** findes i DB med RLS; **koblings-UI** fra opslag mangler — se **Status (13.5.2026)**)
 
-Oplevelser kommer i fase 4 som tredje navigationspunkt — ikke i MVP.
+Historisk (7.5): oplevelser planlagt som fase 4 / ikke MVP-navbar — **pr. 13.5.2026** er kerne-navigation og -flow på plads.
 
 ### Ophold — to underkategorier i UI
 - **I naturen** — hytter, fjordboliger, fåreavlersteder (primært adgang med båd)
@@ -72,6 +98,14 @@ Transport er et tilvalg udbyderen aktiverer på sit opslag — uanset om det er 
 - Rute 1: Sisimiut havn → Sarfannguit | Båd | 350 kr / 600 kr t/r
 - Rute 2: Sisimiut lufthavn → Sarfannguit | Båd | 400 kr / 700 kr t/r
 
+**Distinktion transfer vs. samsejlads:** Transfer er kommercielt tilvalg ved hyttebooking — udbyder sætter fast pris og rute. Samsejlads er frie pladser på konkrete ture. Begge kan dele samme tabel/flow teknisk; use cases er distinkte.
+
+### Transportanmodning (planlagt — ikke bygget)
+
+Når hytteejer **ikke** tilbyder transfer, kan gæsten **anmode**: bådejere byder ind, **48 timers** frist, gæst **godkender**, derefter **låses booking**. Denne ende-til-ende-kæde er produktmål — ikke implementeret som beskrevet i repo endnu (skeln fra eksisterende transporttilbuds-flow på `/transport/anmod`).
+
+**Opdatering 11.5.2026 (session 2):** Hyttespecifik **cabin transport request** med bud, accept og integration til hyttebooking (`transport_offer_id` → Stripe-linje) er **bygget** — tabeller `cabin_transport_requests` / `cabin_transport_offers`, se **Bygget og komplet · Cabin transport requests + Scenarie C (11.5.2026 — session 2)**. Produktteksten om «låses booking» ovenfor dækker hele kæden generelt; Stripe live E2E for den nye flow skal stadig verificeres.
+
 ### SEO-strategi (udestår — påmind Rune inden lancering)
 - UI-kategorier: «I naturen» og «I byen»
 - Metadata + sidetitler bruger: hytte, cabin, sommerhus, bygd, bolig, Grønland
@@ -87,6 +121,15 @@ Transport er et tilvalg udbyderen aktiverer på sit opslag — uanset om det er 
 - Ingen oplevelseskategori i MVP
 - Ingen langvarig boligudlejning — hører til separat Boligportal-platform
 - Ingen helikoptertransfer — ingen private udbydere kan tilbyde det
+
+### Fravalg permanent / år 2+
+- **Fiskeri/jagtindberetning:** fravalgt permanent — myndighedsløsninger (GFLK, sullissivik.gl) dækker behovet.
+- **Professionelle virksomheder** (fx Nuuk Watertaxi): **abonnement** eller **forhøjet provision** tidligst **år 2**, når platformen har beviselig trafik.
+
+### Ikke nu — backlog / fase 3 (udvalg)
+- Fiskeri- og jagtindberetning (løst af myndigheder — permanent fravalg).
+- Samsejlads som ren BlaBlaCar-model uden kommerciel transferdel.
+- Professionelle virksomhedsabonnementer (år 2+).
 
 ### UX-regel — lokationsvalg ved oprettelse
 - Hytter bør have naturlokation som `location_hub` — guides i opret-flow (ikke teknisk håndhævet endnu)
@@ -226,6 +269,41 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
   - **Prisvisning — kort:** gæstens pris inkl. 12 % via `calcDisplayPrice`; **ingen** «Inkl. 12 % …»-linje under pris på **listingkort** (kun tal — detaljer/widget beholdes)
   - **Udbyderguide — økonomi:** 5 % / 95 % til vært, 12 % fra gæst; `udbyderguide.economics_guest_checkout_price` (ingen hardkodet engelsk på DA-side)
   - **Teknisk gæld:** i18n-nøgle `booking_service_fee_3` har stadig navnet `_3` men viser 12 % — bør omdøbes til `booking_service_fee_12` (se **Kendte huller**)
+- **Chat og kontaktinfo (11.5.2026)** ✅
+  - messages RLS opdateret: sender_id = auth.uid() OR recipient_id = auth.uid()
+  - stay_offer_id FK tilføjet på messages-tabellen
+  - get_contact_info_for_booking RPC: SECURITY DEFINER, returnerer full_name/phone/email for modpart ved confirmed/accepted booking. Tjekker contact_info_visible_until > now()
+  - contact_info_visible_until TIMESTAMPTZ (nullable) på cabin_bookings, ride_share_bookings, transport_offers, stay_offers — migration 20260511010000
+  - Webhook sætter contact_info_visible_until ved bekræftelse:
+    - cabin_booking: check_out + 3 dage
+    - ride_share: departure_at + 3 dage (fallback: now() + 3 dage)
+    - transport_offer: now() + 3 dage
+    - stay_offer → cabin_bookings INSERT: check_out + 3 dage
+  - ContactInfoCard: async server component, kalder getContactInfo() server action. Vises på booking/success, stay-offer-success og dashboard (alle fire booking-typer). Null ved udløbet eller ingen data
+  - getContactInfo server action i src/app/actions/contactInfo.ts
+  - Dashboard: contactSlot-props pattern (server bygger slots, sender som ReactNode til client)
+  - ChatBubble: fixed bottom-6 right-6 z-50, rød prik ved ulæste beskeder
+  - ChatDrawer: to collapsible sektioner (Bookinger + Hjælp & FAQ), begge lukket som default
+  - ChatHelpSection: statisk FAQ med Radix Accordion, grupperet i kategorier
+  - Sila AI fjernet (kræver betalt Anthropic API — udskydes)
+  - FAQ dækker: priser, booking, aflysning, refusion, klager, support, udbydere
+  - support@sila.gl som kontaktpunkt i FAQ
+  - BookingChats: getBookingConversations, getMessages, sendMessage, getUnreadMessageCount
+  - src/app/actions/chat.ts: al modpart-identifikation server-side via JOIN
+- **Cabin transport requests + Scenarie C + dashboard UI (11.5.2026 — session 2)** ✅
+  - **Tabeller:** `cabin_transport_requests` + `cabin_transport_offers` — migration **`20260511020000`**
+  - **RPC:** `accept_cabin_transport_offer` — migration **`20260511030000`** (**SECURITY DEFINER**)
+  - **Server actions** (`src/app/actions/cabinTransportRequests.ts`): `createCabinTransportRequest`, `getOpenCabinTransportRequestsForProvider`, `getMyCabinTransportRequests`, `createCabinTransportOffer`, `acceptCabinTransportOffer` — succes returnerer **`{ success: true, cabinId, offerId }`**
+  - **Widget:** «Anmod om transport» i **`CabinBookingWidget`** — kun **`/ophold/i-naturen/[id]`** når **`transferRoutes`** er tom; inline formular (ankomstpunkt, dato, personer, besked)
+  - **Dashboard udbyder (Gæsteønsker):** én **«Transportanmodninger»**-sektion med **`CabinTransportRequestRow`** (inline bud + **`TransportMiniStaticMap`**)
+  - **Dashboard gæst (Mine ønsker):** **`MyCabinTransportRequestRow`** — badge + «Se bud»-link
+  - **Detaljeside gæst:** `/dashboard/transport-anmodninger/[id]` — se og accepter bud; ved accept **redirect** til **`/ophold/i-naturen/[cabinId]?transport_offer=[offerId]`** (locale via **`@/i18n/navigation`**)
+  - **Notifikationer:** `cabin_transport_offer_received` — in-app + e-mail via **Resend**
+  - **E-mail i18n:** notify-funktioner bruger modtagers **`profiles.language`** via **`getUserLanguage`** + **`getLocaleUrl`**
+  - **Scenarie C:** Hyttesiden læser **`searchParams.transport_offer`**; ved gyldigt **accepted**-tilbud for logged-in gæst og matchende cabin vises **«Transport inkluderet»** i widget; **`createCabinBooking`** accepterer **`transport_offer_id`**, validerer tilbud, tilføjer Stripe-linjen **«Transport til/fra ophold»**; **`transport_offer_id`** gemmes i **Stripe metadata** (ingen **`cabin_bookings.transport_offer_id`**-kolonne i dette trin)
+  - **Dashboard — åbne transportanmodninger (samsejlads):** **`OpenRequestsList`** / **`RequestCard`** — inline bud-formular, link «Se fuld anmodning →», mini-kort; **`TransportMiniStaticMap`**: kvadratisk, interaktivt, **NavigationControl**, **`scrollZoom.disable()`**
+  - **Badge:** «Åben» → **«Aktiv»** for relevante transport-/opholdsstatusser (**`guest_wishes_transport_status_active`**, **`cabin_transport_req_open`** m.fl. i bundlet i18n)
+  - **Opholdsønsker (udbyder):** eksplicit **«Se anmodning»**-knap (filled **#114788**); pil **«→»** fjernet fra knaptekst
 
 ## Nye filer (6.5.2026)
 
@@ -270,13 +348,10 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - **OBS:** "Udlej nu/denne" findes ikke længere — publicering sker via Publicér-knappen direkte
 
 ## Næste trin i prioriteret rækkefølge
-1. **Stripe live-test end-to-end** — kritisk; inkl. **ny gebyrmodel (5 % / 12 %)**, `stay_offers`-flow og transfer-linjer
-2. **Chat efter betaling** — `messages`-tabel kobles til booking (ikke før betaling på transportanmodning)
-3. **Kontaktinfo efter betaling** + automatisk sletning (fx **pg_cron**)
-4. **Åbne opholdsønsker synlige for udbydere på dashboard** (allerede bygget — verificér/udbyg efter behov)
-5. **AI SEO-strategi** — udestår; påmind Rune inden lancering
-6. **MobilePay til Stripe** — fase 3
-7. **Lancering** — første 20 udbydere
+1. **Stripe live-test end-to-end** (5%/12%, stay_offers, transfer-linjer, cabin_transport, oplevelser)
+2. **AI SEO-strategi**
+3. **MobilePay til Stripe**
+4. **Lancering** — første 20 udbydere
 
 ## Sanity CMS (5.5.2026)
 - Sanity Studio kører på `/studio` — beskyttet af `is_admin` (`proxy.ts`: studio **før** next-intl, ellers `/da/studio`-404)
@@ -329,6 +404,12 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - **Next.js dokumentation:** Læs `node_modules/next/dist/docs/` før antagelser om API (se `AGENTS.md`).
 
 ## Kendte huller / teknisk gæld
+- **Oplevelser mangler publicér-flow** — oprettes med `published: false`; ingen måde at publicere endnu → vises ikke på `/oplevelser`
+- **Oplevelser mangler billedupload** — `images: []` ved oprettelse; Cloudinary upload ikke bygget
+- **`experiences`-tabellen:** bruger `provider_id` (ikke `owner_id` som cabins/boats)
+- **Konstanter fra "use server"-filer:** eksporter ALDRIG ikke-action konstanter fra filer med "use server" — brug neutrale `.ts`-filer (se `experienceFormCategories.ts`)
+- **Session 2 — udestående (11.5.2026):** (5) **`profiles!guest_id` FK-hint** — ikke fuldt e2e-testet visuelt. (6) **Stripe live-test** end-to-end for cabin_transport + `transport_offer_id`-checkout.
+- **Tier 1B (abonnement):** Når konkret professionel udbyder efterspørger det — kræver `profiles.tier` kolonne (`'marketplace' | 'subscription'`), Stripe Billing/Subscriptions, og provision-bypass i checkout. Ikke bygget endnu.
 - **i18n-nøgle `booking_service_fee_3`** — viser 12 % servicegebyr men navnet er misvisende; **bør omdøbes** til `booking_service_fee_12` (bundlet + alle `useTranslations`-referencer)
 - **Sanity `request.title`** — hvis «Anmod om hytte» stadig vises i overskriften, skal feltet opdateres i Studio til «Anmod om ophold» eller overlay fjernes for den nøgle
 - **Placeholder-migrationer** — `20260507124840` og `20260507130619` eksisterer kun som no-op placeholders lokalt (remote kørte dem på en anden maskine). Erstat med de rigtige scripts før nye miljøer sættes op.
@@ -338,6 +419,9 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - **Ankomstpunkt-valg i /opret/bolig** — udbyderen kan kun skrive fri tekst; skal guides til `arrival_points` fra `greenlandLocations.ts`.
 - **Admin `/admin/hytter`** — bolig-rækker bruger stadig `/hytter/{id}` — skal bruge `publishedCabinDetailPath`
 - **ESLint `react-hooks/set-state-in-effect`** i `BoligForm.tsx`, `CreateForm.tsx`, `BaadForm.tsx` — rettes inden CI skal være grøn
+- **Sila AI deaktiveret** — `SilaAI.tsx` og `sila-ai/route.ts` slettet. Genaktivér når ANTHROPIC_API_KEY sættes i Vercel
+- **notifications.reference_id er uuid** — booking_type gemmes ikke, ingen præcis deep-link til specifik samtale
+- **getBookingConversations har 2000-besked cap** — kandidat til SQL/RPC optimering
 
 ## Påmindelser inden lancering
 - Destinationssider poleres
@@ -345,7 +429,7 @@ Next.js 16 (App Router, `proxy.ts` request proxy) + TypeScript + Tailwind + **sh
 - Lighthouse-test
 - MobilePay til Stripe
 - ~~Udbyderguide~~ → opdateret 6.5 (evt. Sanity-overlay / flersprog senere)
-- Stripe live-test end-to-end (**5 % / 12 %-gebyrmodel + transfer-linjer + stay_offers**)
+- Stripe live-test end-to-end (**5 % / 12 %-gebyrmodel + transfer-linjer + stay_offers + cabin_transport / transport_offer_id**)
 - AI SEO-strategi skal udarbejdes
 - PostHog verificeres sat op korrekt
 - Aktiver: cabins (hytte) + boats (båd) — gemmes med `published=false` indtil opslag

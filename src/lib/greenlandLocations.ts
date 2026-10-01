@@ -972,32 +972,72 @@ function inferLocationType(seedType: GreenlandLocationSeed["type"]): LocationTyp
 
 /** Afrejsepunkter for byer (name_dk lowercase). By uden eksplicit nøgle: default havn. */
 const CITY_ARRIVAL_POINTS: Record<string, ArrivalPoint[]> = {
-  nuuk: ["airport", "harbour"],
-  ilulissat: ["airport", "harbour"],
-  sisimiut: ["airport", "harbour"],
-  qaqortoq: ["helipad", "harbour"],
-  aasiaat: ["airport", "harbour"],
-  tasiilaq: ["airport", "harbour"],
-  maniitsoq: ["helipad", "harbour"],
-  paamiut: ["helipad", "harbour"],
-  narsaq: ["helipad", "harbour"],
-  nanortalik: ["helipad", "harbour"],
-  qasigiannguit: ["helipad", "harbour"],
-  qeqertarsuaq: ["helipad", "harbour"],
-  kangaatsiaq: ["helipad", "harbour"],
-  uummannaq: ["airport", "harbour"],
-  upernavik: ["airport", "harbour"],
-  qaanaaq: ["airport", "harbour"],
-  kangerlussuaq: ["airport"],
-  ittoqqortoormiit: ["airport", "harbour"],
-  kangilinnguit: ["harbour"],
-  narsarsuaq: ["airport", "harbour"],
+  nuuk:             ["airport", "harbour"],
+  ilulissat:        ["airport", "harbour"],
+  sisimiut:         ["airport", "harbour"],
+  aasiaat:          ["airport", "harbour"],
+  maniitsoq:        ["airport", "harbour"],
+  paamiut:          ["airport", "harbour"],
+  kangerlussuaq:    ["airport"],
+  narsarsuaq:       ["airport", "harbour"],
+  upernavik:        ["airport", "harbour"],
+  qaanaaq:          ["airport", "harbour"],
+  kulusuk:          ["airport", "harbour"],
+  qaarsut:          ["airport", "harbour"],   // bygd MED lufthavn — betjener Uummannaq
+  qaqortoq:         ["airport", "helipad", "harbour"],  // ny lufthavn åbner 2026
+  tasiilaq:         ["helipad", "harbour"],   // Kulusuk er lufthavnen
+  uummannaq:        ["helipad", "harbour"],   // Qaarsut er lufthavnen
+  ittoqqortoormiit: ["helipad", "harbour"],   // Nerlerit Inaat er lufthavnen
+  narsaq:           ["helipad", "harbour"],
+  nanortalik:       ["helipad", "harbour"],
+  qasigiannguit:    ["helipad", "harbour"],
+  qeqertarsuaq:     ["helipad", "harbour"],
+  kangaatsiaq:      ["helipad", "harbour"],
+  kangilinnguit:    ["harbour"],
 }
+
+/** Bygder med bekræftet helipad/helistop ifølge Naviair/Mittarfeqarfiit */
+const VILLAGE_HELIPAD_LIST = new Set([
+  "aappilattoq",
+  "akunnaaq",
+  "alluitsup paa",
+  "arsuk",
+  "eqalugaarsuit",
+  "ikamiut",
+  "ikerasak",
+  "ilimanaq",
+  "innaarsuit",
+  "isertoq",
+  "ittoqqortoormiit",
+  "kangerluk",
+  "kitsissuarsuit",
+  "kullorsuaq",
+  "kulusuk",
+  "kuummiut",
+  "niaqornat",
+  "nuugaatsiaq",
+  "nuussuaq",
+  "oqaatsut",
+  "saattut",
+  "saqqaq",
+  "sarfannguaq",
+  "savissivik",
+  "sermiligaaq",
+  "siorapaluk",
+  "tasiusaq",
+  "tiilerilaaq",
+  "upernavik kujalleq",
+])
 
 function deriveArrivalPoints(seed: GreenlandLocationSeed): ArrivalPoint[] {
   const lt = inferLocationType(seed.type)
-  if (lt === "nature") return []
-  if (lt === "village") return ["harbour"]
+  if (lt === "nature") return ["harbour"]
+  if (lt === "village") {
+    const key = seed.name_dk.toLowerCase()
+    return VILLAGE_HELIPAD_LIST.has(key)
+      ? ["helipad", "harbour"]
+      : ["harbour"]
+  }
   const key = seed.name_dk.toLowerCase()
   return CITY_ARRIVAL_POINTS[key] ?? ["harbour"]
 }
@@ -1058,6 +1098,22 @@ export function getAllLocationsSorted(): GreenlandLocation[] {
   return [...GREENLAND_LOCATIONS].sort((a, b) =>
     normalizeForSort(a.name_dk).localeCompare(normalizeForSort(b.name_dk), "en"),
   )
+}
+
+/** Koordinater til kort (fx dashboard); matcher samme nøglelogik som {@link getLocationName}. */
+export function getLocationCoordinates(
+  key: string | null | undefined,
+): { latitude: number; longitude: number } | null {
+  if (!key?.trim()) return null
+  const byId = findLocationById(key)
+  if (byId) return { latitude: byId.latitude, longitude: byId.longitude }
+  const found = GREENLAND_LOCATIONS.find(
+    (l) =>
+      l.name_dk.toLowerCase() === key.toLowerCase() ||
+      l.name_gl.toLowerCase() === key.toLowerCase() ||
+      l.aliases.some((a) => a.toLowerCase() === key.toLowerCase()),
+  )
+  return found ? { latitude: found.latitude, longitude: found.longitude } : null
 }
 
 /** Returnerer visningsnavn (name_dk) for en lowercase location-nøgle fra DB. */

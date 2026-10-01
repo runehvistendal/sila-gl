@@ -7,6 +7,10 @@ import { getUnreadCount, getUnreadStayOfferReceivedCount } from "@/lib/notificat
 import Navbar from "@/components/layout/Navbar"
 import ContactInfoCard from "@/components/bookings/ContactInfoCard"
 import DashboardClient from "./DashboardClient"
+import {
+  getMyCabinTransportRequests,
+  getOpenCabinTransportRequestsForProvider,
+} from "@/app/actions/cabinTransportRequests"
 import type { CabinBookingData } from "./components/BookingRow"
 import type { TransportRequestData } from "./components/OpenRequestsList"
 import type { RideShareBookingRowData } from "./components/RideShareBookingRow"
@@ -49,7 +53,7 @@ export default async function DashboardPage() {
     })
   }
 
-  const [{ data: myCabinsRaw }, { data: myBoatsRaw }] = await Promise.all([
+  const [{ data: myCabinsRaw }, { data: myBoatsRaw }, { data: myExperiencesRaw }] = await Promise.all([
     supabase
       .from("cabins")
       .select("id, title, location_hub, price_per_night_ore, images, published, property_type")
@@ -60,6 +64,12 @@ export default async function DashboardPage() {
       .from("boats")
       .select("id, name, boat_type, capacity")
       .eq("owner_id", user.id)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("experiences")
+      .select("id, title, location_hub, images, published, price_per_person_ore")
+      .eq("provider_id", user.id)
       .is("deleted_at", null)
       .order("created_at", { ascending: false }),
   ])
@@ -821,6 +831,11 @@ export default async function DashboardPage() {
     }
   }
 
+  const [cabinTransportRequests, openCabinTransportRequests] = await Promise.all([
+    isTraveler ? getMyCabinTransportRequests() : Promise.resolve([]),
+    isProvider ? getOpenCabinTransportRequestsForProvider() : Promise.resolve([]),
+  ])
+
   return (
     <main>
       <Navbar user={navUser} />
@@ -847,6 +862,7 @@ export default async function DashboardPage() {
         myCabins={(myCabinsRaw ?? []) as Parameters<typeof DashboardClient>[0]["myCabins"]}
         myRideShares={(myRideSharesRaw ?? []) as Parameters<typeof DashboardClient>[0]["myRideShares"]}
         myBoats={(myBoatsRaw ?? []) as BoatData[]}
+        myExperiences={(myExperiencesRaw ?? []) as Parameters<typeof DashboardClient>[0]["myExperiences"]}
         openTransportRequests={openTransportRequests}
         myTransportRequests={(myTransportReqRaw ?? []).map((r: Record<string, unknown>) => ({
           id:             r.id as string,
@@ -868,6 +884,8 @@ export default async function DashboardPage() {
         }))}
         unreadMessages={unreadCount ?? 0}
         unreadStayOfferNotifications={unreadStayOfferNotifCount}
+        cabinTransportRequests={cabinTransportRequests}
+        openCabinTransportRequests={openCabinTransportRequests}
       />
     </main>
   )

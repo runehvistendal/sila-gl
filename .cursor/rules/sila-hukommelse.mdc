@@ -9,12 +9,25 @@ Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort 
 
 ## Produktstrategi — besluttet 7.5.2026 (detaljer: [CLAUDE.md](../../CLAUDE.md) § Produktstrategi)
 
-- **Navbar:** **Ophold** · **Samsejlads** · (Oplevelser = fase 4, ikke MVP).
+- **Navbar:** **Ophold** · **Samsejlads** · **Oplevelser** (`/oplevelser`) — live **13.5.2026**; link kan skjules med env-check uden deploy.
 - **Ophold:** UI **I naturen** / **I byen** (oplevelse, ikke adgang; bygd = altid «I byen»).
-- **Transport-tilvalg:** **Transfer** (ankomst-ruter, AddOn-lignende; planlagt `from_location_id` på `transport_offers`) vs **Samsejlads** (hytte eller fri; samme tabel/flow).
+- **Transfer vs. Samsejlads:** Transfer = kommercielt tilvalg ved hyttebooking (udbyder sætter fast pris/rute). Samsejlads = fri seats på konkrete ture. Begge i samme tabel/flow men distinkte use cases.
+- **Transportanmodning:** Hvis hytteejer ikke tilbyder transfer → gæst kan anmode → bådejere byder ind → 48t frist → gæst godkender → booking låses. Feature planlagt, ikke bygget.
+- **Oplevelser:** Kerne modul komplet **13.5.2026** — **[CLAUDE.md](../../CLAUDE.md)** · **Status (13.5.2026)**. Mangler: rediger-side + **`experience_listings`**-UI.
+- **Fiskeri/jagtindberetning:** Fravalgt permanent. Løst af GFLK og sullissivik.gl.
+- **Professionelle virksomheder** (fx Nuuk Watertaxi): Abonnement eller forhøjet provision introduceres tidligst år 2 når platformen har beviselig trafik.
 - **SEO:** påmind Rune — AI SEO parallelt med Google; metadata: hytte, cabin, sommerhus, bygd, bolig, Grønland.
-- **Ikke:** helikoptertransfer, langvarig bolig (Boligportal), oplevelses-MVP.
-- **Lancering:** AI SEO · PostHog · Stripe e2e (**5 % / 12 % + transfer + stay_offers**) · chat/kontakt efter betaling.
+- **Ikke:** helikoptertransfer, langvarig bolig (Boligportal); **UI** til **`experience_listings`** (tabel findes).
+- **Lancering:** AI SEO · PostHog · Stripe e2e (**5 % / 12 % + transfer + stay_offers + oplevelser**) · chat/kontakt efter betaling (kontaktinfo/chat bygget 11.5.2026 — se hukommelse Status 11.5).
+
+## Status (13.5.2026)
+
+- **Oplevelser — komplet modul ✅:** DB `experiences`, `experience_availability`, `experience_bookings` (RLS + guard), `experience_listings` (RLS); udbyder `/opret/oplevelse` → tilgængelighed; gæst `/oplevelser` + `/oplevelser/[id]` (`ExperienceBookingWidget`, `CalendarDropdown`); Stripe 5%/12%; webhook **`experience_booking`**; **`/booking/oplevelse-success`** + ContactInfoCard; dashboard **Mine oplevelser**; navbar; kategorier JSONB **key** + **description** (`experienceCategories.ts`); **`preparation_days`**; **`get_experience_provider_stripe`**. **Huller:** `/opret/oplevelse/[id]/rediger`; **ingen UI** for `experience_listings`. Detaljer: **[CLAUDE.md](../../CLAUDE.md)** · **Status (13.5.2026)**.
+
+## Status (11.5.2026)
+
+- **Chat + kontaktinfo:** `messages` RLS + `stay_offer_id`, **`contact_info_visible_until`** (`20260511010000`), `get_contact_info_for_booking` / `getContactInfo`, **ContactInfoCard**, dashboard **contactSlot**; **ChatBubble**, **ChatDrawer** (collapsible Bookinger + Hjælp & FAQ), **ChatHelpSection** (`support@sila.gl`); **Sila AI** fjernet indtil ANTHROPIC_API_KEY.
+- **Fuld liste:** [CLAUDE.md](../../CLAUDE.md) — **Bygget og komplet** · **Chat og kontaktinfo (11.5.2026)**
 
 ## Status (10.5.2026)
 
@@ -47,8 +60,10 @@ Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort 
 
 ## Bygget og komplet
 
+- **Oplevelser (13.5.2026)** ✅ — se **CLAUDE.md** · **Status (13.5.2026)**
 - Lokation+kort ✅ (ovenfor + CLAUDE.md)
 - **PostHog analytics** ✅ — `posthog-js`; `PostHogProvider.tsx` init kun med `NEXT_PUBLIC_POSTHOG_KEY` + `NEXT_PUBLIC_POSTHOG_HOST`; `[locale]/layout.tsx`; events i `posthog-events.ts`; `.env.local` + Vercel før lancering
+- **Chat og kontaktinfo (11.5.2026)** ✅ — se [CLAUDE.md](../../CLAUDE.md) **Bygget og komplet**
 
 ---
 
@@ -86,7 +101,7 @@ Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort 
 
 ## Næste fokus
 
-1. **Stripe live e2e** (5 % / 12 %, stay_offers, transfer) · 2. **Chat efter betaling** · 3. **Kontaktinfo efter betaling** + cleanup (pg_cron) · 4. Dashboard **åbne ønsker** (allerede bygget) · 5. AI SEO · 6. MobilePay → Stripe · 7. Lancering — se **`hukommelse.md` § Næste trin** for detaljer.
+1. **ANTHROPIC_API_KEY i Vercel** når klar (Sila AI) · 2. **Stripe live e2e** (5 % / 12 %, stay_offers, transfer) · 3. **AI SEO** · 4. MobilePay → Stripe · 5. Lancering — se **`hukommelse.md` § Næste trin**.
 
 ## Vigtige beslutninger (gældende)
 
@@ -110,5 +125,8 @@ Fuld udviklerkontekst: **repo-roden [CLAUDE.md](CLAUDE.md)**. Følgende er kort 
 - IP-geolocation til sprog/lokation.
 - next-intl: ruter `/da/`, `/en/`, `/kl/`.
 - Kalaallisut (`kl`): JSON-oversættelser, involvér lokale.
+- Fiskeri- og jagtindberetning (løst af myndigheder — permanent fravalg).
+- Samsejlads som ren BlaBlaCar-model uden kommerciel transferdel.
+- Professionelle virksomhedsabonnementer (år 2+).
 
 *Opdatér denne regel sammen med [hukommelse.md](hukommelse.md) når status eller beslutninger ændres.*

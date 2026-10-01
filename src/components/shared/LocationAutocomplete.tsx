@@ -36,6 +36,8 @@ interface LocationAutocompleteProps {
   "aria-label"?: string
   /** false: kun bynavn i forslag (hytte-/transportfiltre). Hero m.m. bruger true. */
   showOptionMeta?: boolean
+  /** Filtrerer søgeforslag (fx kun by/bygd). */
+  filterLocations?: (loc: GreenlandLocation) => boolean
   /** Kontrolleret åben/luk (fx én dropdown ad gangen i forsøgebaren). */
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -52,6 +54,7 @@ export default function LocationAutocomplete({
   id: idProp,
   "aria-label": ariaLabel,
   showOptionMeta = true,
+  filterLocations,
   open: openProp,
   onOpenChange,
 }: LocationAutocompleteProps) {
@@ -91,7 +94,10 @@ export default function LocationAutocomplete({
 
   const inputValue = isControlled && !open ? value : draft
 
-  const suggestions = open ? searchLocations(draft) : []
+  const rawSuggestions = open ? searchLocations(draft) : []
+  const suggestions = filterLocations
+    ? rawSuggestions.filter(filterLocations)
+    : rawSuggestions
 
   const isHero = variant === "hero"
   const isEmbedded = variant === "embedded"

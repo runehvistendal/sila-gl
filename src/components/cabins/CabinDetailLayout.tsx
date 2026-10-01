@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, type ReactNode } from "react"
+import type { AcceptedTransportOfferProp } from "@/app/actions/bookings"
 import CabinBookingWidget from "@/components/cabins/CabinBookingWidget"
 import CabinTransportSection, {
   type RideShareData,
@@ -42,6 +43,11 @@ interface Props {
   leftContent: ReactNode
   /** Server-rendered anmeldelsessektion — vises i bunden af venstre kolonne */
   reviewsContent: ReactNode
+  /** Fx kun /ophold/i-naturen/[id]: transportanmodning når der ikke er strukturerede transfer_ruter */
+  enableCabinTransportRequest?: boolean
+  /** Accepteret hytte-transportbud (prefill fra ?transport_offer=) */
+  acceptedTransportOffer?: AcceptedTransportOfferProp | null
+  hasOpenTransportRequest?: boolean
 }
 
 export default function CabinDetailLayout({
@@ -55,6 +61,9 @@ export default function CabinDetailLayout({
   transferRoutesContent,
   leftContent,
   reviewsContent,
+  enableCabinTransportRequest = false,
+  acceptedTransportOffer = null,
+  hasOpenTransportRequest,
 }: Props) {
   const [guests, setGuests] = useState(1)
 
@@ -69,6 +78,9 @@ export default function CabinDetailLayout({
       disabledYmd={disabledYmd}
       onGuestsChange={setGuests}
       transferRoutes={transferRoutes}
+      enableCabinTransportRequest={enableCabinTransportRequest}
+      acceptedTransportOffer={acceptedTransportOffer}
+      hasOpenTransportRequest={hasOpenTransportRequest ?? false}
     />
   )
 

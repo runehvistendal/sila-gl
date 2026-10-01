@@ -21,6 +21,15 @@ export type CreateCabinBookingInput = {
   transfer_is_roundtrip?: boolean
   /** Skal matche rutes enkelt- eller tur/retur-pris i DB */
   transfer_price_ore?: number
+  /** Accepteret cabin_transport_offer (gæst); må ikke kombineres med transfer_route */
+  transport_offer_id?: string | null
+}
+
+/** Prefill fra URL efter accepteret hytte-transportbud */
+export type AcceptedTransportOfferProp = {
+  id: string
+  price_ore: number
+  message?: string | null
 }
 
 export type CreateCabinBookingResult = { url: string } | { error: string }
@@ -191,10 +200,56 @@ export async function createCabinBooking(
   let transferIsRoundtripSnapshot: boolean | null = null
   let transferPriceOreSnapshot: number | null = null
   let transferFromArrivalPoint: string | null = null
+  let stripeTransportOfferId: string | null = null
+
+  const transportOfferRaw =
+    typeof input.transport_offer_id === "string"
+      ? input.transport_offer_id.trim()
+      : ""
 
   const structuredId =
     typeof input.transfer_route_id === "string" ? input.transfer_route_id.trim() : ""
-  if (structuredId.length > 0) {
+
+  if (transportOfferRaw.length > 0) {
+    if (structuredId.length > 0) {
+      return {
+        error: "Vælg enten accepteret transportbud eller en transfer-rute — ikke begge.",
+      }
+    }
+    const { data: offerRow, error: offerErr } = await supabase
+      .from("cabin_transport_offers")
+      .select("id, price_ore, status, request_id")
+      .eq("id", transportOfferRaw)
+      .eq("status", "accepted")
+      .maybeSingle()
+
+    if (offerErr || !offerRow) {
+      return { error: "Transportbud findes ikke eller er ikke accepteret." }
+    }
+
+    const { data: reqRow, error: reqErr } = await supabase
+      .from("cabin_transport_requests")
+      .select("cabin_id, guest_id")
+      .eq("id", (offerRow as { request_id: string }).request_id)
+      .maybeSingle()
+
+    if (
+      reqErr ||
+      !reqRow ||
+      (reqRow as { cabin_id: string }).cabin_id !== c.id ||
+      (reqRow as { guest_id: string }).guest_id !== user.id
+    ) {
+      return { error: "Transportbud passer ikke til denne hytte eller din konto." }
+    }
+
+    const offerOre = Number((offerRow as { price_ore: number }).price_ore)
+    if (!Number.isFinite(offerOre) || offerOre < 1) {
+      return { error: "Ugyldig transportpris på tilbuddet." }
+    }
+
+    transportTotalOre = Math.floor(offerOre)
+    stripeTransportOfferId = (offerRow as { id: string }).id
+  } else if (structuredId.length > 0) {
     const { data: trRow, error: trErr } = await supabase
       .from("transfer_routes")
       .select(
@@ -241,6 +296,14 @@ export async function createCabinBooking(
     if (c.offers_transport && trip !== "none" && perPerson <= 0) {
       return { error: "Transportpris er ikke angivet for denne hytte" }
     }
+  }
+
+  if (
+    transportOfferRaw.length > 0 &&
+    typeof input.transport_trip === "string" &&
+    input.transport_trip !== "none"
+  ) {
+    return { error: "Fjern legacy transportvalg når du booker med accepteret transportbud." }
   }
 
   const totalPriceOre = cabinStayOre + transportTotalOre
@@ -437,6 +500,9 @@ export async function createCabinBooking(
           metadata: {
             booking_id: bookingId,
             cabin_id: c.id,
+            ...(stripeTransportOfferId
+              ? { transport_offer_id: stripeTransportOfferId }
+              : {}),
           },
         },
         success_url: `${base}/booking/success?session_id={CHECKOUT_SESSION_ID}`,
@@ -444,6 +510,9 @@ export async function createCabinBooking(
         metadata: {
           booking_id: bookingId,
           cabin_id: c.id,
+          ...(stripeTransportOfferId
+            ? { transport_offer_id: stripeTransportOfferId }
+            : {}),
         },
       },
       { idempotencyKey },

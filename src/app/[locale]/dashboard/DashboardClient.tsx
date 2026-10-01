@@ -2,19 +2,19 @@
 
 import { useState, useTransition, useEffect, useRef } from "react"
 import NextLink from "next/link"
-import { Link } from "@/i18n/navigation"
+import { Link, useRouter as useLocaleRouter } from "@/i18n/navigation"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   Calendar, Clock, Inbox, Home, Briefcase,
   MapPin, Anchor, PlusCircle, Star, Ship, Eye,
-  Check, X, User, ArrowRight,
+  Check, X, User, ArrowRight, Ticket,
 } from "lucide-react"
 import { format } from "date-fns"
 import { useTranslations, useLocale } from "next-intl"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { formatKr } from "@/lib/money"
+import { formatKr, calcDisplayPrice } from "@/lib/money"
 import { publishedCabinDetailPath, guestStayRequestHref } from "@/lib/cabinPublicPaths"
 import { getLocationName, formatStayRequestLocationDisplay } from "@/lib/greenlandLocations"
 import { STATUS_COLORS, STATUS_LABELS, type CabinBookingData } from "./components/BookingRow"
@@ -51,6 +51,17 @@ import { StripeOnboardingRequiredModal } from "@/components/stripe/StripeOnboard
 import { STRIPE_PUBLISH_REQUIRED_ERROR } from "@/lib/stripePublishConstants"
 import { markNotificationsByType } from "@/app/actions/notifications"
 import type { NotificationType } from "@/types/notifications"
+import {
+  publishExperience,
+  unpublishExperience,
+  deleteExperience,
+} from "@/app/[locale]/opret/oplevelse/[id]/tilgaengelighed/actions"
+import type {
+  MyCabinTransportRequestRow as MyCabinTransportRequestRowData,
+  OpenCabinTransportRequestRow,
+} from "@/app/actions/cabinTransportRequests"
+import CabinTransportRequestRow from "@/components/dashboard/CabinTransportRequestRow"
+import MyCabinTransportRequestRow from "@/components/dashboard/MyCabinTransportRequestRow"
 import type { ReactNode } from "react"
 
 interface ReviewData {
@@ -85,6 +96,15 @@ interface BoatData {
   name: string
   boat_type: string | null
   capacity: number
+}
+
+interface ExperienceData {
+  id: string
+  title: string
+  location_hub: string
+  images: string[]
+  published: boolean
+  price_per_person_ore: number
 }
 
 interface TransportRequestMine {
@@ -144,6 +164,7 @@ interface Props {
   myCabins: CabinData[]
   myRideShares: RideShareData[]
   myBoats: BoatData[]
+  myExperiences: ExperienceData[]
   openTransportRequests: TransportRequestData[]
   myTransportRequests: TransportRequestMine[]
   myCabinRequests?: CabinRequestData[]
@@ -152,6 +173,10 @@ interface Props {
   unreadMessages: number
   /** Ulæste in-app notifikationer: nye tilbud på ophold (Mine ønsker-badge). */
   unreadStayOfferNotifications: number
+  /** Gæst: egne cabin_transport_requests (+ tilbud til badges). Server-only data. */
+  cabinTransportRequests?: MyCabinTransportRequestRowData[]
+  /** Udbyder: åbne cabin_transport_requests. Server-only data. */
+  openCabinTransportRequests?: OpenCabinTransportRequestRow[]
 }
 
 
@@ -178,6 +203,7 @@ export default function DashboardClient({
   myCabins,
   myRideShares,
   myBoats,
+  myExperiences = [],
   openTransportRequests,
   myTransportRequests,
   myCabinRequests = [],
@@ -185,6 +211,8 @@ export default function DashboardClient({
   reviews,
   unreadMessages,
   unreadStayOfferNotifications,
+  cabinTransportRequests = [],
+  openCabinTransportRequests = [],
 }: Props) {
   const tDash = useTranslations("dashboard")
   const tNav = useTranslations("nav")
@@ -195,8 +223,10 @@ export default function DashboardClient({
   const rawTab = searchParams.get("tab") ?? "bookings"
   const urlTab = (() => {
     if (rawTab === "mine-opslag") return "listings"
+    if (rawTab === "mine-oplevelser") return "experiences"
     if (!isTraveler && rawTab === "requests") return "bookings"
-    if (!isProvider && (rawTab === "listings" || rawTab === "open-requests")) return "bookings"
+    if (!isProvider && (rawTab === "listings" || rawTab === "open-requests" || rawTab === "experiences"))
+      return "bookings"
     return rawTab
   })()
 
@@ -321,11 +351,17 @@ export default function DashboardClient({
   const [bookingFilter, setBookingFilter] = useState<"active" | "history">("active")
   const [isDuplicating, startDuplicate]   = useTransition()
   const [stripeGateCabinId, setStripeGateCabinId] = useState<string | null>(null)
+  const [stripeGateExperienceId, setStripeGateExperienceId] = useState<string | null>(null)
 
   useEffect(() => {
     const tabTypes: Partial<Record<string, NotificationType[]>> = {
       "open-requests": ["stay_offer_received", "transport_offer_received"],
-      requests: ["stay_offer_accepted", "stay_offer_declined", "transport_offer_accepted"],
+      requests: [
+        "stay_offer_accepted",
+        "stay_offer_declined",
+        "transport_offer_accepted",
+        "cabin_transport_offer_received",
+      ],
       bookings: ["booking_confirmed"],
       inbox: ["message_received"],
     }
@@ -364,7 +400,8 @@ export default function DashboardClient({
   const historyStayOrphan = orphanStayOfferBookings.filter((b) => b.desired_check_out < todayYmd)
 
   const pendingHostBookings = hostBookings.filter((b) => b.status === "pending").length
-  const totalOpenRequests   = openTransportRequests.length
+  const totalOpenRequests =
+    openTransportRequests.length + openCabinTransportRequests.length
 
   // Reviews
   const avgRating = reviews.length > 0
@@ -464,6 +501,14 @@ export default function DashboardClient({
                 <TabsTrigger value="listings" className="rounded-lg px-4 py-2 text-sm gap-2">
                   <Home className="w-4 h-4" />
                   Mine opslag
+                </TabsTrigger>
+              )}
+
+              {/* Tab 4b: Mine oplevelser */}
+              {isProvider && (
+                <TabsTrigger value="experiences" className="rounded-lg px-4 py-2 text-sm gap-2">
+                  <Ticket className="w-4 h-4" />
+                  Mine oplevelser
                 </TabsTrigger>
               )}
 
@@ -681,22 +726,38 @@ export default function DashboardClient({
           {/* ── TAB 2: MINE ØNSKER ── */}
           <TabsContent value="requests">
             <div className="space-y-10">
-              {/* Transportanmodninger */}
-              <div>
-                <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <Anchor className="w-4 h-4 text-primary" />
-                  Transportanmodninger
-                </h3>
-                {myTransportRequests.length === 0 ? (
-                  <EmptyState icon={Anchor} message="Ingen transportanmodninger endnu" cta="Anmod om transport" ctaHref="/transport/anmod" />
-                ) : (
-                  <div className="space-y-3">
-                    {myTransportRequests.map((r) => (
-                      <TransportRequestRow key={r.id} r={r} />
-                    ))}
-                  </div>
-                )}
-              </div>
+              {/* Transportanmodninger — samlet (hytte + generelle) */}
+              {(cabinTransportRequests.length > 0 || myTransportRequests.length > 0) && (
+                <div>
+                  <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <Anchor className="w-4 h-4 text-primary" />
+                    Transportanmodninger
+                  </h3>
+
+                  {/* Hyttespecifikke */}
+                  {cabinTransportRequests.length > 0 && (
+                    <div className="space-y-3 mb-4">
+                      {cabinTransportRequests.map((r) => (
+                        <MyCabinTransportRequestRow key={r.id} request={r} />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Generelle */}
+                  {myTransportRequests.length > 0 && (
+                    <div className={cabinTransportRequests.length > 0 ? "space-y-3 pt-4 border-t border-border" : "space-y-3"}>
+                      {myTransportRequests.map((r) => (
+                        <TransportRequestRow key={r.id} r={r} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Hvis begge er tomme — vis EmptyState */}
+              {cabinTransportRequests.length === 0 && myTransportRequests.length === 0 && (
+                <EmptyState icon={Anchor} message="Ingen transportanmodninger endnu" cta="Anmod om transport" ctaHref="/transport/anmod" />
+              )}
 
               {/* Hytteanmodninger */}
               <div className="pt-6 border-t border-border">
@@ -726,27 +787,41 @@ export default function DashboardClient({
           {isProvider && (
             <TabsContent value="open-requests">
               <div className="space-y-10">
-                {/* Transportanmodninger */}
-                <div>
-                  <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                    <Anchor className="w-4 h-4 text-primary" />
-                    Transportanmodninger
-                    {openTransportRequests.length > 0 && (
+                {(openCabinTransportRequests.length > 0 ||
+                  openTransportRequests.length > 0) && (
+                  <div>
+                    <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2 flex-wrap">
+                      <Anchor className="w-4 h-4 text-primary" />
+                      Transportanmodninger
                       <span className="bg-amber-100 text-amber-700 text-xs rounded-full px-2 py-0.5 font-semibold">
-                        {openTransportRequests.length}
+                        {totalOpenRequests}
                       </span>
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Åbne transportønsker fra gæster — byd ind med et tilbud eller angiv pris direkte på kortene.
+                    </p>
+                    {openCabinTransportRequests.length > 0 && (
+                      <div className="space-y-3 mb-4">
+                        {openCabinTransportRequests.map((r) => (
+                          <CabinTransportRequestRow
+                            key={r.id}
+                            request={r}
+                            onOfferSent={() => router.refresh()}
+                          />
+                        ))}
+                      </div>
                     )}
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Gæster der søger transport — byd ind med et tilbud
-                  </p>
-                  <OpenRequestsList
-                    nearby={nearbyTransport}
-                    others={otherTransport}
-                    userHomeCity={homeCity}
-                    type="transport"
-                  />
-                </div>
+                    {openTransportRequests.length > 0 && (
+                      <OpenRequestsList
+                        nearby={nearbyTransport}
+                        others={otherTransport}
+                        userHomeCity={homeCity}
+                        type="transport"
+                        onOfferSubmitted={() => router.refresh()}
+                      />
+                    )}
+                  </div>
+                )}
 
                 {/* Hytteanmodninger */}
                 <div className="pt-6 border-t border-border">
@@ -1075,6 +1150,155 @@ export default function DashboardClient({
             </TabsContent>
           )}
 
+          {/* ── TAB 4b: MINE OPLEVELSER ── */}
+          {isProvider && (
+            <TabsContent value="experiences">
+              <div className="space-y-10">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-foreground">Mine oplevelser</h3>
+                    <Button size="sm" asChild className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg gap-1.5">
+                      <Link href="/opret/oplevelse">
+                        <PlusCircle className="w-3.5 h-3.5" /> Ny oplevelse
+                      </Link>
+                    </Button>
+                  </div>
+
+                  {myExperiences.length === 0 ? (
+                    <EmptyState icon={Ticket} message="Ingen oplevelser endnu" cta="Opret oplevelse" ctaHref="/opret/oplevelse" />
+                  ) : (
+                    <div className="space-y-3">
+                      {myExperiences.map((e) => {
+                        const publicPath = `/oplevelser/${e.id}`
+                        const editPath = `/opret/oplevelse/${e.id}/rediger`
+                        const availPath = `/opret/oplevelse/${e.id}/tilgaengelighed`
+                        const guestPriceOre = calcDisplayPrice(e.price_per_person_ore)
+                        return (
+                          <div key={e.id} className="bg-white rounded-xl border border-border p-4 flex gap-4 items-center flex-wrap sm:flex-nowrap">
+                            <Link href={e.published ? publicPath : editPath} className="shrink-0 group">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={e.images?.[0] ?? "https://images.unsplash.com/photo-1510798831971-661eb04b3739?w=100&h=80&fit=crop"}
+                                alt=""
+                                className="w-16 h-16 rounded-lg object-cover transition-opacity group-hover:opacity-80"
+                              />
+                            </Link>
+                            <Link href={e.published ? publicPath : editPath} className="flex-1 min-w-0 group">
+                              <p className="font-semibold text-sm text-foreground truncate group-hover:underline">{e.title}</p>
+                              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                <MapPin className="w-3 h-3" />
+                                {getLocationName(e.location_hub)}
+                              </p>
+                              <p className="text-xs font-medium text-primary mt-1">
+                                Fra {formatKr(guestPriceOre)}/person
+                              </p>
+                            </Link>
+                            <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end w-full sm:w-auto">
+                              <Badge className={e.published ? "bg-green-100 text-green-700 border-0" : "bg-gray-100 text-gray-500 border-0"}>
+                                {e.published ? "Aktiv" : "Kladde"}
+                              </Badge>
+                              <Button size="sm" variant="outline" asChild className="rounded-lg">
+                                <Link href={editPath}>Rediger</Link>
+                              </Button>
+                              <Button size="sm" variant="outline" asChild className="rounded-lg">
+                                <Link href={availPath}>Tilgængelighed</Link>
+                              </Button>
+                              {!e.published ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={isDuplicating}
+                                  onClick={async () => {
+                                    const pre = await checkStripeBeforePublish(e.id)
+                                    if ("error" in pre) {
+                                      toast.error(pre.error)
+                                      return
+                                    }
+                                    if (!pre.stripeComplete) {
+                                      setStripeGateExperienceId(e.id)
+                                      return
+                                    }
+                                    const res = await publishExperience(e.id)
+                                    if ("error" in res) {
+                                      if (res.error === STRIPE_PUBLISH_REQUIRED_ERROR) {
+                                        setStripeGateExperienceId(e.id)
+                                        return
+                                      }
+                                      toast.error(res.error)
+                                      return
+                                    }
+                                    toast.success("Oplevelse publiceret")
+                                    router.refresh()
+                                  }}
+                                  className="rounded-lg text-xs border-green-300 text-green-700 hover:bg-green-50"
+                                >
+                                  Publicér
+                                </Button>
+                              ) : (
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={isDuplicating}
+                                      className="rounded-lg text-xs border-amber-300 text-amber-700 hover:bg-amber-50"
+                                    >
+                                      Afpublicér
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Afpublicér oplevelse?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Oplevelsen bliver usynlig for gæster og kan ikke bookes. Eksisterende bookinger påvirkes ikke.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Annuller</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={async () => {
+                                          const res = await unpublishExperience(e.id)
+                                          if ("error" in res) toast.error(res.error)
+                                          else {
+                                            toast.success("Oplevelse afpubliceret")
+                                            router.refresh()
+                                          }
+                                        }}
+                                        className="bg-amber-600 hover:bg-amber-700 text-white"
+                                      >
+                                        Afpublicér
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={async () => {
+                                  if (!confirm("Slette oplevelsen? Den fjernes efter 30 dage.")) return
+                                  const res = await deleteExperience(e.id)
+                                  if ("error" in res) toast.error(res.error)
+                                  else {
+                                    toast.success("Oplevelse slettet")
+                                    router.refresh()
+                                  }
+                                }}
+                                className="rounded-lg text-xs text-destructive hover:bg-destructive/10"
+                              >
+                                Slet
+                              </Button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </TabsContent>
+          )}
+
           {/* ── TAB 5: INDBAKKE ── */}
           <TabsContent value="inbox">
             <ProviderOverviewTab
@@ -1107,6 +1331,27 @@ export default function DashboardClient({
             router.refresh()
           }}
         />
+        <StripeOnboardingRequiredModal
+          open={stripeGateExperienceId !== null}
+          onOpenChange={(o) => {
+            if (!o) setStripeGateExperienceId(null)
+          }}
+          cabinId={stripeGateExperienceId}
+          onStripeReady={async (id) => {
+            const res = await publishExperience(id)
+            if ("error" in res) {
+              if (res.error === STRIPE_PUBLISH_REQUIRED_ERROR) {
+                setStripeGateExperienceId(id)
+                return
+              }
+              toast.error(res.error)
+              return
+            }
+            toast.success("Oplevelse publiceret")
+            setStripeGateExperienceId(null)
+            router.refresh()
+          }}
+        />
       </div>
     </div>
   )
@@ -1114,7 +1359,6 @@ export default function DashboardClient({
 
 /* ── Cabin request row ── */
 const CABIN_REQ_STATUS: Record<string, string> = {
-  open:      "Åben",
   matched:   "Matchet",
   cancelled: "Annulleret",
   expired:   "Udløbet",
@@ -1129,6 +1373,8 @@ const CABIN_REQ_COLORS: Record<string, string> = {
 function CabinRequestRow({ r, isHost }: { r: CabinRequestData; isHost: boolean }) {
   const tReq = useTranslations("request")
   const tDash = useTranslations("dashboard")
+  const localeRouter = useLocaleRouter()
+  const hostHref = `/dashboard/oensker/${r.id}`
   const nights = r.desired_check_in && r.desired_check_out
     ? Math.round((new Date(r.desired_check_out).getTime() - new Date(r.desired_check_in).getTime()) / (1000 * 60 * 60 * 24))
     : null
@@ -1178,7 +1424,9 @@ function CabinRequestRow({ r, isHost }: { r: CabinRequestData; isHost: boolean }
           </div>
         </div>
         <Badge className={`${CABIN_REQ_COLORS[r.status] ?? "bg-gray-100 text-gray-500"} border-0 text-xs`}>
-          {CABIN_REQ_STATUS[r.status] ?? r.status}
+          {r.status === "open"
+            ? tDash("guest_wishes_transport_status_active")
+            : CABIN_REQ_STATUS[r.status] ?? r.status}
         </Badge>
       </div>
 
@@ -1239,6 +1487,20 @@ function CabinRequestRow({ r, isHost }: { r: CabinRequestData; isHost: boolean }
         </div>
       ) : null}
 
+      {isHost && (
+        <Button
+          type="button"
+          size="sm"
+          className="rounded-lg bg-[#114788] text-white hover:bg-[#114788]/90 w-fit"
+          onClick={(e) => {
+            e.stopPropagation()
+            localeRouter.push(hostHref)
+          }}
+        >
+          {tDash("guest_stay_host_se_request")}
+        </Button>
+      )}
+
       {!isHost && r.status === "open" && (
         <div className="pt-2 border-t border-border flex flex-col sm:flex-row gap-2 sm:items-center sm:flex-wrap">
           {(r.pending_stay_offer_count ?? 0) > 0 ? (
@@ -1275,12 +1537,20 @@ function CabinRequestRow({ r, isHost }: { r: CabinRequestData; isHost: boolean }
 
   if (isHost) {
     return (
-      <Link
-        href={`/dashboard/oensker/${r.id}`}
-        className={`block ${cardClass} transition-colors hover:border-primary/35 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+      <div
+        role="link"
+        tabIndex={0}
+        className={`${cardClass} transition-colors hover:border-primary/35 hover:shadow-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+        onClick={() => localeRouter.push(hostHref)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault()
+            localeRouter.push(hostHref)
+          }
+        }}
       >
         {cardBody}
-      </Link>
+      </div>
     )
   }
 
@@ -1289,6 +1559,7 @@ function CabinRequestRow({ r, isHost }: { r: CabinRequestData; isHost: boolean }
 
 /* ── Transport request row with offer count and chat link ── */
 function TransportRequestRow({ r }: { r: { id: string; from_location: string; to_location: string; desired_date: string; num_passengers: number; status: string; offer_count?: number } }) {
+  const tDash = useTranslations("dashboard")
   const [isPending, startTransition] = useTransition()
   const locale = useLocale()
   const detailHref = `/${locale}/transport/anmodninger/${r.id}`
@@ -1309,8 +1580,10 @@ function TransportRequestRow({ r }: { r: { id: string; from_location: string; to
             )}
           </p>
         </div>
-        <Badge className={`${STATUS_COLORS[r.status] ?? "bg-gray-100 text-gray-500"} border-0 text-xs`}>
-          {STATUS_LABELS[r.status] ?? r.status}
+        <Badge className={`${STATUS_COLORS[r.status] ?? "bg-amber-100 text-amber-700"} border-0 text-xs`}>
+          {r.status === "open"
+            ? tDash("guest_wishes_transport_status_active")
+            : (STATUS_LABELS[r.status] ?? r.status)}
         </Badge>
       </div>
 

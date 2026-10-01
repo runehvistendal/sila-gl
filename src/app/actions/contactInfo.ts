@@ -10,6 +10,7 @@ export type ContactInfoData = {
 
 function toRpcBookingType(booking_type: string): string {
   if (booking_type === "cabin_booking") return "cabin"
+  if (booking_type === "experience_booking") return "experience_booking"
   return booking_type
 }
 

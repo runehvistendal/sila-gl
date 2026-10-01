@@ -6,6 +6,7 @@ export type ContactInfoBookingType =
   | "ride_share"
   | "transport_offer"
   | "stay_offer"
+  | "experience_booking"
 
 export default async function ContactInfoCard({
   booking_type,

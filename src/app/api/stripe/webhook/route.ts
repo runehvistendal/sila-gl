@@ -437,6 +437,79 @@ export async function POST(request: Request) {
       return new Response("ok", { status: 200 })
     }
 
+    // ── Experience booking ──────────────────────────────────────────────────
+    if (meta.type === "experience_booking") {
+      const piEb = session.payment_intent
+      const paymentIntentIdEb =
+        typeof piEb === "string"
+          ? piEb
+          : piEb && "id" in piEb
+            ? (piEb as { id: string }).id
+            : null
+
+      const { data: ebRow } = await service
+        .from("experience_bookings")
+        .select("id, status, stripe_payment_intent_id, experience_id")
+        .eq("stripe_session_id", sessionId)
+        .maybeSingle()
+
+      if (!ebRow) {
+        return new Response("ok", { status: 200 })
+      }
+
+      const eb = ebRow as {
+        id: string
+        status: string
+        stripe_payment_intent_id: string | null
+        experience_id: string
+      }
+
+      if (eb.status === "confirmed" && eb.stripe_payment_intent_id) {
+        return new Response("ok", { status: 200 })
+      }
+
+      if (!paymentIntentIdEb) {
+        if (isDev) {
+          console.error("[stripe webhook] experience_booking mangler payment_intent", sessionId)
+        }
+        return new Response("ok", { status: 200 })
+      }
+
+      const experienceContactUntil = contactInfoUntilFromNow()
+
+      const { error: ebUpErr } = await service
+        .from("experience_bookings")
+        .update({
+          status: "confirmed",
+          stripe_payment_intent_id: paymentIntentIdEb,
+          updated_at: new Date().toISOString(),
+          contact_info_visible_until: experienceContactUntil,
+        })
+        .eq("id", eb.id)
+        .eq("status", "pending")
+
+      if (ebUpErr) {
+        if (isDev) console.error("[stripe webhook] experience_booking update", ebUpErr)
+        return new Response("Opdatering fejlede", { status: 500 })
+      }
+
+      const { data: expProv } = await service
+        .from("experiences")
+        .select("provider_id")
+        .eq("id", eb.experience_id)
+        .maybeSingle()
+
+      const providerId = (expProv as { provider_id: string } | null)?.provider_id
+      if (providerId) {
+        await createNotification(providerId, "experience_booking_received", eb.id)
+      }
+
+      revalidatePath("/")
+      revalidatePath("/dashboard")
+      revalidatePath(`/oplevelser/${eb.experience_id}`)
+      return new Response("ok", { status: 200 })
+    }
+
     // ── Cabin booking (existing logic) ──────────────────────────────────────
     const pi = session.payment_intent
     const paymentIntentId =
