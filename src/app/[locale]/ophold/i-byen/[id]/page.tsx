@@ -257,7 +257,7 @@ export default async function ResidenceDetailPage({
           loginNextPath={`/ophold/i-byen/${cabin.id}`}
           disabledYmd={disabledYmd}
           leftContent={
-            <>
+            <div className="space-y-8">
               <div>
                 <h2 className="text-xl font-bold text-foreground mb-3">{tDetail("about_title")}</h2>
                 <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
@@ -307,7 +307,7 @@ export default async function ResidenceDetailPage({
                 </div>
               )}
 
-            </>
+            </div>
           }
           reviewsContent={
             <CabinReviews

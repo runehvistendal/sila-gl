@@ -147,13 +147,13 @@ export default async function BookingSuccessPage({ params, searchParams }: PageP
         <div className="flex flex-col sm:flex-row gap-3">
           <Link
             href="/dashboard"
-            className="inline-flex flex-1 justify-center h-12 items-center rounded-xl px-6 font-semibold text-white bg-[#114788] hover:bg-[#114788]/90 transition-colors"
+            className="inline-flex sm:flex-1 shrink-0 justify-center h-12 items-center rounded-xl px-6 font-semibold text-white bg-[#114788] hover:bg-[#114788]/90 transition-colors"
           >
             {t("cta_dashboard")}
           </Link>
           <Link
             href="/ophold/i-naturen"
-            className="inline-flex flex-1 justify-center h-12 items-center rounded-xl px-6 font-semibold border border-border text-foreground hover:bg-muted transition-colors"
+            className="inline-flex sm:flex-1 shrink-0 justify-center h-12 items-center rounded-xl px-6 font-semibold border border-border text-foreground hover:bg-muted transition-colors"
           >
             {t("cta_browse")}
           </Link>

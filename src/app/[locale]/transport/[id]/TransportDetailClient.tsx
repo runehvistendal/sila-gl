@@ -425,7 +425,7 @@ export default function TransportDetailClient({
           </h1>
           <p className="mt-1 text-base text-foreground first-letter:uppercase">
             {dateLong(rideShare.departure_at)} · {t("at_time", { time: timeOf(rideShare.departure_at) })}{" "}
-            <span className="text-xs text-muted-foreground">({t("nuuk_time")})</span>
+            <span className="text-sm text-muted-foreground">({t("local_time")})</span>
           </p>
         </header>
 

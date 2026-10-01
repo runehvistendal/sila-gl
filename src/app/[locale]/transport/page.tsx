@@ -71,6 +71,7 @@ export default async function TransportPage({ params, searchParams }: Props) {
       boat_description, description, status,
       from_latitude, from_longitude, to_latitude, to_longitude,
       return_ride_share_id,
+      boats ( name, images ),
       profiles!skipper_id ( full_name, avatar_url ),
       return_trip:return_ride_share_id ( id, from_location, to_location, departure_at, seats_available, price_per_seat_ore, status )
     `)

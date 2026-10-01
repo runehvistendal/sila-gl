@@ -77,9 +77,9 @@ export default function CabinDetailLayout({
     // Ét sæt komponenter: på mobil ligger bookingboksen efter beskrivelsen,
     // på desktop er den en sticky højre kolonne der spænder over begge rækker.
     <div className="mt-6 lg:mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_384px] lg:gap-x-12 lg:items-start">
-      <div className="space-y-8 min-w-0">{leftContent}</div>
+      <div className="min-w-0">{leftContent}</div>
 
-      <div className="min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-24">
+      <div className="min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
         <CabinBookingWidget
           cabin={bookingCabin}
           isLoggedIn={isLoggedIn}

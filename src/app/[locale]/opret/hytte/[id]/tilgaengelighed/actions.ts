@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase-server"
 import { requireCabinOwner } from "@/lib/requireCabinOwner"
 import { revalidatePublishedCabinPaths } from "@/lib/revalidateCabinPublic"
 import { requireStripeForPublish } from "@/app/actions/stripe"
+import { cabinPublishBlocker } from "@/lib/cabinPublishChecks"
 
 /** Matcher STRIPE_PUBLISH_REQUIRED_ERROR på klienten — ikke importer lib-konstant i "use server". */
 const STRIPE_REQUIRED = "stripe_required"
@@ -59,6 +60,8 @@ export async function saveAvailability(
       if (gate.error === STRIPE_REQUIRED) return { error: STRIPE_REQUIRED }
       return { error: gate.error }
     }
+    const blocker = await cabinPublishBlocker(supabase, cabinId)
+    if (blocker) return { error: blocker }
     const { error } = await supabase
       .from("cabins")
       .update({ published: true })
@@ -163,6 +166,8 @@ export async function saveAll(
       if (gate.error === STRIPE_REQUIRED) return { error: STRIPE_REQUIRED }
       return { error: gate.error }
     }
+    const blocker = await cabinPublishBlocker(supabase, cabinId)
+    if (blocker) return { error: blocker }
     const { error } = await supabase
       .from("cabins")
       .update({ published: true })

@@ -496,7 +496,7 @@
     "from": "From",
     "to": "To",
     "departure": "Departure",
-    "seats_available": "{count} seats available",
+    "seats_available": "{count, plural, one {# seat available} other {# seats available}}",
     "price_per_seat": "per seat",
     "roundtrip": "Round trip",
     "oneway": "One way",
@@ -587,7 +587,11 @@
     "review_anonymous": "Sila guest",
     "review_rating_sr": "{rating} out of 5 stars",
     "empty_request_body": "No sailor has posted this trip yet. Post a request and local sailors can send you an offer.",
-    "empty_request_cta": "Request this trip"
+    "empty_request_cta": "Request this trip",
+    "local_time": "local time",
+    "card_return": "Return {date}",
+    "card_cta": "View trip and book",
+    "card_cta_sold_out": "View trip"
   },
   "booking": {
     "title": "Book",
@@ -1625,6 +1629,7 @@
     "transport_out": "Out to {place}",
     "transport_home": "Back from {place}",
     "transport_request_cta": "Request transport for your dates",
-    "transport_own_note": "If you have your own boat or a deal with a sailor, you're all set."
+    "transport_own_note": "If you have your own boat or a deal with a sailor, you're all set.",
+    "transport_request_cta_alt": "None of them fit? Request transport"
   }
 }

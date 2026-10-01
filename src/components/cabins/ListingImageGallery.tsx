@@ -2,11 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Maximize2, X, ChevronLeft, ChevronRight } from "lucide-react"
+import { ImageOff, Maximize2, X, ChevronLeft, ChevronRight } from "lucide-react"
 import { captureEvent } from "@/lib/analytics/posthog-events"
 
-const FALLBACK =
-  "https://images.unsplash.com/photo-1510798831971-661eb04b3739?w=900&h=600&fit=crop"
 
 interface Props {
   images?: string[]
@@ -21,7 +19,7 @@ export default function ListingImageGallery({
   cabinId,
 }: Props) {
   const images = rawImages?.filter((img) => img?.startsWith("http")) ?? []
-  const allImages = images.length > 0 ? images : [FALLBACK]
+  const allImages = images
 
   const [active, setActive]   = useState(0)
   const [lightbox, setLightbox] = useState(false)
@@ -55,6 +53,19 @@ export default function ListingImageGallery({
 
   const openLightbox = (idx: number) => { setLbIndex(idx); setLightbox(true) }
 
+  // Ingen billeder: vis en neutral flade i stedet for et stockfoto, der ikke forestiller stedet.
+  if (allImages.length === 0) {
+    return (
+      <div
+        role="img"
+        aria-label={title}
+        className="mb-8 flex aspect-[16/9] w-full items-center justify-center rounded-2xl bg-gradient-to-br from-[#09192A] to-[#114788]"
+      >
+        <ImageOff className="h-10 w-10 text-white/40" aria-hidden />
+      </div>
+    )
+  }
+
   return (
     <>
       <div className="mb-8 space-y-2">
@@ -70,7 +81,7 @@ export default function ListingImageGallery({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               className="w-full h-full object-cover"
-              onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK }}
+              onError={(e) => { (e.target as HTMLImageElement).style.visibility = "hidden" }}
             />
           </AnimatePresence>
 
@@ -110,7 +121,7 @@ export default function ListingImageGallery({
                 }`}
                 style={{ width: 96, aspectRatio: "16/9" }}
               >
-                <img src={img} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK }} />
+                <img src={img} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.visibility = "hidden" }} />
               </button>
             ))}
           </div>
@@ -151,7 +162,7 @@ export default function ListingImageGallery({
                 exit={{ opacity: 0, scale: 0.96 }}
                 transition={{ duration: 0.2 }}
                 className="max-w-[90vw] max-h-[85vh] object-contain rounded-xl shadow-2xl"
-                onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK }}
+                onError={(e) => { (e.target as HTMLImageElement).style.visibility = "hidden" }}
               />
             </AnimatePresence>
 
@@ -172,7 +183,7 @@ export default function ListingImageGallery({
                     }`}
                     style={{ width: 64, aspectRatio: "16/9" }}
                   >
-                    <img src={img} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK }} />
+                    <img src={img} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.visibility = "hidden" }} />
                   </button>
                 ))}
               </div>

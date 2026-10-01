@@ -76,6 +76,8 @@ export default async function BookingTransportPrompt({ bookingId, locationHub, c
   const out = (outRes.data ?? []) as Trip[]
   const home = (homeRes.data ?? []) as Trip[]
 
+  const hasMatches = out.length + home.length > 0
+
   const requestQs = new URLSearchParams({
     to: place,
     date: checkIn,
@@ -135,7 +137,7 @@ export default async function BookingTransportPrompt({ bookingId, locationHub, c
             {t("transport_title", { place })}
           </h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {out.length + home.length > 0 ? t("transport_body_matches") : t("transport_body_none")}
+            {hasMatches ? t("transport_body_matches") : t("transport_body_none")}
           </p>
         </div>
       </div>
@@ -145,9 +147,13 @@ export default async function BookingTransportPrompt({ bookingId, locationHub, c
 
       <Link
         href={`/transport/anmod?${requestQs}`}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#114788] px-5 text-sm font-semibold text-white hover:bg-[#114788]/90 transition-colors"
+        className={
+          hasMatches
+            ? "flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#114788] bg-white px-5 text-sm font-semibold text-[#114788] hover:bg-[#114788]/10 transition-colors"
+            : "flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#114788] px-5 text-sm font-semibold text-white hover:bg-[#114788]/90 transition-colors"
+        }
       >
-        {t("transport_request_cta")}
+        {hasMatches ? t("transport_request_cta_alt") : t("transport_request_cta")}
         <ArrowRight className="w-4 h-4" aria-hidden />
       </Link>
       <p className="text-xs text-muted-foreground">{t("transport_own_note")}</p>

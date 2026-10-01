@@ -348,7 +348,7 @@ export default async function OpholdNatureDetailPage({
           acceptedTransportOffer={acceptedTransportOffer ?? null}
           hasOpenTransportRequest={hasOpenTransportRequest}
           leftContent={
-            <>
+            <div className="space-y-8">
               <div>
                 <h2 className="text-xl font-bold text-foreground mb-3">{tSection("about")}</h2>
                 <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
@@ -397,7 +397,7 @@ export default async function OpholdNatureDetailPage({
                   </Link>
                 </div>
               )}
-            </>
+            </div>
           }
           reviewsContent={
             <CabinReviews

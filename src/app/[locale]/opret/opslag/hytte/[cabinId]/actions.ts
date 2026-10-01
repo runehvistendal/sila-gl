@@ -1,5 +1,6 @@
 "use server"
 
+import { cabinPublishBlocker } from "@/lib/cabinPublishChecks"
 import { redirect } from "next/navigation"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase-server"
@@ -67,6 +68,9 @@ export async function publishCabinListing(
     if (gate.error === STRIPE_REQUIRED) return { error: STRIPE_REQUIRED }
     return { message: gate.error }
   }
+
+  const blocker = await cabinPublishBlocker(supabase, cabin_id)
+  if (blocker) return { message: blocker }
 
   let addonServices: AddOnService[] = []
   try {

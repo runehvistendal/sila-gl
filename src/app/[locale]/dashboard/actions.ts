@@ -1,5 +1,6 @@
 "use server"
 
+import { cabinPublishBlocker } from "@/lib/cabinPublishChecks"
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase-server"
 import { requireSession } from "@/lib/requireSession"
@@ -96,6 +97,9 @@ export async function publishCabin(cabinId: string): Promise<{ error?: string }>
     .maybeSingle()
 
   if (rowErr || !row) return { error: "Hytte ikke fundet" }
+
+  const blocker = await cabinPublishBlocker(supabase, cabinId)
+  if (blocker) return { error: blocker }
 
   const { error } = await supabase
     .from("cabins")
