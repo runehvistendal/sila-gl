@@ -15,7 +15,7 @@ const schema = z
     to_location: z.string().min(1, "Vælg destination"),
     departure_date: z.string().min(1, "Vælg afgangsdato"),
     departure_time: z.string().optional(),
-    total_seats: z.coerce.number().int().min(1).max(50),
+    total_seats: z.coerce.number().int().min(1).max(12),
     price_per_seat_roundtrip_kr: z.coerce.number().positive("Pris skal være positiv"),
     return_date: z.string().optional(),
     return_time: z.string().optional(),

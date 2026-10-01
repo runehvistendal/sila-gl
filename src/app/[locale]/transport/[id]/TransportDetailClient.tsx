@@ -1,42 +1,42 @@
 "use client"
 
-import { useState, useTransition, useEffect } from "react"
+import { useEffect, useState, useTransition } from "react"
 import dynamic from "next/dynamic"
-import { useRouter } from "next/navigation"
 import {
-  ArrowRight, ChevronLeft, Calendar, Clock, Users, Anchor,
-  RefreshCw, MessageSquare, User, Star,
+  Anchor, ArrowRight, Backpack, Calendar, Check, ChevronLeft, Clock, CloudSun,
+  LifeBuoy, MapPin, MessageSquare, Minus, Plus, ShieldCheck, Shirt, Star, Timer, User, Users,
 } from "lucide-react"
 import { useFormatter, useTranslations } from "next-intl"
-import {
-  GREENLAND_LOCATIONS,
-  getLocationName,
-} from "@/lib/greenlandLocations"
-import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
+import { Link, useRouter } from "@/i18n/navigation"
+import { getLocationName } from "@/lib/greenlandLocations"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { formatKr, oreToKr, calcServiceFee, calcDisplayPrice } from "@/lib/money"
+import { formatKr, calcServiceFee, calcDisplayPrice } from "@/lib/money"
+import { nuukTodayYmd } from "@/lib/nuukTime"
 import { createTransportRequest } from "./actions"
-import TransportDrawer from "@/components/transport/TransportDrawer"
 import ServiceFeeHelpIcon from "@/components/shared/ServiceFeeHelpIcon"
 import { captureEvent, PH_STORE } from "@/lib/analytics/posthog-events"
 
-const TransportMap = dynamic(() => import("@/components/map/TransportMap"), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-64 bg-muted rounded-2xl flex items-center justify-center mb-6">
+const NUUK_TZ = "America/Godthab"
+
+function MapLoading() {
+  const t = useTranslations("transport")
+  return (
+    <div className="w-full h-56 sm:h-72 bg-muted rounded-2xl flex items-center justify-center">
       <div className="flex items-center gap-2 text-muted-foreground text-sm">
         <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-        Indlæser kort...
+        {t("loading")}
       </div>
     </div>
-  ),
-})
+  )
+}
 
-const LOCATIONS = [...new Set(GREENLAND_LOCATIONS.map((l) => l.name_dk))].sort()
+const TransportMap = dynamic(() => import("@/components/map/TransportMap"), {
+  ssr: false,
+  loading: () => <MapLoading />,
+})
 
 interface ReviewData {
   id: string
@@ -63,6 +63,16 @@ interface RideShareDetail {
   description: string | null
   status: string
   return_ride_share_id?: string | null
+  estimated_duration_minutes?: number | null
+  meeting_point?: string | null
+  luggage_allowance?: "small" | "medium" | "large" | null
+  flexibility_minutes?: number | null
+  boats?: {
+    name: string | null
+    capacity: number | null
+    safety_confirmed: boolean | null
+    operator_type: "private" | "commercial" | null
+  } | null
   profiles: { id: string; full_name: string | null; avatar_url: string | null } | null
 }
 
@@ -72,11 +82,15 @@ interface Props {
   alternativeReturnTrips: RideShareDetail[]
   reviews: ReviewData[]
   isLoggedIn: boolean
+  /** true når den indloggede bruger selv er sejler på turen */
+  isOwnTrip?: boolean
+  /** Beregnet på serveren: afgangstidspunktet er passeret */
+  departed?: boolean
 }
 
 function StarRow({ rating }: { rating: number }) {
   return (
-    <div className="flex gap-0.5">
+    <div className="flex gap-0.5" aria-hidden>
       {[1, 2, 3, 4, 5].map((n) => (
         <Star
           key={n}
@@ -87,13 +101,32 @@ function StarRow({ rating }: { rating: number }) {
   )
 }
 
-const NUUK_TZ = "America/Godthab"
+function Fact({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-muted rounded-xl p-3 min-w-0">
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+        {icon}
+        {label}
+      </div>
+      <p className="font-semibold text-sm text-foreground break-words">{children}</p>
+    </div>
+  )
+}
 
-export default function TransportDetailClient({ rideShare, returnTrips, alternativeReturnTrips, reviews, isLoggedIn }: Props) {
+export default function TransportDetailClient({
+  rideShare,
+  returnTrips,
+  alternativeReturnTrips,
+  reviews,
+  isLoggedIn,
+  isOwnTrip = false,
+  departed = false,
+}: Props) {
   const router = useRouter()
   const fmt = useFormatter()
+  const t = useTranslations("transport")
   const tBooking = useTranslations("booking")
-  const tTransport = useTranslations("transport")
+  const tCommon = useTranslations("common")
 
   useEffect(() => {
     captureEvent("transport_viewed", {
@@ -104,36 +137,27 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
     })
   }, [rideShare.id, rideShare.from_location, rideShare.to_location, rideShare.price_per_seat_ore])
 
-  const formatNuukDate = (iso: string) =>
-    fmt.dateTime(new Date(iso), { timeZone: NUUK_TZ, day: "numeric", month: "short", year: "numeric" })
-  const formatNuukTime = (iso: string): string | null => {
-    const t = fmt.dateTime(new Date(iso), { timeZone: NUUK_TZ, hour: "2-digit", minute: "2-digit" })
-    return t === "00:00" ? null : t
-  }
+  const fromName = getLocationName(rideShare.from_location)
+  const toName = getLocationName(rideShare.to_location)
 
-  const [seats,          setSeats]          = useState(1)
-  const [message,        setMessage]        = useState("")
-  const [ticketType,     setTicketType]     = useState<"single" | "return">("single")
-  const [selectedReturn, setSelectedReturn] = useState<RideShareDetail | null>(null)
-  const [showReqForm,    setShowReqForm]    = useState(false)
-  const [reqSent,        setReqSent]        = useState(false)
-  const [reqPending,     startReq]          = useTransition()
+  const dateLong = (iso: string) =>
+    fmt.dateTime(new Date(iso), { timeZone: NUUK_TZ, weekday: "long", day: "numeric", month: "long" })
+  const dateShort = (iso: string) =>
+    fmt.dateTime(new Date(iso), { timeZone: NUUK_TZ, weekday: "short", day: "numeric", month: "short" })
+  const timeOf = (iso: string) =>
+    fmt.dateTime(new Date(iso), { timeZone: NUUK_TZ, hour: "2-digit", minute: "2-digit" })
 
-  const [reqForm, setReqForm] = useState({
-    from_location:  rideShare.to_location,
-    to_location:    rideShare.from_location,
-    departure_date: "",
-    num_guests:     1,
-    notes:          "",
-  })
-
-  const priceOre      = rideShare.price_per_seat_ore
-  const outboundTotal = seats * priceOre
-  const outboundServiceFee = outboundTotal > 0 ? calcServiceFee(outboundTotal) : 0
-  const outboundGuestTotal = outboundTotal + outboundServiceFee
-
+  const soldOut = rideShare.seats_available <= 0 || rideShare.status === "full"
+  const maxSeats = Math.max(1, rideShare.seats_available)
+  const [seats, setSeats] = useState(1)
   const [bookPending, setBookPending] = useState(false)
-  const [returnDrawerId, setReturnDrawerId] = useState<string | null>(null)
+
+  const priceOre = rideShare.price_per_seat_ore
+  const subtotal = seats * priceOre
+  const serviceFee = subtotal > 0 ? calcServiceFee(subtotal) : 0
+  const guestTotal = subtotal + serviceFee
+
+  const loginHref = `/login?next=${encodeURIComponent(`/transport/${rideShare.id}`)}`
 
   async function handleBook() {
     if (bookPending) return
@@ -144,9 +168,11 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ride_share_id: rideShare.id, seats_booked: seats }),
       })
-      const json = await res.json() as { url?: string; error?: string }
+      const json = (await res.json().catch(() => ({}))) as { url?: string; error?: string }
       if (!res.ok || !json.url) {
-        toast.error(json.error ?? "Noget gik galt. Prøv igen.")
+        toast.error(json.error ?? tCommon("error"))
+        if (res.status === 409) router.refresh()
+        setBookPending(false)
         return
       }
       try {
@@ -155,713 +181,575 @@ export default function TransportDetailClient({ rideShare, returnTrips, alternat
           JSON.stringify({
             ride_share_id: rideShare.id,
             seats,
-            total_price_ore: outboundTotal,
-            service_fee_ore: outboundServiceFee,
-            guest_total_ore: outboundGuestTotal,
+            total_price_ore: subtotal,
+            service_fee_ore: serviceFee,
+            guest_total_ore: guestTotal,
           }),
         )
       } catch {
-        /* ignore */
+        /* sessionStorage kan være blokeret */
       }
       captureEvent("transport_booking_started", {
         ride_share_id: rideShare.id,
         from_location: rideShare.from_location,
         to_location: rideShare.to_location,
         seats,
-        roundtrip: ticketType === "return",
+        roundtrip: false,
       })
-      router.push(json.url)
+      // Stripe Checkout er ekstern — fuld navigation. Knappen forbliver låst.
+      window.location.assign(json.url)
     } catch {
-      toast.error("Forbindelsesfejl. Prøv igen.")
-    } finally {
+      toast.error(t("connection_error"))
       setBookPending(false)
     }
   }
 
-  async function handleBookBoth(returnPriceOre: number) {
-    void returnPriceOre
-    toast("Tur-retur betaling", { description: "Bestil de to ture separat." })
-  }
+  /* ── Anmod om returtur (omvendt rute) ── */
+  const [showReq, setShowReq] = useState(false)
+  const [reqSent, setReqSent] = useState(false)
+  const [reqError, setReqError] = useState<string | null>(null)
+  const [reqPending, startReq] = useTransition()
+  const [reqDate, setReqDate] = useState("")
+  const [reqGuests, setReqGuests] = useState(1)
+  const [reqNotes, setReqNotes] = useState("")
 
   function handleSendRequest() {
-    if (!reqForm.departure_date) return
+    if (!reqDate) return
+    if (!isLoggedIn) {
+      router.push(loginHref)
+      return
+    }
+    setReqError(null)
     startReq(async () => {
-      await createTransportRequest({
-        from_location:  reqForm.from_location,
-        to_location:    reqForm.to_location,
-        departure_date: reqForm.departure_date,
-        num_guests:     reqForm.num_guests,
-        notes:          reqForm.notes || undefined,
-      })
-      captureEvent("transport_request_created", {
-        from_location: reqForm.from_location,
-        to_location: reqForm.to_location,
-        num_guests: reqForm.num_guests,
-      })
-      setReqSent(true)
-      setShowReqForm(false)
+      try {
+        const res = await createTransportRequest({
+          from_location: toName,
+          to_location: fromName,
+          departure_date: reqDate,
+          num_guests: reqGuests,
+          notes: reqNotes || undefined,
+        })
+        if ("error" in res) {
+          setReqError(res.error)
+          return
+        }
+        captureEvent("transport_request_created", {
+          from_location: rideShare.to_location,
+          to_location: rideShare.from_location,
+          num_guests: reqGuests,
+        })
+        setReqSent(true)
+        setShowReq(false)
+      } catch {
+        setReqError(t("request_failed"))
+      }
     })
   }
 
-  function handleSwitchToReturn() {
-    setTicketType("return")
-  }
+  const avgRating =
+    reviews.length > 0 ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : null
 
-  function handleSwitchToSingle() {
-    setTicketType("single")
-    setSelectedReturn(null)
-    setShowReqForm(false)
-  }
+  const duration = rideShare.estimated_duration_minutes ?? null
+  const durationLabel =
+    duration == null
+      ? null
+      : duration < 60
+        ? `${duration} min`
+        : `${Math.floor(duration / 60)} t${duration % 60 ? ` ${duration % 60} min` : ""}`
 
-  const avgRating = reviews.length > 0
-    ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
-    : null
+  const flex = rideShare.flexibility_minutes
+  const flexLabel =
+    flex == null
+      ? null
+      : flex === 0
+        ? t("detail_flex_0")
+        : flex % 60 === 0
+          ? t("detail_flex_h", { hours: flex / 60 })
+          : t("detail_flex_n", { minutes: flex })
 
-  const depTime = formatNuukTime(rideShare.departure_at)
+  const boatLabel = rideShare.boats?.name || rideShare.boat_description
+  const sailorName = rideShare.profiles?.full_name ?? t("sailor_fallback")
+  const allReturns = [...returnTrips, ...alternativeReturnTrips]
+
+  const bookingCard = (
+    <section
+      id="book"
+      aria-labelledby="book-title"
+      className="bg-white rounded-2xl border border-border shadow-sm p-5 sm:p-6"
+    >
+      <div className="flex items-baseline justify-between gap-3 mb-4">
+        <h2 id="book-title" className="text-lg font-bold text-foreground">
+          {t("book_title")}
+        </h2>
+        <p className="text-right">
+          <span className="text-xl font-bold text-foreground tabular-nums">
+            {formatKr(calcDisplayPrice(priceOre))}
+          </span>
+          <span className="text-xs text-muted-foreground"> / {t("price_per_seat")}</span>
+        </p>
+      </div>
+
+      {departed ? (
+        <p role="status" className="text-sm text-muted-foreground bg-muted rounded-xl p-4 text-center">
+          {t("departed")}
+        </p>
+      ) : isOwnTrip ? (
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground bg-muted rounded-xl p-4">{t("own_trip_note")}</p>
+          <Button asChild className="w-full h-12 rounded-xl font-semibold bg-[#114788] hover:bg-[#114788]/90 text-white">
+            <Link href={`/dashboard/sejlads/${rideShare.id}`}>{t("own_trip_cta")}</Link>
+          </Button>
+        </div>
+      ) : soldOut ? (
+        <div className="space-y-3">
+          <p role="status" className="text-sm text-foreground bg-muted rounded-xl p-4 text-center font-medium">
+            {t("sold_out")}
+          </p>
+          <Button asChild variant="outline" className="w-full h-11 rounded-xl font-semibold">
+            <Link
+              href={`/transport/anmod?from=${encodeURIComponent(fromName)}&to=${encodeURIComponent(toName)}`}
+            >
+              {t("sold_out_request_cta")}
+            </Link>
+          </Button>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <p className="text-sm font-semibold text-foreground">{t("seats_label")}</p>
+              <p className="text-xs text-muted-foreground">
+                {t("seats_available", { count: rideShare.seats_available })}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSeats((s) => Math.max(1, s - 1))}
+                disabled={seats <= 1}
+                aria-label={t("seats_decrease")}
+                className="w-11 h-11 rounded-full border border-border flex items-center justify-center text-foreground disabled:opacity-40 hover:border-[#114788] transition-colors"
+              >
+                <Minus className="w-4 h-4" />
+              </button>
+              <span className="w-8 text-center text-lg font-bold tabular-nums" aria-live="polite">
+                {seats}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSeats((s) => Math.min(maxSeats, s + 1))}
+                disabled={seats >= maxSeats}
+                aria-label={t("seats_increase")}
+                className="w-11 h-11 rounded-full border border-border flex items-center justify-center text-foreground disabled:opacity-40 hover:border-[#114788] transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-muted rounded-xl p-4 mb-4 text-sm space-y-1.5">
+            <div className="flex justify-between text-muted-foreground">
+              <span>
+                {formatKr(priceOre)} × {seats}
+              </span>
+              <span className="tabular-nums">{formatKr(subtotal)}</span>
+            </div>
+            {serviceFee > 0 && (
+              <div className="flex justify-between text-muted-foreground items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 min-w-0">
+                  {t("booking_service_fee_3")}
+                  <ServiceFeeHelpIcon
+                    tooltipText={t("booking_service_fee_hint")}
+                    ariaLabel={t("booking_service_fee_aria")}
+                  />
+                </span>
+                <span className="tabular-nums">{formatKr(serviceFee)}</span>
+              </div>
+            )}
+            <div className="flex justify-between font-bold text-foreground pt-1.5 border-t border-border">
+              <span>{tBooking("total")}</span>
+              <span className="tabular-nums">{formatKr(guestTotal)}</span>
+            </div>
+          </div>
+
+          {isLoggedIn ? (
+            <Button
+              onClick={handleBook}
+              disabled={bookPending}
+              className="w-full h-12 rounded-xl font-semibold bg-[#114788] hover:bg-[#114788]/90 text-white"
+            >
+              {bookPending ? t("drawer_opening_payment") : t("book_outbound_now", { amount: formatKr(guestTotal) })}
+            </Button>
+          ) : (
+            <Button asChild className="w-full h-12 rounded-xl font-semibold bg-[#114788] hover:bg-[#114788]/90 text-white">
+              <Link href={loginHref}>{t("login_to_book")}</Link>
+            </Button>
+          )}
+
+          <ul className="mt-4 space-y-1.5 text-xs text-muted-foreground">
+            <li className="flex gap-2">
+              <Check className="w-3.5 h-3.5 mt-0.5 text-green-600 shrink-0" />
+              {t("safety_cancellation")}
+            </li>
+            <li className="flex gap-2">
+              <Check className="w-3.5 h-3.5 mt-0.5 text-green-600 shrink-0" />
+              {t("book_weather_refund")}
+            </li>
+            <li className="flex gap-2">
+              <MessageSquare className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              {t("book_chat_after_payment")}
+            </li>
+          </ul>
+        </>
+      )}
+    </section>
+  )
 
   return (
     <div className="min-h-screen pt-16 bg-background">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-        {/* ── Back ── */}
-        <button
-          onClick={() => router.push("/transport")}
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <Link
+          href="/transport"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors py-1"
         >
           <ChevronLeft className="w-4 h-4" />
-          Tilbage til transport
-        </button>
+          {t("back_to_list")}
+        </Link>
 
-        {/* ── Route map ── */}
-        {rideShare.from_latitude && rideShare.to_latitude ? (
-          <TransportMap
-            mode="detail"
-            routes={[{
-              id:       rideShare.id,
-              fromName: getLocationName(rideShare.from_location),
-              fromLat:  rideShare.from_latitude,
-              fromLng:  rideShare.from_longitude ?? 0,
-              toName:   getLocationName(rideShare.to_location),
-              toLat:    rideShare.to_latitude,
-              toLng:    rideShare.to_longitude ?? 0,
-            }]}
-            analyticsType="transport"
-            className="w-full h-64 md:h-80 mb-6"
-          />
-        ) : (
-          <div className="w-full h-64 bg-muted rounded-2xl flex items-center justify-center mb-6">
-            <Anchor className="w-16 h-16 text-muted-foreground/30" />
-          </div>
-        )}
-
-        {/* ── Info card ── */}
-        <div className="bg-white rounded-2xl border border-border shadow-sm p-6 sm:p-8 mb-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center shrink-0">
-              <Anchor className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 text-xl font-bold text-foreground flex-wrap">
-                <span>{getLocationName(rideShare.from_location)}</span>
-                <ArrowRight className="w-5 h-5 text-primary shrink-0" />
-                <span>{getLocationName(rideShare.to_location)}</span>
-              </div>
-              {rideShare.profiles && (
-                <p className="text-sm text-muted-foreground break-words">
-                  Sejler: {rideShare.profiles.full_name ?? "Sila-sejler"}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-            <div className="bg-muted rounded-xl p-3">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                <Calendar className="w-3.5 h-3.5" />Dato
-              </div>
-              <p className="font-semibold text-sm">
-                {formatNuukDate(rideShare.departure_at)}
-              </p>
-            </div>
-            {depTime && (
-              <div className="bg-muted rounded-xl p-3">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                  <Clock className="w-3.5 h-3.5" />Afgang
-                </div>
-                <p className="font-semibold text-sm">{depTime}</p>
-              </div>
-            )}
-            <div className="bg-muted rounded-xl p-3">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                <Users className="w-3.5 h-3.5" />Ledige pladser
-              </div>
-              <p className="font-semibold text-sm">{rideShare.seats_available}</p>
-            </div>
-            {rideShare.boat_description && (
-              <div className="bg-muted rounded-xl p-3">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                  <Anchor className="w-3.5 h-3.5" />Båd
-                </div>
-                <p className="font-semibold text-sm truncate">{rideShare.boat_description}</p>
-              </div>
-            )}
-          </div>
-
-          {rideShare.description && (
-            <div className="bg-muted rounded-xl p-4 text-sm text-muted-foreground leading-relaxed">
-              {rideShare.description}
-            </div>
-          )}
-        </div>
-
-        {/* ── Booking card ── */}
-        <div className="bg-white rounded-2xl border border-border shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-bold text-foreground mb-5">Book din plads</h2>
-
-          {/* Outbound info */}
-          <div className="bg-primary/5 border border-primary/15 rounded-xl p-4 mb-4">
-            <div className="flex items-center gap-2 mb-1">
-              <ArrowRight className="w-4 h-4 text-primary" />
-              <span className="font-semibold text-sm text-foreground">Afgang</span>
-            </div>
-            <p className="text-sm text-muted-foreground ml-6">
-              {getLocationName(rideShare.from_location)} → {getLocationName(rideShare.to_location)} · {formatNuukDate(rideShare.departure_at)}
-            </p>
-            <p className="text-sm font-semibold text-primary ml-6 mt-1">
-              {formatKr(calcDisplayPrice(priceOre))}
-              <span className="text-muted-foreground font-normal text-xs"> / plads</span>
-            </p>
-            <p className="text-xs text-muted-foreground ml-6 mt-0.5">{tTransport("price_includes_service_fee")}</p>
-          </div>
-
-          {/* Seats */}
-          <div className="mb-5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">
-              Antal pladser
-            </label>
-            <Input
-              type="number"
-              min={1}
-              max={rideShare.seats_available}
-              value={seats}
-              onChange={(e) =>
-                setSeats(Math.max(1, Math.min(rideShare.seats_available, Number(e.target.value))))
-              }
-              className="rounded-xl w-32"
-            />
-          </div>
-
-          {/* ── Ticket type toggle ── */}
-          <div className="flex gap-1 bg-muted rounded-xl p-1 mb-5">
-            <button
-              onClick={handleSwitchToSingle}
-              className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-all ${
-                ticketType === "single"
-                  ? "bg-white text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Enkeltbillet
-            </button>
-            <button
-              onClick={handleSwitchToReturn}
-              className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
-                ticketType === "return"
-                  ? "bg-white text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Returtur
-              {returnTrips.length > 0 && (
-                <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
-                  ticketType === "return"
-                    ? "bg-primary/15 text-primary"
-                    : "bg-muted-foreground/15 text-muted-foreground"
-                }`}>
-                  {returnTrips.length}
-                </span>
-              )}
-            </button>
-          </div>
-
-          {/* ── Return mode panel ── */}
-          <AnimatePresence>
-            {ticketType === "return" && (
-              <motion.div
-                key="return-panel"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="mb-5">
-                  {/* Return trip cards */}
-                  {/* Returture fra samme sejler */}
-                  {returnTrips.length > 0 ? (
-                    <div className="space-y-2 mb-3">
-                      {returnTrips.map((rt) => {
-                        const isSelected = selectedReturn?.id === rt.id
-                        const rtPriceOre = rt.price_per_seat_ore
-                        const combinedOre = seats * (priceOre + rtPriceOre)
-                        const combinedServiceFee = calcServiceFee(combinedOre)
-                        const combinedGuestTotal = combinedOre + combinedServiceFee
-
-                        return (
-                          <div key={rt.id}>
-                            {/* Card header — clickable */}
-                            <button
-                              onClick={() => setSelectedReturn(isSelected ? null : rt)}
-                              className={`w-full text-left p-3 border transition-colors ${
-                                isSelected
-                                  ? "bg-accent/10 border-accent rounded-t-xl border-b-0"
-                                  : "bg-muted border-border hover:border-accent/40 rounded-xl"
-                              }`}
-                            >
-                              <div className="flex items-center justify-between gap-3">
-                                <div>
-                                  <p className="text-sm font-semibold">
-                                    {getLocationName(rt.from_location)} → {getLocationName(rt.to_location)}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {formatNuukDate(rt.departure_at)} · {rt.seats_available} pladser
-                                  </p>
-                                  {rt.profiles && (
-                                    <p className="text-xs text-primary font-medium mt-0.5">
-                                      Sejler: {rt.profiles.full_name ?? "Sila-sejler"}
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="text-right shrink-0">
-                                  <p className="text-sm font-bold text-primary">
-                                    {formatKr(calcDisplayPrice(rtPriceOre))}/plads
-                                  </p>
-                                  <p className="text-[10px] text-muted-foreground">{tTransport("price_includes_service_fee")}</p>
-                                  {isSelected && (
-                                    <Badge className="bg-accent/20 text-accent border-0 text-xs mt-1">
-                                      Valgt
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-                            </button>
-
-                            {/* Inline expand — price summary + "Book begge" */}
-                            <AnimatePresence>
-                              {isSelected && (
-                                <motion.div
-                                  key={`expand-${rt.id}`}
-                                  initial={{ opacity: 0, height: 0 }}
-                                  animate={{ opacity: 1, height: "auto" }}
-                                  exit={{ opacity: 0, height: 0 }}
-                                  className="overflow-hidden"
-                                >
-                                  <div className="bg-accent/5 border border-accent border-t-0 rounded-b-xl p-4 space-y-3">
-                                    {/* Price breakdown */}
-                                    <div className="text-sm space-y-1.5">
-                                      <div className="flex justify-between text-muted-foreground">
-                                        <span>
-                                          Udrejse: {oreToKr(priceOre).toLocaleString("da-DK")} kr. × {seats} plads{seats !== 1 ? "er" : ""}
-                                        </span>
-                                        <span>{formatKr(seats * priceOre)}</span>
-                                      </div>
-                                      <div className="flex justify-between text-muted-foreground">
-                                        <span>
-                                          Returrejse: {oreToKr(rtPriceOre).toLocaleString("da-DK")} kr. × {seats} plads{seats !== 1 ? "er" : ""}
-                                        </span>
-                                        <span>{formatKr(seats * rtPriceOre)}</span>
-                                      </div>
-                                      {combinedServiceFee > 0 && (
-                                        <div className="flex justify-between text-muted-foreground items-center gap-2 pt-1">
-                                          <span className="inline-flex items-center gap-1.5 min-w-0">
-                                            {tTransport("booking_service_fee_3")}
-                                            <ServiceFeeHelpIcon
-                                              tooltipText={tTransport("booking_service_fee_hint")}
-                                              ariaLabel={tTransport("booking_service_fee_aria")}
-                                            />
-                                          </span>
-                                          <span className="tabular-nums">{formatKr(combinedServiceFee)}</span>
-                                        </div>
-                                      )}
-                                      <div className="flex justify-between font-bold text-foreground pt-1.5 border-t border-border">
-                                        <span>{tBooking("total")}</span>
-                                        <span className="tabular-nums">{formatKr(combinedGuestTotal)}</span>
-                                      </div>
-                                    </div>
-
-                                    {/* Book begge button */}
-                                    {rideShare.seats_available === 0 ? (
-                                      <Button disabled className="w-full h-11 rounded-xl font-semibold">
-                                        Fuldt booket (udrejse)
-                                      </Button>
-                                    ) : !isLoggedIn ? (
-                                      <Button
-                                        onClick={() => router.push("/login")}
-                                        className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl font-semibold"
-                                      >
-                                        Log ind for at booke begge
-                                      </Button>
-                                    ) : (
-                                      <Button
-                                        onClick={() => handleBookBoth(rtPriceOre)}
-                                        className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl font-semibold"
-                                      >
-                                        Book begge — {formatKr(combinedGuestTotal)}
-                                      </Button>
-                                    )}
-                                  </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <div className="bg-muted rounded-xl p-4 text-sm text-muted-foreground text-center mb-3">
-                      Ingen returture fra samme sejler
-                    </div>
-                  )}
-
-                  {/* Andre sejlere på samme rute — altid synlig når return-fanen er åben */}
-                  {!rideShare.return_ride_share_id && (
-                    <div className="mb-3">
-                      {alternativeReturnTrips.length > 0 && (
-                        <>
-                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                            Andre sejlere på samme rute
-                          </p>
-                          <div className="space-y-2">
-                            {alternativeReturnTrips.map((alt) => (
-                              <div key={alt.id} className="border border-border rounded-xl overflow-hidden">
-                                <div className="p-3">
-                                  <div className="flex items-start justify-between gap-3 mb-2.5">
-                                    <div className="min-w-0">
-                                      <p className="text-sm font-semibold text-foreground">
-                                        {getLocationName(alt.from_location)} → {getLocationName(alt.to_location)}
-                                      </p>
-                                      {alt.profiles && (
-                                        <p className="text-xs text-primary font-medium mt-0.5">
-                                          {alt.profiles.full_name ?? "Sila-sejler"}
-                                        </p>
-                                      )}
-                                      <p className="text-xs text-muted-foreground mt-0.5">
-                                        {formatNuukDate(alt.departure_at)}
-                                        {formatNuukTime(alt.departure_at) ? ` kl. ${formatNuukTime(alt.departure_at)}` : ""}
-                                        {" · "}{alt.seats_available} plads{alt.seats_available !== 1 ? "er" : ""} ledige
-                                      </p>
-                                    </div>
-                                    <div className="text-right shrink-0">
-                                      <p className="text-sm font-bold text-primary">
-                                        {formatKr(calcDisplayPrice(alt.price_per_seat_ore))}
-                                      </p>
-                                      <p className="text-xs text-muted-foreground">pr. plads</p>
-                                      <p className="text-[10px] text-muted-foreground">{tTransport("price_includes_service_fee")}</p>
-                                    </div>
-                                  </div>
-                                  <button
-                                    onClick={() => setReturnDrawerId(alt.id)}
-                                    className="w-full py-2 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
-                                  >
-                                    Book denne returtur →
-                                  </button>
-                                </div>
-                                <div className="flex items-start gap-2 bg-amber-50 border-t border-amber-200 px-3 py-2.5">
-                                  <span className="text-amber-500 text-xs leading-none mt-0.5">⚠️</span>
-                                  <p className="text-xs text-amber-800">
-                                    Anden sejler — du modtager to separate betalingskvitteringer.
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Request return CTA */}
-                  {!reqSent && (
-                    <button
-                      onClick={() => setShowReqForm(!showReqForm)}
-                      className={`w-full text-left p-3 rounded-xl border transition-colors ${
-                        showReqForm
-                          ? "bg-primary/5 border-primary/30"
-                          : "bg-muted border-border hover:border-primary/40"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <MessageSquare className="w-4 h-4 text-primary" />
-                        <span className="text-sm font-medium">Anmod om returtur</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5 ml-6">
-                        Send en anmodning til alle sejlere
-                      </p>
-                    </button>
-                  )}
-
-                  {/* Inline request form */}
-                  <AnimatePresence>
-                    {showReqForm && !reqSent && (
-                      <motion.div
-                        key="req-form"
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="mt-3 pt-4 border-t border-border space-y-3">
-                          <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
-                            <span className="text-amber-500 mt-0.5 text-base leading-none">⚠️</span>
-                            <p className="text-xs text-amber-800">
-                              <strong>Bemærk:</strong> Dette er en anmodning — ikke en bekræftet booking. Sejlere kontakter dig.
-                            </p>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Fra</label>
-                              <select
-                                value={reqForm.from_location}
-                                onChange={(e) => setReqForm((p) => ({ ...p, from_location: e.target.value }))}
-                                className="w-full h-9 px-3 rounded-md border border-input bg-transparent text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                              >
-                                {LOCATIONS.map((l) => <option key={l} value={l}>{l}</option>)}
-                              </select>
-                            </div>
-                            <div>
-                              <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Til</label>
-                              <select
-                                value={reqForm.to_location}
-                                onChange={(e) => setReqForm((p) => ({ ...p, to_location: e.target.value }))}
-                                className="w-full h-9 px-3 rounded-md border border-input bg-transparent text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                              >
-                                {LOCATIONS.map((l) => <option key={l} value={l}>{l}</option>)}
-                              </select>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Ønsket dato</label>
-                              <Input
-                                type="date"
-                                value={reqForm.departure_date}
-                                onChange={(e) => setReqForm((p) => ({ ...p, departure_date: e.target.value }))}
-                                min={new Date().toISOString().split("T")[0]}
-                              />
-                            </div>
-                            <div>
-                              <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Passagerer</label>
-                              <Input
-                                type="number"
-                                min={1}
-                                max={20}
-                                value={reqForm.num_guests}
-                                onChange={(e) => setReqForm((p) => ({ ...p, num_guests: Number(e.target.value) }))}
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Besked (valgfrit)</label>
-                            <Textarea
-                              value={reqForm.notes}
-                              onChange={(e) => setReqForm((p) => ({ ...p, notes: e.target.value }))}
-                              rows={2}
-                              placeholder="Fortæl om din tur..."
-                              className="resize-none"
-                            />
-                          </div>
-
-                          <Button
-                            onClick={handleSendRequest}
-                            disabled={!reqForm.departure_date || reqPending}
-                            className="w-full bg-primary text-primary-foreground rounded-xl h-11 font-semibold"
-                          >
-                            {reqPending ? "Sender..." : "Send anmodning"}
-                          </Button>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* Request sent success */}
-                  {reqSent && (
-                    <div className="mt-3 flex items-start gap-3 bg-green-50 border border-green-200 rounded-xl p-4">
-                      <span className="text-green-500 text-lg leading-none">✓</span>
-                      <div>
-                        <p className="text-sm font-semibold text-green-800">Anmodning sendt!</p>
-                        <p className="text-xs text-green-700 mt-0.5">Sejlere på ruten vil kontakte dig.</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* ── Enkeltbillet mode: message + price + CTA ── */}
-          <AnimatePresence>
-            {ticketType === "single" && (
-              <motion.div
-                key="single-panel"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden"
-              >
-                <div>
-                  {/* Message to skipper */}
-                  <div className="mb-5">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">
-                      Besked til sejler (valgfri)
-                    </label>
-                    <Textarea
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      placeholder="Spørgsmål til sejleren..."
-                      rows={2}
-                      className="rounded-xl resize-none"
-                    />
-                  </div>
-
-                  {/* Price summary */}
-                  <div className="bg-muted rounded-xl p-4 mb-5 text-sm space-y-1.5">
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>
-                        {oreToKr(priceOre).toLocaleString("da-DK")} kr. × {seats} plads{seats !== 1 ? "er" : ""}
-                      </span>
-                      <span className="tabular-nums">{formatKr(outboundTotal)}</span>
-                    </div>
-                    <div className="my-2 border-t border-border" aria-hidden />
-                    {outboundServiceFee > 0 && (
-                      <div className="flex justify-between text-muted-foreground items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 min-w-0">
-                          {tTransport("booking_service_fee_3")}
-                          <ServiceFeeHelpIcon
-                            tooltipText={tTransport("booking_service_fee_hint")}
-                            ariaLabel={tTransport("booking_service_fee_aria")}
-                          />
-                        </span>
-                        <span className="tabular-nums">{formatKr(outboundServiceFee)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between font-bold text-foreground pt-1 border-t border-border">
-                      <span>{tBooking("total")}</span>
-                      <span className="tabular-nums">{formatKr(outboundGuestTotal)}</span>
-                    </div>
-                  </div>
-
-                  {/* Book button */}
-                  {rideShare.seats_available === 0 ? (
-                    <Button disabled className="w-full h-12 rounded-xl font-semibold">
-                      Fuldt booket
-                    </Button>
-                  ) : !isLoggedIn ? (
-                    <Button
-                      onClick={() => router.push("/login")}
-                      className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl font-semibold"
-                    >
-                      Log ind for at booke
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={handleBook}
-                      disabled={bookPending}
-                      className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl font-semibold"
-                    >
-                      {bookPending ? "Åbner betaling…" : `Gå til betaling — ${formatKr(outboundGuestTotal)}`}
-                    </Button>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <p className="text-xs text-muted-foreground text-center mt-4">
-            Sikker betaling via Stripe
+        {/* ── Overskrift ── */}
+        <header className="mb-5">
+          <h1 className="flex items-center gap-2 text-2xl sm:text-3xl font-bold text-foreground flex-wrap">
+            <span>{fromName}</span>
+            <ArrowRight className="w-6 h-6 text-[#114788] shrink-0" aria-label={t("to")} />
+            <span>{toName}</span>
+          </h1>
+          <p className="mt-1 text-base text-foreground first-letter:uppercase">
+            {dateLong(rideShare.departure_at)} · {t("at_time", { time: timeOf(rideShare.departure_at) })}{" "}
+            <span className="text-xs text-muted-foreground">({t("nuuk_time")})</span>
           </p>
-        </div>
+        </header>
 
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-x-8 lg:items-start">
+          <div className="space-y-5 min-w-0">
+            {/* ── Kort ── */}
+            {rideShare.from_latitude && rideShare.to_latitude ? (
+              <TransportMap
+                mode="detail"
+                routes={[
+                  {
+                    id: rideShare.id,
+                    fromName,
+                    fromLat: rideShare.from_latitude,
+                    fromLng: rideShare.from_longitude ?? 0,
+                    toName,
+                    toLat: rideShare.to_latitude,
+                    toLng: rideShare.to_longitude ?? 0,
+                  },
+                ]}
+                analyticsType="transport"
+                className="w-full h-56 sm:h-72"
+              />
+            ) : (
+              <div className="w-full h-40 bg-muted rounded-2xl flex items-center justify-center">
+                <Anchor className="w-12 h-12 text-muted-foreground/30" />
+              </div>
+            )}
 
-        {/* ── Om sejleren ── */}
-        {rideShare.profiles && (
-          <div className="bg-white rounded-2xl border border-border shadow-sm p-6 mb-6">
-            <h2 className="text-base font-bold text-foreground mb-3">Om sejleren</h2>
-            <button
-              onClick={() => router.push("/profil")}
-              className="flex items-center gap-4 p-4 bg-muted/40 rounded-2xl hover:bg-muted transition-colors w-full text-left min-w-0 overflow-hidden"
-            >
-              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
-                {rideShare.profiles.avatar_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={rideShare.profiles.avatar_url}
-                    alt={rideShare.profiles.full_name ?? "Sila-sejler"}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <User className="w-6 h-6 text-primary" />
+            {/* ── Fakta ── */}
+            <section className="bg-white rounded-2xl border border-border shadow-sm p-5 sm:p-6">
+              <h2 className="text-base font-bold text-foreground mb-3">{t("about_trip")}</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <Fact icon={<Calendar className="w-3.5 h-3.5" />} label={tCommon("date")}>
+                  <span className="first-letter:uppercase inline-block">{dateShort(rideShare.departure_at)}</span>
+                </Fact>
+                <Fact icon={<Clock className="w-3.5 h-3.5" />} label={t("departure")}>
+                  {timeOf(rideShare.departure_at)}
+                  {flexLabel && <span className="block text-xs font-normal text-muted-foreground">{flexLabel}</span>}
+                </Fact>
+                {durationLabel && (
+                  <Fact icon={<Timer className="w-3.5 h-3.5" />} label={t("detail_duration")}>
+                    {t("detail_duration_value", { time: durationLabel })}
+                  </Fact>
+                )}
+                <Fact icon={<Users className="w-3.5 h-3.5" />} label={tCommon("seats")}>
+                  {t("seats_of_total", { available: Math.max(0, rideShare.seats_available), total: rideShare.total_seats })}
+                </Fact>
+                {boatLabel && (
+                  <Fact icon={<Anchor className="w-3.5 h-3.5" />} label={t("boat")}>
+                    {boatLabel}
+                  </Fact>
+                )}
+                {rideShare.luggage_allowance && (
+                  <Fact icon={<Backpack className="w-3.5 h-3.5" />} label={t("detail_luggage")}>
+                    {t(`detail_luggage_${rideShare.luggage_allowance}`)}
+                  </Fact>
                 )}
               </div>
-              <div className="min-w-0 overflow-hidden">
-                <p className="font-semibold text-foreground break-words">
-                  {rideShare.profiles.full_name ?? "Sila-sejler"}
-                </p>
-                <p className="text-sm text-primary">Se profil →</p>
-              </div>
-            </button>
-          </div>
-        )}
 
-        {/* ── Anmeldelser ── */}
-        <div className="bg-white rounded-2xl border border-border shadow-sm p-6">
-          <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
-            <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-            Anmeldelser
-            {avgRating && (
-              <span className="font-bold text-foreground">
-                {avgRating.toFixed(1)} ★ ({reviews.length} anmeldelse{reviews.length !== 1 ? "r" : ""})
-              </span>
-            )}
-          </h2>
-
-          {reviews.length === 0 ? (
-            <p className="text-sm text-muted-foreground bg-muted rounded-xl p-4 text-center">
-              Ingen anmeldelser endnu
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {reviews.map((r) => (
-                <div key={r.id} className="bg-white rounded-xl border border-border p-4">
-                  <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-                    <p className="text-sm font-semibold text-foreground">
-                      {r.profiles?.full_name ?? "Anonym"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(r.created_at).toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric" })}
-                    </p>
+              {rideShare.meeting_point && (
+                <div className="mt-3 flex gap-2.5 rounded-xl border border-border p-3">
+                  <MapPin className="w-4 h-4 text-[#114788] shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">{t("detail_meeting_point")}</p>
+                    <p className="text-sm font-medium text-foreground break-words">{rideShare.meeting_point}</p>
                   </div>
-                  <StarRow rating={r.rating} />
-                  {r.comment && (
-                    <p className="text-sm italic text-muted-foreground mt-2 leading-relaxed">
-                      {r.comment}
-                    </p>
-                  )}
                 </div>
-              ))}
-            </div>
-          )}
+              )}
+
+              {rideShare.description && (
+                <p className="mt-4 text-sm text-foreground/80 leading-relaxed whitespace-pre-line break-words">
+                  {rideShare.description}
+                </p>
+              )}
+            </section>
+
+          </div>
+
+          {/* ── Booking: efter fakta på mobil, sticky højre kolonne på desktop ── */}
+          <aside className="min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-24">
+            {bookingCard}
+          </aside>
+
+          <div className="space-y-5 min-w-0 lg:col-start-1">
+            {/* ── Sikkerhed og vilkår ── */}
+            <section className="bg-white rounded-2xl border border-border shadow-sm p-5 sm:p-6">
+              <h2 className="text-base font-bold text-foreground mb-3 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[#114788]" />
+                {t("safety_title")}
+              </h2>
+              <ul className="space-y-3 text-sm text-foreground/90">
+                <li className="flex gap-3">
+                  <LifeBuoy className="w-4 h-4 mt-0.5 text-[#114788] shrink-0" />
+                  <span>{t("safety_lifejackets")}</span>
+                </li>
+                {rideShare.boats?.safety_confirmed && (
+                  <li className="flex gap-3">
+                    <Check className="w-4 h-4 mt-0.5 text-[#114788] shrink-0" />
+                    <span>{t("safety_equipment_confirmed")}</span>
+                  </li>
+                )}
+                <li className="flex gap-3">
+                  <Users className="w-4 h-4 mt-0.5 text-[#114788] shrink-0" />
+                  <span>{t("safety_max_pax", { count: rideShare.total_seats })}</span>
+                </li>
+                <li className="flex gap-3">
+                  <CloudSun className="w-4 h-4 mt-0.5 text-[#114788] shrink-0" />
+                  <span>{t("safety_weather")}</span>
+                </li>
+                <li className="flex gap-3">
+                  <Shirt className="w-4 h-4 mt-0.5 text-[#114788] shrink-0" />
+                  <span>{t("safety_clothing")}</span>
+                </li>
+              </ul>
+              {rideShare.boats?.operator_type === "commercial" && (
+                <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#114788]/10 text-[#114788] text-xs font-semibold px-3 py-1">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  {t("safety_commercial")}
+                </p>
+              )}
+            </section>
+
+            {/* ── Retur ── */}
+            {!isOwnTrip && (
+              <section className="bg-white rounded-2xl border border-border shadow-sm p-5 sm:p-6">
+                <h2 className="text-base font-bold text-foreground mb-1">{t("return_title", { from: toName, to: fromName })}</h2>
+                <p className="text-sm text-muted-foreground mb-4">{t("return_booked_separately")}</p>
+
+                {allReturns.length > 0 ? (
+                  <ul className="space-y-2 mb-4">
+                    {allReturns.map((rt) => {
+                      const sameSailor = rt.sejler_id === rideShare.sejler_id
+                      return (
+                        <li key={rt.id}>
+                          <Link
+                            href={`/transport/${rt.id}`}
+                            className="flex items-center justify-between gap-3 rounded-xl border border-border p-3 hover:border-[#114788] transition-colors"
+                          >
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-foreground first-letter:uppercase">
+                                {dateShort(rt.departure_at)} · {timeOf(rt.departure_at)}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {sameSailor ? t("return_same_sailor") : rt.profiles?.full_name ?? t("sailor_fallback")}
+                                {" · "}
+                                {rt.seats_available > 0
+                                  ? t("seats_available", { count: rt.seats_available })
+                                  : t("sold_out")}
+                              </p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="text-sm font-bold text-foreground tabular-nums">
+                                {formatKr(calcDisplayPrice(rt.price_per_seat_ore))}
+                              </p>
+                              <p className="text-xs text-[#114788] font-medium">{t("see_return_trip")}</p>
+                            </div>
+                          </Link>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground bg-muted rounded-xl p-4 mb-4">{t("return_none")}</p>
+                )}
+
+                {reqSent ? (
+                  <div role="status" className="flex items-start gap-3 bg-green-50 border border-green-200 rounded-xl p-4">
+                    <Check className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-green-800">{t("return_request_sent")}</p>
+                      <p className="text-xs text-green-700 mt-0.5">{t("return_request_sent_body")}</p>
+                      <Link href="/dashboard?tab=mine-oensker" className="text-xs font-medium text-green-800 underline mt-1 inline-block">
+                        {t("return_request_see")}
+                      </Link>
+                    </div>
+                  </div>
+                ) : !showReq ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowReq(true)}
+                    className="w-full h-11 rounded-xl font-semibold border-[#114788] text-[#114788] hover:bg-[#114788]/10"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    {t("return_request_cta")}
+                  </Button>
+                ) : (
+                  <div className="space-y-3 rounded-xl border border-border p-4">
+                    <p className="text-xs text-muted-foreground">{t("return_request_hint")}</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label htmlFor="req-date" className="text-xs font-semibold text-muted-foreground block mb-1.5">
+                          {t("return_request_date")}
+                        </label>
+                        <Input
+                          id="req-date"
+                          type="date"
+                          value={reqDate}
+                          min={nuukTodayYmd()}
+                          onChange={(e) => setReqDate(e.target.value)}
+                          className="h-11"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="req-guests" className="text-xs font-semibold text-muted-foreground block mb-1.5">
+                          {t("return_request_passengers")}
+                        </label>
+                        <Input
+                          id="req-guests"
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          max={12}
+                          value={reqGuests}
+                          onChange={(e) =>
+                            setReqGuests(Math.max(1, Math.min(12, Math.floor(Number(e.target.value)) || 1)))
+                          }
+                          className="h-11"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="req-notes" className="text-xs font-semibold text-muted-foreground block mb-1.5">
+                        {t("return_request_notes")}
+                      </label>
+                      <Textarea
+                        id="req-notes"
+                        value={reqNotes}
+                        onChange={(e) => setReqNotes(e.target.value)}
+                        rows={2}
+                        maxLength={500}
+                        className="resize-none"
+                      />
+                    </div>
+                    {reqError && (
+                      <p role="alert" className="text-sm text-destructive">
+                        {reqError}
+                      </p>
+                    )}
+                    <div className="flex gap-2">
+                      <Button type="button" variant="ghost" onClick={() => setShowReq(false)} className="h-11 rounded-xl">
+                        {tCommon("cancel")}
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={handleSendRequest}
+                        disabled={!reqDate || reqPending}
+                        className="flex-1 h-11 rounded-xl font-semibold bg-[#114788] hover:bg-[#114788]/90 text-white"
+                      >
+                        {reqPending ? tCommon("sending") : isLoggedIn ? t("return_request_send") : t("login_to_request")}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* ── Sejleren ── */}
+            {rideShare.profiles && (
+              <section className="bg-white rounded-2xl border border-border shadow-sm p-5 sm:p-6">
+                <h2 className="text-base font-bold text-foreground mb-3">{t("about_skipper_title")}</h2>
+                <Link
+                  href={`/profil/${rideShare.profiles.id}`}
+                  className="flex items-center gap-4 p-3 bg-muted/40 rounded-2xl hover:bg-muted transition-colors min-w-0"
+                >
+                  <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
+                    {rideShare.profiles.avatar_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={rideShare.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="w-6 h-6 text-primary" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-foreground break-words">{sailorName}</p>
+                    {avgRating != null && (
+                      <p className="text-sm text-muted-foreground flex items-center gap-1">
+                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                        {avgRating.toFixed(1)} · {t("reviews_count", { count: reviews.length })}
+                      </p>
+                    )}
+                    <p className="text-sm text-[#114788] font-medium">{t("view_profile")}</p>
+                  </div>
+                </Link>
+              </section>
+            )}
+
+            {/* ── Anmeldelser ── */}
+            <section className="bg-white rounded-2xl border border-border shadow-sm p-5 sm:p-6">
+              <h2 className="text-base font-bold text-foreground mb-4">
+                {t("reviews_title")}
+                {avgRating != null && (
+                  <span className="font-normal text-muted-foreground"> · {avgRating.toFixed(1)} ★</span>
+                )}
+              </h2>
+              {reviews.length === 0 ? (
+                <p className="text-sm text-muted-foreground bg-muted rounded-xl p-4 text-center">{t("reviews_empty")}</p>
+              ) : (
+                <ul className="space-y-3">
+                  {reviews.map((r) => (
+                    <li key={r.id} className="rounded-xl border border-border p-4">
+                      <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                        <p className="text-sm font-semibold text-foreground">
+                          {r.profiles?.full_name ?? t("review_anonymous")}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {fmt.dateTime(new Date(r.created_at), { day: "numeric", month: "short", year: "numeric" })}
+                        </p>
+                      </div>
+                      <StarRow rating={r.rating} />
+                      <span className="sr-only">{t("review_rating_sr", { rating: r.rating })}</span>
+                      {r.comment && (
+                        <p className="text-sm text-muted-foreground mt-2 leading-relaxed break-words">{r.comment}</p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
+
         </div>
-
       </div>
-
-      <TransportDrawer
-        id={returnDrawerId}
-        seats={seats}
-        onClose={() => setReturnDrawerId(null)}
-      />
     </div>
   )
 }

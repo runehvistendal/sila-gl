@@ -21,7 +21,7 @@ const schema = z.object({
     .number({ error: "Ugyldigt tal" })
     .int()
     .min(1, "Mindst 1 plads")
-    .max(50, "Maks 50 pladser"),
+    .max(12, "Højst 12 passagerer pr. tur"),
   price_per_seat_kr: z.coerce
     .number({ error: "Ugyldigt tal" })
     .positive("Prisen skal være større end 0"),
