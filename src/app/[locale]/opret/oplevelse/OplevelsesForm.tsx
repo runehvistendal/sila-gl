@@ -1,6 +1,7 @@
 "use client"
 
 import { useActionState, useState } from "react"
+import { useTranslations } from "next-intl"
 import LocationAutocomplete from "@/components/shared/LocationAutocomplete"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,7 +32,9 @@ export default function OplevelsesForm() {
     null,
   )
 
+  const t = useTranslations("create")
   const [locationHub, setLocationHub] = useState("")
+  const [license, setLicense] = useState<"" | "licensed" | "applied" | "below_threshold">("")
 
   return (
     <form action={formAction} className="space-y-6">
@@ -169,6 +172,51 @@ export default function OplevelsesForm() {
           <FieldError messages={state?.errors?.price_per_person_kr} />
         </div>
       </div>
+
+      <fieldset className="space-y-4 rounded-2xl border border-border bg-white p-6 shadow-sm">
+        <legend className="sr-only">{t("license_title")}</legend>
+        <div>
+          <p className="text-base font-semibold text-foreground" aria-hidden>{t("license_title")}</p>
+          <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
+            {t("license_intro")}{" "}
+            <a
+              href="https://nalunaarutit.gl/groenlandsk-lovgivning/2024/inatsisartutlov-nr-62-af-25_11_2024?sc_lang=da"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-[#114788] underline"
+            >
+              {t("license_law_link")}
+            </a>
+          </p>
+        </div>
+        <input type="hidden" name="tourism_license_status" value={license} />
+        <div className="space-y-2" role="radiogroup" aria-label={t("license_title")}>
+          {(["licensed", "applied", "below_threshold"] as const).map((opt) => {
+            const active = license === opt
+            return (
+              <button
+                key={opt}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => setLicense(opt)}
+                className={`w-full rounded-xl border p-4 text-left text-sm transition-colors ${
+                  active ? "border-[#114788] bg-[#114788]/5" : "border-border hover:border-[#114788]/40"
+                }`}
+              >
+                <span className="font-semibold text-foreground">{t(`license_${opt}`)}</span>
+              </button>
+            )
+          })}
+        </div>
+        <FieldError messages={state?.errors?.tourism_license_status} />
+        {license === "licensed" && (
+          <div>
+            <Label htmlFor="exp-license-ref">{t("license_ref_label")}</Label>
+            <Input id="exp-license-ref" name="tourism_license_ref" maxLength={80} className="mt-1 rounded-xl" />
+          </div>
+        )}
+      </fieldset>
 
       {(state?.error ?? state?.errors?._form?.[0]) && (
         <p className="text-sm text-destructive">{state?.error ?? state?.errors?._form?.[0]}</p>

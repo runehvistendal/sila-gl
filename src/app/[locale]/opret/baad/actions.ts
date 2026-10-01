@@ -16,7 +16,31 @@ const baseSchema = z.object({
   equipment: z.array(z.string()).default([]),
   addon_services_json: z.string().optional(),
   safety_confirmed: z.boolean().default(false),
+  // Sejlerens egne oplysninger — Sila verificerer dem ikke (se docs/regulatorisk-notat.md §1)
+  operator_type: z.enum(["private", "commercial"]).default("private"),
+  length_m: z
+    .union([z.literal(""), z.coerce.number().positive("Angiv længden i meter").max(99, "Angiv længden i meter")])
+    .optional(),
+  registration_ref: z.string().max(60).optional(),
+  vessel_approval_ref: z.string().max(120).optional(),
+  skipper_certificate: z.string().max(120).optional(),
+  has_insurance: z.boolean().default(false),
 })
+
+function complianceColumns(d: z.infer<typeof baseSchema>) {
+  const commercial = d.operator_type === "commercial"
+  const text = (v: string | undefined) => v?.trim() || null
+  return {
+    operator_type: d.operator_type,
+    length_m: typeof d.length_m === "number" ? Math.round(d.length_m * 10) / 10 : null,
+    registration_ref: text(d.registration_ref),
+    // Fartstilladelse og førerbevis giver kun mening for erhvervssejlads
+    vessel_approval_ref: commercial ? text(d.vessel_approval_ref) : null,
+    skipper_certificate: commercial ? text(d.skipper_certificate) : null,
+    has_insurance: d.has_insurance,
+    compliance_confirmed_at: new Date().toISOString(),
+  }
+}
 
 const updateSchema = baseSchema.extend({
   boat_id: z.string().min(1),
@@ -65,6 +89,12 @@ export async function createBaad(
     equipment: formData.getAll("equipment") as string[],
     addon_services_json: formData.get("addon_services_json") ?? undefined,
     safety_confirmed: formData.get("safety_confirmed") === "on",
+    operator_type: formData.get("operator_type") ?? undefined,
+    length_m: formData.get("length_m") ?? undefined,
+    registration_ref: formData.get("registration_ref") ?? undefined,
+    vessel_approval_ref: formData.get("vessel_approval_ref") ?? undefined,
+    skipper_certificate: formData.get("skipper_certificate") ?? undefined,
+    has_insurance: formData.get("has_insurance") === "on",
   }
 
   const parsed = baseSchema.safeParse(raw)
@@ -101,6 +131,7 @@ export async function createBaad(
     addon_services: addonServices,
     safety_confirmed: true,
     images: boatImages,
+    ...complianceColumns(data),
   }).select("id").single()
 
   if (error || !inserted) {
@@ -163,6 +194,12 @@ export async function updateBaad(
     equipment: formData.getAll("equipment") as string[],
     addon_services_json: formData.get("addon_services_json") ?? undefined,
     safety_confirmed: formData.get("safety_confirmed") === "on",
+    operator_type: formData.get("operator_type") ?? undefined,
+    length_m: formData.get("length_m") ?? undefined,
+    registration_ref: formData.get("registration_ref") ?? undefined,
+    vessel_approval_ref: formData.get("vessel_approval_ref") ?? undefined,
+    skipper_certificate: formData.get("skipper_certificate") ?? undefined,
+    has_insurance: formData.get("has_insurance") === "on",
   }
 
   const parsed = updateSchema.safeParse(raw)
@@ -211,6 +248,7 @@ export async function updateBaad(
       addon_services: addonServices,
       safety_confirmed: true,
       images: boatImages,
+      ...complianceColumns(data),
     })
     .eq("id", boat_id)
     .eq("owner_id", user.id)

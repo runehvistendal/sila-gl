@@ -26,6 +26,11 @@ const schema = z.object({
   price_per_person_kr: z.coerce
     .number({ error: "Angiv pris i kr." })
     .positive("Prisen skal være større end 0"),
+  // Inatsisartutlov nr. 62 af 25.11.2024 om turistvirksomhed, § 3 — udbyderens egen oplysning
+  tourism_license_status: z.enum(["licensed", "applied", "below_threshold"], {
+    error: "Vælg hvad der gælder for dig",
+  }),
+  tourism_license_ref: z.string().trim().max(80).optional(),
 })
 
 type FieldKeys = keyof z.infer<typeof schema>
@@ -61,6 +66,8 @@ export async function createOplevelse(
     duration_hours: formData.get("duration_hours"),
     max_participants: formData.get("max_participants"),
     price_per_person_kr: formData.get("price_per_person_kr"),
+    tourism_license_status: formData.get("tourism_license_status") || undefined,
+    tourism_license_ref: formData.get("tourism_license_ref") ?? undefined,
   }
 
   const parsed = schema.safeParse(raw)
@@ -97,6 +104,9 @@ export async function createOplevelse(
     categories: categoriesPayload,
     images: [],
     published: false,
+    tourism_license_status: d.tourism_license_status,
+    tourism_license_ref:
+      d.tourism_license_status === "licensed" ? d.tourism_license_ref || null : null,
   })
 
   if (error) {

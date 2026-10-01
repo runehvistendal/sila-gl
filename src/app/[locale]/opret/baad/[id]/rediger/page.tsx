@@ -21,7 +21,7 @@ export default async function RedigerBaadPage({
 
   const { data: boat, error } = await supabase
     .from("boats")
-    .select("id, name, boat_type, capacity, description, equipment, addon_services, owner_id, images")
+    .select("id, name, boat_type, capacity, description, equipment, addon_services, owner_id, images, operator_type, length_m, registration_ref, vessel_approval_ref, skipper_certificate, has_insurance")
     .eq("id", id)
     .is("deleted_at", null)
     .single()

@@ -32,6 +32,12 @@ export type InitialBoat = {
   equipment: string[] | null
   addon_services: unknown
   images?: string[] | null
+  operator_type?: "private" | "commercial" | null
+  length_m?: number | null
+  registration_ref?: string | null
+  vessel_approval_ref?: string | null
+  skipper_certificate?: string | null
+  has_insurance?: boolean | null
 }
 
 interface Props {
@@ -71,6 +77,9 @@ export default function BaadForm({ mode, initialBoat }: Props) {
 
   const [safetyConfirmed, setSafetyConfirmed] = useState(
     initialBoat ? true : false,
+  )
+  const [operatorType, setOperatorType] = useState<"private" | "commercial">(
+    initialBoat?.operator_type === "commercial" ? "commercial" : "private",
   )
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>(initFixed)
   const [customEquipment, setCustomEquipment] = useState<string[]>(initCustom)
@@ -233,6 +242,113 @@ export default function BaadForm({ mode, initialBoat }: Props) {
           )}
         </div>
       </div>
+
+      <fieldset className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-4">
+        <legend className="sr-only">{t("section_operator")}</legend>
+        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider" aria-hidden>
+          {t("section_operator")}
+        </p>
+        <input type="hidden" name="operator_type" value={operatorType} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" role="radiogroup" aria-label={t("section_operator")}>
+          {(["private", "commercial"] as const).map((opt) => {
+            const active = operatorType === opt
+            return (
+              <button
+                key={opt}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => setOperatorType(opt)}
+                className={`rounded-xl border p-4 text-left transition-colors ${
+                  active ? "border-[#114788] bg-[#114788]/5" : "border-border hover:border-[#114788]/40"
+                }`}
+              >
+                <span className="block text-sm font-semibold text-foreground">{t(`operator_${opt}`)}</span>
+                <span className="block text-xs text-muted-foreground mt-0.5">{t(`operator_${opt}_desc`)}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <Label htmlFor="length_m">{t("boat_length_label")}</Label>
+            <Input
+              id="length_m"
+              name="length_m"
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              min={1}
+              max={99}
+              defaultValue={initialBoat?.length_m ?? ""}
+              placeholder="6.5"
+              className="mt-1 rounded-xl"
+            />
+            {state?.errors?.length_m && (
+              <p className="text-xs text-destructive mt-1">{state.errors.length_m[0]}</p>
+            )}
+          </div>
+          <div>
+            <Label htmlFor="registration_ref">{t("boat_registration_label")}</Label>
+            <Input
+              id="registration_ref"
+              name="registration_ref"
+              maxLength={60}
+              defaultValue={initialBoat?.registration_ref ?? ""}
+              className="mt-1 rounded-xl"
+            />
+          </div>
+        </div>
+
+        {operatorType === "commercial" && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="vessel_approval_ref">{t("boat_approval_label")}</Label>
+              <Input
+                id="vessel_approval_ref"
+                name="vessel_approval_ref"
+                maxLength={120}
+                defaultValue={initialBoat?.vessel_approval_ref ?? ""}
+                className="mt-1 rounded-xl"
+              />
+            </div>
+            <div>
+              <Label htmlFor="skipper_certificate">{t("boat_certificate_label")}</Label>
+              <Input
+                id="skipper_certificate"
+                name="skipper_certificate"
+                maxLength={120}
+                defaultValue={initialBoat?.skipper_certificate ?? ""}
+                placeholder={t("boat_certificate_placeholder")}
+                className="mt-1 rounded-xl"
+              />
+            </div>
+          </div>
+        )}
+
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            name="has_insurance"
+            defaultChecked={initialBoat?.has_insurance ?? false}
+            className="mt-0.5 w-4 h-4 accent-primary"
+          />
+          <span className="text-sm text-foreground">{t("boat_insurance_label")}</span>
+        </label>
+
+        <p className="text-xs text-muted-foreground leading-relaxed rounded-xl bg-muted p-3">
+          {t("operator_rules_note")}{" "}
+          <a
+            href="https://www.retsinformation.dk/eli/lta/2012/956"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-[#114788] underline"
+          >
+            {t("operator_rules_link")}
+          </a>
+        </p>
+      </fieldset>
 
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
